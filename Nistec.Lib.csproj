@@ -1,0 +1,234 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{54F52ED5-AECD-47C6-93D8-7B3358BA7F8C}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Nistec</RootNamespace>
+    <AssemblyName>Nistec.Lib</AssemblyName>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>MControl.pfx</AssemblyOriginatorKeyFile>
+    <SccProjectName>
+    </SccProjectName>
+    <SccLocalPath>
+    </SccLocalPath>
+    <SccAuxPath>
+    </SccAuxPath>
+    <SccProvider>
+    </SccProvider>
+    <FileUpgradeFlags>
+    </FileUpgradeFlags>
+    <OldToolsVersion>3.5</OldToolsVersion>
+    <UpgradeBackupLocation>
+    </UpgradeBackupLocation>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+    <TargetFrameworkProfile />
+    <RunPostBuildEvent>OnOutputUpdated</RunPostBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DocumentationFile>bin\Debug\Nistec.Lib.XML</DocumentationFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>..\..\References\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <DocumentationFile>..\..\References\Release\Nistec.Lib.xml</DocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.configuration" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Design" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Net" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Transactions" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.Extensions" />
+    <Reference Include="System.Web.Services" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Collections\CircleCollection.cs" />
+    <Compile Include="Collections\GenericArray.cs" />
+    <Compile Include="Collections\QueueListener.cs" />
+    <Compile Include="Common\AppConfig.cs" />
+    <Compile Include="Common\Enums.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Common\Validation.cs" />
+    <Compile Include="Drawing\ColorUtils.cs" />
+    <Compile Include="Drawing\Imageutil.cs" />
+    <Compile Include="Generic\KeyValueTuple.cs" />
+    <Compile Include="Generic\ConverterUtil.cs" />
+    <Compile Include="Generic\Enums.cs" />
+    <Compile Include="Generic\GenericRecord.cs" />
+    <Compile Include="Generic\KeySet.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="IO\BinaryConverter.cs" />
+    <Compile Include="IO\AckSream.cs" />
+    <Compile Include="IO\MapStream.cs" />
+    <Compile Include="IO\Unsafe\FileStreamer.cs" />
+    <Compile Include="IO\Win32Io.cs" />
+    <Compile Include="IO\Unsafe\LogStream.cs" />
+    <Compile Include="IO\FileStreamHelper.cs" />
+    <Compile Include="IO\StreamExtension.cs" />
+    <Compile Include="IO\StreamLineReader.cs" />
+    <Compile Include="Runtime\Advanced\Enums.cs" />
+    <Compile Include="Runtime\Advanced\SyncItemEvent.cs" />
+    <Compile Include="Runtime\Advanced\SyncQueueBox.cs" />
+    <Compile Include="Runtime\Advanced\SyncTimerDispatcher.cs" />
+    <Compile Include="Runtime\ActivatorUtil.cs" />
+    <Compile Include="Serialization\Binary\Interfaces.cs" />
+    <Compile Include="Serialization\Formatters.cs" />
+    <Compile Include="Serialization\Json\Enums.cs" />
+    <Compile Include="Serialization\Json\Interfaces.cs" />
+    <Compile Include="Serialization\Json\JsonActivator.cs" />
+    <Compile Include="Serialization\Json\JsonResult.cs" />
+    <Compile Include="Serialization\Json\JsonSerializer.cs" />
+    <Compile Include="Serialization\Json\DynamicJson.cs" />
+    <Compile Include="Serialization\Json\JsonParser.cs" />
+    <Compile Include="Serialization\Json\JsonOptions.cs" />
+    <Compile Include="Serialization\Binary\SerializerExtension.cs" />
+    <Compile Include="Generic\GenericKeyValue.cs" />
+    <Compile Include="Generic\IKeyValue.cs" />
+    <Compile Include="IO\CharsDecoder.cs" />
+    <Compile Include="Serialization\Binary\BinaryStreamer.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Serialization\Binary\BinarySerializer.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Serialization\Binary\Enums.cs" />
+    <Compile Include="Runtime\Sandbox.cs" />
+    <Compile Include="Serialization\Binary\SerializeInfo.cs" />
+    <Compile Include="Serialization\NoSerialize.cs" />
+    <Compile Include="Serialization\SerializeTools.cs" />
+    <Compile Include="Runtime\Interfaces.cs" />
+    <Compile Include="IO\IoErrors.cs" />
+    <Compile Include="IO\NetStream.cs" />
+    <Compile Include="IO\StreamBuffer.cs" />
+    <Compile Include="IO\Unsafe\FastCopy.cs" />
+    <Compile Include="IO\Unsafe\FileVersion.cs" />
+    <Compile Include="IO\Unsafe\FileReader.cs" />
+    <Compile Include="IO\StreamHelper.cs" />
+    <Compile Include="Runtime\SysFileWatcher.cs" />
+    <Compile Include="Threading\AsyncTasker.cs" />
+    <Compile Include="Threading\ThreadPoolEx.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Web\Mailer.cs" />
+    <Compile Include="Generic\GenericEventArgs.cs" />
+    <Compile Include="Generic\GenericArgs.cs" />
+    <Compile Include="Generic\GenericException.cs" />
+    <Compile Include="Common\Range.cs" />
+    <Compile Include="Generic\NetConfig.cs" />
+    <Compile Include="Generic\Extensions.cs" />
+    <Compile Include="Generic\GenericTypes.cs" />
+    <Compile Include="Runtime\AssemblyExec.cs" />
+    <Compile Include="Runtime\AssemblyResolver.cs" />
+    <Compile Include="Runtime\GACutils.cs" />
+    <Compile Include="Runtime\RemoteExec.cs" />
+    <Compile Include="Runtime\RquestQuery.cs" />
+    <Compile Include="Runtime\BaseConverter.cs" />
+    <Compile Include="Runtime\Encryption.cs" />
+    <Compile Include="Common\IoHelper.cs" />
+    <Compile Include="Generic\Localizer.cs" />
+    <Compile Include="Generic\NetZipp.cs" />
+    <Compile Include="Runtime\RandomPassword.cs" />
+    <Compile Include="Runtime\SysNet.cs" />
+    <Compile Include="Generic\XmlTable.cs" />
+    <Compile Include="Threading\ThreadTimer.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Threading\GenericThreadPool.cs" />
+    <Compile Include="Threading\AsyncResult.cs" />
+    <Compile Include="Threading\Scheduler.cs" />
+    <Compile Include="Xml\GenericXmlSerializer.cs" />
+    <Compile Include="Xml\XmlExtenseion.cs" />
+    <Compile Include="Xml\XmlFileSerializer.cs" />
+    <Compile Include="Xml\XmlFormatter.cs" />
+    <Compile Include="Xml\XmlSerializer.cs" />
+    <Compile Include="Xml\XmlUtil.cs" />
+    <Compile Include="Xml\XmlBuilder.cs" />
+    <Compile Include="Serialization\NetSerializer.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Xml\XmlParser.cs" />
+    <Compile Include="Web\HttpUtil.cs" />
+    <Compile Include="Common\Regex.cs" />
+    <Compile Include="Common\Types.cs" />
+    <Compile Include="Xml\XmlValidator.cs" />
+    <Compile Include="Generic\AttributeProvider.cs" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Windows.Installer.3.1">
+      <Visible>False</Visible>
+      <ProductName>Windows Installer 3.1</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="MControl.pfx" />
+  </ItemGroup>
+  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+  </PropertyGroup>
+</Project>
