@@ -94,6 +94,9 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Common\Validation.cs" />
+    <Compile Include="Config\Events.cs" />
+    <Compile Include="Config\IniConfig.cs" />
+    <Compile Include="Config\XConfig.cs" />
     <Compile Include="Drawing\ColorUtils.cs" />
     <Compile Include="Drawing\Imageutil.cs" />
     <Compile Include="Generic\KeyValueTuple.cs" />
@@ -112,21 +115,13 @@
     <Compile Include="IO\FileStreamHelper.cs" />
     <Compile Include="IO\StreamExtension.cs" />
     <Compile Include="IO\StreamLineReader.cs" />
+    <Compile Include="Runtime\ActivatorUtil.cs" />
     <Compile Include="Runtime\Advanced\Enums.cs" />
     <Compile Include="Runtime\Advanced\SyncItemEvent.cs" />
     <Compile Include="Runtime\Advanced\SyncQueueBox.cs" />
     <Compile Include="Runtime\Advanced\SyncTimerDispatcher.cs" />
-    <Compile Include="Runtime\ActivatorUtil.cs" />
     <Compile Include="Serialization\Binary\Interfaces.cs" />
     <Compile Include="Serialization\Formatters.cs" />
-    <Compile Include="Serialization\Json\Enums.cs" />
-    <Compile Include="Serialization\Json\Interfaces.cs" />
-    <Compile Include="Serialization\Json\JsonActivator.cs" />
-    <Compile Include="Serialization\Json\JsonResult.cs" />
-    <Compile Include="Serialization\Json\JsonSerializer.cs" />
-    <Compile Include="Serialization\Json\DynamicJson.cs" />
-    <Compile Include="Serialization\Json\JsonParser.cs" />
-    <Compile Include="Serialization\Json\JsonOptions.cs" />
     <Compile Include="Serialization\Binary\SerializerExtension.cs" />
     <Compile Include="Generic\GenericKeyValue.cs" />
     <Compile Include="Generic\IKeyValue.cs" />
@@ -140,6 +135,17 @@
     <Compile Include="Serialization\Binary\Enums.cs" />
     <Compile Include="Runtime\Sandbox.cs" />
     <Compile Include="Serialization\Binary\SerializeInfo.cs" />
+    <Compile Include="Serialization\Json\DynamicJson.cs" />
+    <Compile Include="Serialization\Json\Enums.cs" />
+    <Compile Include="Serialization\Json\Interfaces.cs" />
+    <Compile Include="Serialization\Json\JsonActivator.cs" />
+    <Compile Include="Serialization\Json\JsonConverter.cs" />
+    <Compile Include="Serialization\Json\JsonParser.cs" />
+    <Compile Include="Serialization\Json\JsonReader.cs" />
+    <Compile Include="Serialization\Json\JsonResult.cs" />
+    <Compile Include="Serialization\Json\JsonSerializer.cs" />
+    <Compile Include="Serialization\Json\JsonSettings.cs" />
+    <Compile Include="Serialization\Json\JsonWriter.cs" />
     <Compile Include="Serialization\NoSerialize.cs" />
     <Compile Include="Serialization\SerializeTools.cs" />
     <Compile Include="Runtime\Interfaces.cs" />

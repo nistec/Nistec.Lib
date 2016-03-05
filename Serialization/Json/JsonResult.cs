@@ -32,25 +32,25 @@ namespace Nistec.Serialization
        
     public class JsonResults
     {
-        public static JsonResults Get(object o, JsonOptions options = null)
+        public static JsonResults Get(object o, JsonSettings settings = null)
         {
             return new JsonResults()
             {
                 EncodingName = Encoding.UTF8.EncodingName,
-                Option=options,
+                Option=settings,
                 TypeName = o.GetType().FullName,
-                Result = JsonSerializer.ToJson(o, options)
+                Result = JsonSerializer.Serialize(o, settings)
             };
         }
 
-        public static JsonResults Get(object o, Encoding encoding, JsonOptions options = null)
+        public static JsonResults Get(object o, Encoding encoding, JsonSettings settings = null)
         {
             return new JsonResults()
             {
                 EncodingName = encoding.EncodingName,
-                Option = options,
+                Option = settings,
                 TypeName = o.GetType().FullName,
-                Result = JsonSerializer.ToJson(o, options)
+                Result = JsonSerializer.Serialize(o, settings)
             };
         }
 
@@ -59,7 +59,7 @@ namespace Nistec.Serialization
             EncodingName = Encoding.UTF8.EncodingName;
         }
 
-        public JsonOptions Option { get; set; }
+        public JsonSettings Option { get; set; }
         public string EncodingName { get; set; }
         public string TypeName { get; set; }
         public string Result { get; set; }
@@ -107,32 +107,32 @@ namespace Nistec.Serialization
             TypeName = streamer.ReadString();
             EncodingName = streamer.ReadString();
             Result = streamer.ReadString();
-            Option = (JsonOptions)streamer.ReadValue();
+            Option = (JsonSettings)streamer.ReadValue();
         }
         #endregion
     }
 
     public class JsonResults<T> : JsonResults
     {
-        public static JsonResults<T> Get(T o,JsonOptions options = null)
+        public static JsonResults<T> Get(T o,JsonSettings settings = null)
         {
             return new JsonResults<T>()
             {
                 EncodingName = Encoding.UTF8.EncodingName,
-                Option = options,
+                Option = settings,
                 TypeName= typeof(T).FullName,
-                Result = JsonSerializer.ToJson(o, options)
+                Result = JsonSerializer.Serialize(o, settings)
             };
         }
 
-        public static JsonResults<T> Get(T o, Encoding encoding, JsonOptions options = null)
+        public static JsonResults<T> Get(T o, Encoding encoding, JsonSettings settings = null)
         {
             return new JsonResults<T>()
             {
                 EncodingName = encoding.EncodingName,
-                Option = options,
+                Option = settings,
                 TypeName = typeof(T).FullName,
-                Result = JsonSerializer.ToJson(o, options)
+                Result = JsonSerializer.Serialize(o, settings)
             };
         }
     }
@@ -145,7 +145,7 @@ namespace Nistec.Serialization
             JsonResults result = new JsonResults()
             {
                 TypeName = typeof(DataTable).FullName,
-                Result = JsonSerializer.ToJson(dt)
+                Result = JsonSerializer.Serialize(dt)
             };
             return result;
         }
@@ -155,7 +155,7 @@ namespace Nistec.Serialization
             JsonResults result = new JsonResults()
             {
                 TypeName = typeof(DataRow).FullName,
-                Result = JsonSerializer.ToJson(dr)
+                Result = JsonSerializer.Serialize(dr)
             };
             return result;
         }
@@ -165,7 +165,7 @@ namespace Nistec.Serialization
             JsonResults result = new JsonResults()
             {
                 TypeName = typeof(IDictionary).FullName,
-                Result = JsonSerializer.ToJson(dic)
+                Result = JsonSerializer.Serialize(dic)
             };
             return result;
         }

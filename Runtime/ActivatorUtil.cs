@@ -46,8 +46,8 @@ namespace Nistec.Runtime
         }
         public static ActivatorUtil Get { get { return instance; } }
 
-        internal delegate object GenericSetDeligate(object target, object value);
-        internal delegate object GenericGetDeligate(object obj);
+        internal delegate object GenericSetterDeligate(object target, object value);
+        internal delegate object GenericGetterDeligate(object obj);
         private delegate object CreateObjectDeligate();
 
         private ConcurrentDictionary<Type, CreateObjectDeligate> _ctorCache = new ConcurrentDictionary<Type, CreateObjectDeligate>();
@@ -152,7 +152,7 @@ namespace Nistec.Runtime
             }
         }
 
-        internal static GenericSetDeligate CreateSetField(Type type, FieldInfo fieldInfo)
+        internal static GenericSetterDeligate CreateSetField(Type type, FieldInfo fieldInfo)
         {
             Type[] arguments = new Type[2];
             arguments[0] = arguments[1] = typeof(object);
@@ -188,10 +188,10 @@ namespace Nistec.Runtime
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ret);
             }
-            return (GenericSetDeligate)dynamicSet.CreateDelegate(typeof(GenericSetDeligate));
+            return (GenericSetterDeligate)dynamicSet.CreateDelegate(typeof(GenericSetterDeligate));
         }
 
-        internal static GenericSetDeligate CreateSetMethod(Type type, PropertyInfo propertyInfo)
+        internal static GenericSetterDeligate CreateSetMethod(Type type, PropertyInfo propertyInfo)
         {
             MethodInfo setMethod = propertyInfo.GetSetMethod();
             if (setMethod == null)
@@ -234,10 +234,10 @@ namespace Nistec.Runtime
 
             il.Emit(OpCodes.Ret);
 
-            return (GenericSetDeligate)fieldsSetter.CreateDelegate(typeof(GenericSetDeligate));
+            return (GenericSetterDeligate)fieldsSetter.CreateDelegate(typeof(GenericSetterDeligate));
         }
 
-        internal static GenericGetDeligate CreateGetField(Type type, FieldInfo fieldInfo)
+        internal static GenericGetterDeligate CreateGetField(Type type, FieldInfo fieldInfo)
         {
             DynamicMethod dynamicGet = new DynamicMethod("_", typeof(object), new Type[] { typeof(object) }, type);
 
@@ -264,10 +264,10 @@ namespace Nistec.Runtime
 
             il.Emit(OpCodes.Ret);
 
-            return (GenericGetDeligate)dynamicGet.CreateDelegate(typeof(GenericGetDeligate));
+            return (GenericGetterDeligate)dynamicGet.CreateDelegate(typeof(GenericGetterDeligate));
         }
 
-        internal static GenericGetDeligate CreateGetMethod(Type type, PropertyInfo propertyInfo)
+        internal static GenericGetterDeligate CreateGetMethod(Type type, PropertyInfo propertyInfo)
         {
             MethodInfo getMethod = propertyInfo.GetGetMethod();
             if (getMethod == null)
@@ -299,7 +299,7 @@ namespace Nistec.Runtime
 
             il.Emit(OpCodes.Ret);
 
-            return (GenericGetDeligate)fieldsGetter.CreateDelegate(typeof(GenericGetDeligate));
+            return (GenericGetterDeligate)fieldsGetter.CreateDelegate(typeof(GenericGetterDeligate));
         }
 
         public void ClearCache()

@@ -30,66 +30,113 @@ using System.Collections.Concurrent;
 
 namespace Nistec.Serialization
 {
-
-    public sealed class JsonOptions
+    public sealed class JsonSettings
     {
+        public JsonSettings()
+        {
+            SerializeNullValues = true;
+
+            UseUTCDateTime = false;//true;
+
+            ShowReadOnlyProperties = false;
+
+            UseTypesExtension = false;//true;
+
+            IgnoreCaseOnDeserialize = false;
+
+            _EnableAnonymousTypes = false;
+
+            _UseExtensions = false;//true;
+
+            UseEscapedUnicode = false;//true;
+
+            UseExtraKeyValueDictionary = false;
+
+            UseDatasetSchema = false;// true;
+
+            UseBinaryGuid = false;//true;
+
+            UseEnumValues = false;
+
+            UseUninitializedObject = false;
+
+            EnableDateTimeMilliseconds = false;
+
+        }
+
         /// <summary>
         /// Serialize null values to the output (default = True)
         /// </summary>
-        public bool SerializeNullValues = true;
+        public bool SerializeNullValues {get;set;}
         /// <summary>
         /// Use the UTC date format (default = False)
         /// </summary>
-        public bool UseUTCDateTime = false;//true;
+        public bool UseUTCDateTime { get; set; }
         /// <summary>
         /// Show readonly properties in the output (default = False)
         /// </summary>
-        public bool ShowReadOnlyProperties = false;
+        public bool ShowReadOnlyProperties { get; set; }
         /// <summary>
         /// Use the $types extension to optimise the output json (default = False)
         /// </summary>
-        public bool UseTypesExtension = false;//true;
+        public bool UseTypesExtension { get; set; }
         /// <summary>
         /// Ignore case on json and deserialize (default = False).
         /// </summary>
-        public bool IgnoreCaseOnDeserialize = false;
+        public bool IgnoreCaseOnDeserialize { get; set; }
         /// <summary>
         /// Anonymous types have read only properties (default = False). 
         /// </summary>
-        public bool EnableAnonymousTypes = false;
+        bool _EnableAnonymousTypes;
+        public bool EnableAnonymousTypes
+        {
+            get { return _EnableAnonymousTypes; }
+            set
+            {
+                _EnableAnonymousTypes = value;
+                if (value == true)
+                    ShowReadOnlyProperties = true;
+            }
+        }
         /// <summary>
         /// Enable extensions $types, $type, $map (default = False)
         /// </summary>
-        public bool UseExtensions = false;//true;
+        bool _UseExtensions;
+        public bool UseExtensions
+        {
+            get { return _UseExtensions; }
+            set { _UseExtensions = value; if (value == false)UseTypesExtension = false; }
+        }
         /// <summary>
         /// Use escaped unicode i.e. \uXXXX format for non ASCII characters (default = True)
         /// </summary>
-        public bool UseEscapedUnicode = false;//true;
+        public bool UseEscapedUnicode { get; set; }
         /// <summary>
         /// Output string key dictionaries as "k"/"v" format (default = False) 
         /// </summary>
-        public bool UseExtraKeyValueDictionary = false;
+        public bool UseExtraKeyValueDictionary { get; set; }
         /// <summary>
         /// Use Dataset Schema format (default = False)
         /// </summary>
-        public bool UseDatasetSchema = false;// true;
+        public bool UseDatasetSchema { get; set; }
         /// <summary>
         /// Use the fast GUID format (default = False)
         /// </summary>
-        public bool UseBinaryGuid = false;//true;
+        public bool UseBinaryGuid { get; set; }
         /// <summary>
         /// Output Enum values instead of names (default = False)
         /// </summary>
-        public bool UseEnumValues = false;
+        public bool UseEnumValues { get; set; }
         /// <summary>
         /// If any object has no default constructor 
         /// then all initial values within the class will be ignored and will be not set (default = False).
         /// </summary>
-        public bool UseUninitializedObject = false;
+        public bool UseUninitializedObject { get; set; }
         /// <summary>
         /// Enable DateTime milliseconds i.e. yyyy-MM-dd HH:mm:ss.nnn (default = false)
         /// </summary>
-        public bool EnableDateTimeMilliseconds = false;
+        public bool EnableDateTimeMilliseconds { get; set; }
+ 
 
         internal List<Type> IgnoreAttributes;
         /// <summary>
@@ -106,14 +153,9 @@ namespace Nistec.Serialization
             }
             IgnoreAttributes.AddRange(types);
         }
-        public void EnsureValues()
-        {
-            if (UseExtensions == false) // disable conflicting params
-                UseTypesExtension = false;
-            if (EnableAnonymousTypes)
-                ShowReadOnlyProperties = true;
-        }
+        
     }
+   
     public sealed class JsonSchema
     {
         public List<string> Info;

@@ -677,7 +677,7 @@ namespace Nistec.Generic
         /// <returns></returns>
         public string ToJson()
         {
-            var json = JsonSerializer.ToJson(this.Record);
+            var json = JsonSerializer.Serialize(this.Record);
             return json;
         }
 

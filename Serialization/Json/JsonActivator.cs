@@ -40,7 +40,7 @@ namespace Nistec.Serialization
     internal struct JsonFields
     {
         public string Name;
-        public ActivatorUtil.GenericGetDeligate Field;
+        public ActivatorUtil.GenericGetterDeligate Field;
     }
 
     internal struct TypeInfo
@@ -48,8 +48,8 @@ namespace Nistec.Serialization
         public Type propertyType;
         public Type elementType;
         public Type changeType;
-        public ActivatorUtil.GenericSetDeligate setField;
-        public ActivatorUtil.GenericGetDeligate getField;
+        public ActivatorUtil.GenericSetterDeligate setterField;
+        public ActivatorUtil.GenericGetterDeligate getterField;
         public Type[] GenericTypes;
         public string Name;
         public SerialJsonType serialType;
@@ -89,8 +89,6 @@ namespace Nistec.Serialization
 
         private static readonly JsonActivator instance = new JsonActivator();
 
-        // Explicit static constructor to tell C# compiler
-        // not to mark type as before field init
         static JsonActivator()
         {
         }
@@ -207,11 +205,11 @@ namespace Nistec.Serialization
                 PropertyInfo[] pr = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
                 foreach (PropertyInfo p in pr)
                 {
-                    TypeInfo ti = GetTypeInfo(p.PropertyType, p.Name, customType);
-                    ti.setField = ActivatorUtil.CreateSetMethod(type, p);
-                    if (ti.setField != null)
-                        ti.CanWrite = true;// Flags |= PropInfoFlags.CanWrite;
-                    ti.getField = ActivatorUtil.CreateGetMethod(type, p);
+                    TypeInfo ti = GetTypeInfo(p.PropertyType, p.Name, p.CanWrite, customType);
+                    ti.setterField = ActivatorUtil.CreateSetMethod(type, p);
+                    if (ti.setterField != null)
+                        ti.CanWrite = true;
+                    ti.getterField = ActivatorUtil.CreateGetMethod(type, p);
                     if (ignoreCase)
                         td.Add(p.Name.ToLower(), ti);
                     else
@@ -220,10 +218,10 @@ namespace Nistec.Serialization
                 FieldInfo[] fi = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
                 foreach (FieldInfo f in fi)
                 {
-                    TypeInfo ti = GetTypeInfo(f.FieldType, f.Name, customType);
-                    ti.CanWrite = true;// Flags |= PropInfoFlags.CanWrite;
-                    ti.setField = ActivatorUtil.CreateSetField(type, f);
-                    ti.getField = ActivatorUtil.CreateGetField(type, f);
+                    TypeInfo ti = GetTypeInfo(f.FieldType, f.Name, !f.IsInitOnly, customType);
+                    //ti.CanWrite = f.IsInitOnly==false;
+                    ti.setterField = ActivatorUtil.CreateSetField(type, f);
+                    ti.getterField = ActivatorUtil.CreateGetField(type, f);
                     if (ignoreCase)
                         td.Add(f.Name.ToLower(), ti);
                     else
@@ -236,12 +234,11 @@ namespace Nistec.Serialization
         }
 
 
-        private TypeInfo GetTypeInfo(Type type, string name, bool customType)
+        private TypeInfo GetTypeInfo(Type type, string name,bool canWrite, bool customType)
         {
             TypeInfo ti = new TypeInfo();
             SerialJsonType serialType = SerialJsonType.Unknown;
-            //PropInfoFlags flags = PropInfoFlags.Filled ;//| PropInfoFlags.CanWrite;
-
+            
             if (type == typeof(int) || type == typeof(int?)) serialType = SerialJsonType.Int;
             else if (type == typeof(long) || type == typeof(long?)) serialType = SerialJsonType.Long;
             else if (type == typeof(string)) serialType = SerialJsonType.String;
@@ -289,17 +286,17 @@ namespace Nistec.Serialization
             ti.Name = name;
             ti.changeType = ChangeType(type);
             ti.serialType = serialType;
-            //ti.Flags = flags;
+            ti.CanWrite = canWrite;
 
             return ti;
         }
  
-        public Type ChangeType(Type conversionType)
+        public Type ChangeType(Type type)
         {
-            if (conversionType.IsGenericType && conversionType.GetGenericTypeDefinition().Equals(typeof(Nullable<>)))
-                return JsonActivator.Get.GetGenericArguments(conversionType)[0];// conversionType.GetGenericArguments()[0];
+            if (type.IsGenericType && type.GetGenericTypeDefinition().Equals(typeof(Nullable<>)))
+                return JsonActivator.Get.GetGenericArguments(type)[0];// type.GetGenericArguments()[0];
 
-            return conversionType;
+            return type;
         }
 
 
@@ -329,7 +326,7 @@ namespace Nistec.Serialization
                     if (found)
                         continue;
                 }
-                ActivatorUtil.GenericGetDeligate g = ActivatorUtil.CreateGetMethod(type, p);
+                ActivatorUtil.GenericGetterDeligate g = ActivatorUtil.CreateGetMethod(type, p);
                 if (g != null)
                     fieldsGetter.Add(new JsonFields { Field = g, Name = p.Name });
             }
@@ -352,7 +349,7 @@ namespace Nistec.Serialization
                         continue;
                 }
 
-                ActivatorUtil.GenericGetDeligate g = ActivatorUtil.CreateGetField(type, f);
+                ActivatorUtil.GenericGetterDeligate g = ActivatorUtil.CreateGetField(type, f);
                 if (g != null)
                     fieldsGetter.Add(new JsonFields { Field = g, Name = f.Name });
             }

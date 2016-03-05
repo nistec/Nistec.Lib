@@ -44,21 +44,20 @@ namespace Nistec.Serialization
         JsonWriter writer;
         JsonReader reader;
 
-        public JsonSerializer(JsonSerializerMode mode, JsonOptions options)
+        public JsonSerializer(JsonSerializerMode mode, JsonSettings settings)
         {
             if (mode == JsonSerializerMode.Write || mode == JsonSerializerMode.Both)
             {
-                writer = new JsonWriter(options);
+                writer = new JsonWriter(settings);
             }
             if (mode == JsonSerializerMode.Read || mode == JsonSerializerMode.Both)
             {
-                reader = new JsonReader(options);
+                reader = new JsonReader(settings);
             }
 
-            if (options == null)
-                options = JsonSerializer.DefaultOption;
+            if (settings == null)
+                settings = JsonSerializer.DefaultOption;
 
-            options.EnsureValues();
         }
 
         void EnsureWrtie()
@@ -126,44 +125,55 @@ namespace Nistec.Serialization
         /// <summary>
         /// Default serializer option.
         /// </summary>
-        public static JsonOptions DefaultOption = new JsonOptions();
+        public static JsonSettings DefaultOption = new JsonSettings();
 
         /// <summary>
-        /// Create a json from object using default <see cref="JsonOptions"/>.
+        /// Create a json from object using default <see cref="JsonSettings"/>.
         /// </summary>
         /// <param name="obj"></param>
         /// <returns></returns>
-        public static string ToJson(object obj)
+        public static string Serialize(object obj)
         {
-            return ToJson(obj, null, JsonSerializer.DefaultOption, JsonFormat.None);
+            return Serialize(obj, null, JsonSerializer.DefaultOption, JsonFormat.None);
         }
 
         /// <summary>
-        /// Create a json from object using <see cref="JsonOptions"/> and format(optional).
+        /// Create a json from object using <see cref="JsonSettings"/> and format(optional) with Indented format.
         /// </summary>
         /// <param name="obj"></param>
-        /// <param name="options"></param>
         /// <param name="format"></param>
         /// <returns></returns>
-        public static string ToJson(object obj, JsonOptions options, JsonFormat format = JsonFormat.None)
+        public static string Serialize(object obj, bool preety)
         {
-            return ToJson(obj, null, options, format);
+            return Serialize(obj, null, JsonSerializer.DefaultOption, preety ? JsonFormat.Indented : JsonFormat.None);
         }
 
         /// <summary>
-        /// Create a json from object using <see cref="JsonOptions"/> and format(optional).
+        /// Create a json from object using <see cref="JsonSettings"/> and format(optional).
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <param name="settings"></param>
+        /// <param name="format"></param>
+        /// <returns></returns>
+        public static string Serialize(object obj, JsonSettings settings, JsonFormat format = JsonFormat.None)
+        {
+            return Serialize(obj, null, settings, format);
+        }
+
+        /// <summary>
+        /// Create a json from object using <see cref="JsonSettings"/> and format(optional).
         /// </summary>
         /// <param name="obj"></param>
         /// <param name="baseType"></param>
-        /// <param name="options"></param>
+        /// <param name="settings"></param>
         /// <param name="format"></param>
         /// <returns></returns>
-        public static string ToJson(object obj, Type baseType, JsonOptions options, JsonFormat format)
+        public static string Serialize(object obj, Type baseType, JsonSettings settings, JsonFormat format)
         {
-            if (options == null)
-                options = JsonSerializer.DefaultOption;
+            if (settings == null)
+                settings = JsonSerializer.DefaultOption;
 
-            options.EnsureValues();
+            
             Type t = null;
 
             if (obj == null)
@@ -174,19 +184,19 @@ namespace Nistec.Serialization
             if (type.IsGenericType)
                 t = JsonActivator.Get.GetGenericTypeDefinition(type);
             if (t == typeof(Dictionary<,>) || t == typeof(List<>))
-                options.UseTypesExtension = false;
+                settings.UseTypesExtension = false;
             if (typeof(IKeyValue).IsAssignableFrom(t))
-                options.UseTypesExtension = false;
+                settings.UseTypesExtension = false;
 
             // enable extensions when you can deserialize anon types
-            if (options.EnableAnonymousTypes)
+            if (settings.EnableAnonymousTypes)
             {
-                options.UseExtensions = false;
-                options.UseTypesExtension = false;
+                settings.UseExtensions = false;
+                settings.UseTypesExtension = false;
             }
-            string json = JsonWriter.Get(options).ConvertToJson(obj, baseType);
+            string json = JsonWriter.Get(settings).ConvertToJson(obj, baseType);
             if (format == JsonFormat.Indented)
-                return PrintIndent(json);
+                return JsonConverter.PrintJson(json);
             return json;
         }
 
@@ -252,11 +262,11 @@ namespace Nistec.Serialization
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="json"></param>
-        /// <param name="options"></param>
+        /// <param name="settings"></param>
         /// <returns></returns>
-        public static T Deserialize<T>(string json, JsonOptions options)
+        public static T Deserialize<T>(string json, JsonSettings settings)
         {
-            return JsonReader.Get(options).ToObject<T>(json);
+            return JsonReader.Get(settings).ToObject<T>(json);
         }
         /// <summary>
         /// Create an object from the json
@@ -268,14 +278,14 @@ namespace Nistec.Serialization
             return JsonReader.Get(DefaultOption).ToObject(json, null);
         }
         /// <summary>
-        /// Create an object from the json with options parameter.
+        /// Create an object from the json with settings parameter.
         /// </summary>
         /// <param name="json"></param>
-        /// <param name="options"></param>
+        /// <param name="settings"></param>
         /// <returns></returns>
-        public static object Deserialize(string json, JsonOptions options)
+        public static object Deserialize(string json, JsonSettings settings)
         {
-            return JsonReader.Get(options).ToObject(json, null);
+            return JsonReader.Get(settings).ToObject(json, null);
         }
         /// <summary>
         /// Create an object of type from the json
@@ -296,7 +306,7 @@ namespace Nistec.Serialization
         /// <returns></returns>
         public static object ParseAndCopy(object obj)
         {
-            return JsonReader.Get(DefaultOption).ToObject(ToJson(obj));
+            return JsonReader.Get(DefaultOption).ToObject(Serialize(obj));
         }
         /// <summary>
         /// Parse and clone to a new object.
@@ -306,7 +316,7 @@ namespace Nistec.Serialization
         /// <returns></returns>
         public static T ParseAndCopy<T>(T obj)
         {
-            return JsonReader.Get(DefaultOption).ToObject<T>(ToJson(obj));
+            return JsonReader.Get(DefaultOption).ToObject<T>(Serialize(obj));
         }
 
         /// <summary>
@@ -316,7 +326,7 @@ namespace Nistec.Serialization
         /// <returns></returns>
         public static string Print(string input)
         {
-            return PrintIndent(input);
+            return JsonConverter.PrintJson(input);
         }
         /// <summary>
         /// Register custom type handlers for your own types not natively handled by Nistec.Runtime.Json
@@ -339,7 +349,7 @@ namespace Nistec.Serialization
         #endregion
 
         #region formatter
-
+        /*
         internal static string Indent = "   ";
 
         internal static void AppendIndent(StringBuilder sb, int count)
@@ -405,15 +415,17 @@ namespace Nistec.Serialization
 
             return output.ToString();
         }
-        #endregion
 
+        */
+        #endregion
+#if(false)
         #region Writer
 
         internal sealed class JsonWriter
         {
-            public static JsonWriter Get(JsonOptions options)
+            public static JsonWriter Get(JsonSettings settings)
             {
-                return new JsonWriter(options);
+                return new JsonWriter(settings);
             }
 
             private StringBuilder _output = new StringBuilder();
@@ -422,14 +434,14 @@ namespace Nistec.Serialization
             int _current_depth = 0;
             private Dictionary<string, int> _GlobalTypes = new Dictionary<string, int>();
             private Dictionary<object, int> _CircularItems = new Dictionary<object, int>();
-            private JsonOptions _Option;
+            private JsonSettings _Option;
             private bool _useEscapedUnicode = false;
             private bool _isCircular = false;
 
           
-            internal JsonWriter(JsonOptions options)
+            internal JsonWriter(JsonSettings settings)
             {
-                _Option = options ?? JsonSerializer.DefaultOption;
+                _Option = settings ?? JsonSerializer.DefaultOption;
                 _useEscapedUnicode = _Option.UseEscapedUnicode;
             }
 
@@ -634,7 +646,7 @@ namespace Nistec.Serialization
 
             private void WriteDateTime(DateTime dateTime)
             {
-                // datetime format standard : yyyy-MM-dd HH:mm:ss
+                // datetime format standard : yyyy-MM-ddTHH:mm:ss
                 DateTime dt = dateTime;
                 if (_Option.UseUTCDateTime)
                     dt = dateTime.ToUniversalTime();
@@ -645,7 +657,7 @@ namespace Nistec.Serialization
                 _output.Append(dt.Month.ToString("00", NumberFormatInfo.InvariantInfo));
                 _output.Append('-');
                 _output.Append(dt.Day.ToString("00", NumberFormatInfo.InvariantInfo));
-                _output.Append(' ');
+                _output.Append('T');
                 _output.Append(dt.Hour.ToString("00", NumberFormatInfo.InvariantInfo));
                 _output.Append(':');
                 _output.Append(dt.Minute.ToString("00", NumberFormatInfo.InvariantInfo));
@@ -1157,17 +1169,17 @@ namespace Nistec.Serialization
 
         internal class JsonReader
         {
-            public static JsonReader Get(JsonOptions options)
+            public static JsonReader Get(JsonSettings settings)
             {
-                return new JsonReader(options);
+                return new JsonReader(settings);
             }
 
-            public JsonReader(JsonOptions options)
+            public JsonReader(JsonSettings settings)
             {
-                _Option = options ?? JsonSerializer.DefaultOption;
+                _Option = settings ?? JsonSerializer.DefaultOption;
             }
 
-            private JsonOptions _Option;
+            private JsonSettings _Option;
             private bool _useGlobalTypes = false;
             private Dictionary<object, int> _CircularItems = new Dictionary<object, int>();
             private Dictionary<int, object> _CircularItemsRev = new Dictionary<int, object>();
@@ -1274,7 +1286,7 @@ namespace Nistec.Serialization
 
                 return h;
             }
-
+            
             private object ChangeType(object value, Type conversionType)
             {
 
@@ -1297,13 +1309,13 @@ namespace Nistec.Serialization
                     return (string)value;
 
                 else if (conversionType == typeof(Guid))
-                    return CreateGuid((string)value);
+                    return JsonConverter.ToGuid((string)value);
 
                 else if (conversionType.IsEnum)
-                    return CreateEnum(conversionType, value);
+                    return JsonConverter.ToEnum(conversionType, value);
 
                 else if (conversionType == typeof(DateTime))
-                    return CreateDateTime((string)value);
+                    return JsonConverter.ToDateTime((string)value, _Option.UseUTCDateTime);
 
                 else if (JsonActivator.Get.IsTypeRegistered(conversionType))
                     return JsonActivator.Get.CreateCustom((string)value, conversionType);
@@ -1316,7 +1328,6 @@ namespace Nistec.Serialization
                     }
                     conversionType = UnderlyingTypeOf(conversionType);
                 }
-
 
                 return Convert.ChangeType(value, conversionType, CultureInfo.InvariantCulture);
             }
@@ -1332,7 +1343,7 @@ namespace Nistec.Serialization
             {
                 return t.GetGenericArguments()[0];
             }
-
+            
             private object RootList(object parse, Type type)
             {
                 Type[] gtypes = JsonActivator.Get.GetGenericArguments(type);
@@ -1491,9 +1502,9 @@ namespace Nistec.Serialization
                                 case SerialJsonType.Long: oset = (long)v; break;
                                 case SerialJsonType.String: oset = (string)v; break;
                                 case SerialJsonType.Bool: oset = (bool)v; break;
-                                case SerialJsonType.DateTime: oset = CreateDateTime((string)v); break;
-                                case SerialJsonType.Enum: oset = CreateEnum(typeInfo.propertyType, v); break;
-                                case SerialJsonType.Guid: oset = CreateGuid((string)v); break;
+                                case SerialJsonType.DateTime: oset = JsonConverter.ToDateTime((string)v,true); break;
+                                case SerialJsonType.Enum: oset = JsonConverter.ToEnum(typeInfo.propertyType, v); break;
+                                case SerialJsonType.Guid: oset = JsonConverter.ToGuid((string)v); break;
 
                                 case SerialJsonType.Array:
                                     if (!typeInfo.IsValueType)
@@ -1517,7 +1528,7 @@ namespace Nistec.Serialization
                                             oset = CreateGenericList((List<object>)v, typeInfo.propertyType, typeInfo.elementType, globaltypes);
 
                                         else if ((typeInfo.IsClass || typeInfo.IsStruct) && v is Dictionary<string, object>)
-                                            oset = ParseDictionary((Dictionary<string, object>)v, globaltypes, typeInfo.propertyType, typeInfo.getField(o));
+                                            oset = ParseDictionary((Dictionary<string, object>)v, globaltypes, typeInfo.propertyType, typeInfo.getterField(o));
 
                                         else if (v is List<object>)
                                             oset = CreateArray((List<object>)v, typeInfo.propertyType, typeof(object), globaltypes);
@@ -1531,7 +1542,7 @@ namespace Nistec.Serialization
                                     break;
                             }
 
-                            o = typeInfo.setField(o, oset);
+                            o = typeInfo.setterField(o, oset);
                         }
                     }
                 }
@@ -1563,14 +1574,14 @@ namespace Nistec.Serialization
                 foreach (KeyValuePair<string, object> kv in dic)
                 {
                     TypeInfo p = props[kv.Key];
-                    object o = p.getField(obj);
+                    object o = p.getterField(obj);
                     Type t = Type.GetType((string)kv.Value);
                     if (t == typeof(Guid))
-                        p.setField(obj, CreateGuid((string)o));
+                        p.setterField(obj, JsonConverter.ToGuid((string)o));
                 }
             }
-
-            private int CreateInteger(/*out int num,*/ string s, int index, int count)
+            /*
+            private int CreateInteger(string s, int index, int count)
             {
                 int num = 0;
                 bool neg = false;
@@ -1624,14 +1635,14 @@ namespace Nistec.Serialization
                 int sec;
                 int ms = 0;
 
-                year = CreateInteger(/*out year,*/ value, 0, 4);
-                month = CreateInteger(/*out month,*/ value, 5, 2);
-                day = CreateInteger(/*out day,*/ value, 8, 2);
-                hour = CreateInteger(/*out hour,*/ value, 11, 2);
-                min = CreateInteger(/*out min,*/ value, 14, 2);
-                sec = CreateInteger(/*out sec,*/ value, 17, 2);
+                year = CreateInteger(value, 0, 4);
+                month = CreateInteger( value, 5, 2);
+                day = CreateInteger(value, 8, 2);
+                hour = CreateInteger( value, 11, 2);
+                min = CreateInteger( value, 14, 2);
+                sec = CreateInteger( value, 17, 2);
                 if (value.Length > 21 && value[19] == '.')
-                    ms = CreateInteger(/*out ms,*/ value, 20, 3);
+                    ms = CreateInteger( value, 20, 3);
 
                 //if (value.EndsWith("Z"))
                 if (value[value.Length - 1] == 'Z')
@@ -1642,7 +1653,7 @@ namespace Nistec.Serialization
                 else
                     return new DateTime(year, month, day, hour, min, sec, ms, DateTimeKind.Utc).ToLocalTime();
             }
-
+            */
             private object CreateArray(List<object> data, Type pt, Type elementType, Dictionary<string, object> globalTypes)
             {
                 Array col = Array.CreateInstance(elementType, data.Count);
@@ -1835,7 +1846,7 @@ namespace Nistec.Serialization
                         {
                             string s = (string)v[i];
                             if (s != null)
-                                v[i] = CreateDateTime(s);
+                                v[i] = JsonConverter.ToDateTime(s,_Option.UseUTCDateTime);
                         }
                     }
                     dt.Rows.Add(v);
@@ -1892,5 +1903,6 @@ namespace Nistec.Serialization
 
 
         #endregion
+#endif
     }
 }

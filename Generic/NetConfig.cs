@@ -229,7 +229,7 @@ namespace Nistec.Generic
 
         #endregion
 
-        public static Configuration GetConfiguration()
+        public static System.Configuration.Configuration GetConfiguration()
         {
 
             System.Configuration.Configuration configuration = null;

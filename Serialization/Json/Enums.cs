@@ -36,4 +36,5 @@ namespace Nistec.Serialization
         Read,
         Both
     }
+  
 }
