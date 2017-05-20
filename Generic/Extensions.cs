@@ -426,6 +426,25 @@ namespace Nistec.Generic
             }
         }
 
+        public static Dictionary<string, string> ToDictionary(this string[] keyValueArgs)
+        {
+            if (keyValueArgs == null)
+                return null;
+
+            int count = keyValueArgs.Length;
+            if (count % 2 != 0)
+            {
+                throw new ArgumentException("values parameter is not correct, Not match key value arguments");
+            }
+            Dictionary<string, string> list = new Dictionary<string, string>();
+            for (int i = 0; i < count; i++)
+            {
+                list[keyValueArgs[i]] = keyValueArgs[++i];
+            }
+
+            return list;
+        }
+
          #endregion
 
         #region KeyValue

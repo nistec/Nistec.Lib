@@ -31,8 +31,8 @@ namespace Nistec.Serialization
         public EntitySerializeAttribute() { }
     }
 
-    
-    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Class, Inherited = false)]
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Class, Inherited = false)]
     public class NoSerializeAttribute : Attribute
     {
         public NoSerializeAttribute() { }

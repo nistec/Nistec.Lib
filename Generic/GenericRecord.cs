@@ -30,6 +30,7 @@ using System.IO;
 using Nistec.IO;
 using Nistec.Xml;
 using Nistec.Serialization;
+using System.Collections.Specialized;
 
 namespace Nistec.Generic
 {
@@ -219,8 +220,53 @@ namespace Nistec.Generic
             return dic;
         }
 
-        
+        public static GenericRecord ParseKeyValue(params object[] keyValueParameters)
+        {
+            if (keyValueParameters == null)
+                return null;
+            int count = keyValueParameters.Length;
+            if (count % 2 != 0)
+            {
+                throw new ArgumentException("values parameter not correct, Not match key value arguments");
+            }
+            GenericRecord record = new GenericRecord();
+            for (int i = 0; i < count; i++)
+            {
+                record[keyValueParameters[i].ToString()] = keyValueParameters[++i];
+            }
 
+            return record;
+        }
+
+        // public static GenericRecord ParseKeyValue<T>(NameValueCollection keyValue)
+        //{
+
+        //    GenericRecord record = new GenericRecord();
+        //    for (int i = 0; i < keyValue.Count; i++)
+        //    {
+
+        //        record[keyValue[i]] = keyValue[++i];
+        //    }
+
+        //    return record;
+        //}
+        
+        public static object[] StringToKeyValue(string value, char splitterOutside, char splitterInside)
+        {
+            List<object> o = new List<object>();
+            string[] items = value.Split(splitterOutside);
+            foreach (string s in items)
+            {
+                string[] args = s.Split(splitterInside);
+                if (args.Length != 2)
+                {
+                    throw new ArgumentException("values parameter not correct, Not match key value arguments");
+                }
+                o.Add(args[0]);
+                o.Add(args[1]);
+            }
+            return o.ToArray();
+        }
         #endregion
 
         #region ctor
@@ -787,14 +833,19 @@ namespace Nistec.Generic
         
         #region IEntityDictionary
 
+        public Dictionary<string,object> ToDictionary()
+        {
+            return this; 
+        }
+
         public IDictionary EntityDictionary()
         {
              return this; 
         }
 
-        public virtual Type EntityType()
+        public virtual Type EntityType
         {
-           return typeof(GenericRecord); 
+            get { return typeof(GenericRecord); }
         }
 
         public void EntityWrite(Stream stream, IBinaryStreamer streamer)

@@ -88,7 +88,7 @@ namespace Nistec.Serialization
 
             streamer.WriteString(TypeName);
             streamer.WriteString(EncodingName);
-            streamer.WriteString(Result);
+            streamer.WriteString(Result.ToString());
             streamer.WriteValue(Option);
             streamer.Flush();
         }
@@ -142,6 +142,8 @@ namespace Nistec.Serialization
 
         public static JsonResults ToJsonResult(this DataTable dt)
         {
+            //if (string.IsNullOrEmpty(dt.TableName))
+            //    dt.TableName = "JsonResults";
             JsonResults result = new JsonResults()
             {
                 TypeName = typeof(DataTable).FullName,

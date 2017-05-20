@@ -242,7 +242,8 @@ namespace Nistec.Generic
         }
 
 
-        public static GenericArgs ParseRequest(System.Web.HttpRequest request)
+        //public static GenericArgs ParseRequest(System.Web.HttpRequest request)
+        public static NameValueCollection ParseRequest(System.Web.HttpRequest request)
         {
 
             if (request == null)
@@ -252,7 +253,8 @@ namespace Nistec.Generic
             return ParseRequest( request.RawUrl);
         }
 
-        public static GenericArgs ParseRequest(string url)
+        //public static GenericArgs ParseRequest(string url)
+        public static NameValueCollection ParseRequest(string url)
         {
    
             if (url == null)
@@ -294,10 +296,68 @@ namespace Nistec.Generic
 
         #region ParseQueryString
 
-        public static GenericArgs ParseQueryString(params string[] qs)
+        //public static GenericArgs ParseQueryString(params string[] qs)
+        //{
+        //    StringBuilder sb = new StringBuilder();
+        //    int len=qs.Length;
+        //    for (int i = 0; i < qs.Length; i++)
+        //    {
+        //        sb.Append(qs[i]);
+        //        if (i < len - 1 && !qs[i].EndsWith("&") && !qs[i + 1].StartsWith("&"))
+        //        {
+        //            sb.Append("&");
+        //        }
+        //    }
+
+        //   return ParseQueryString(sb.ToString());
+        //}
+
+        public static string CLeanQueryString(string qs)
+        {
+            return qs.Replace("&amp;","&");
+        }
+
+        //public static GenericArgs ParseQueryString(string qs)
+        //{
+        //    GenericArgs dictionary = new GenericArgs();
+
+        //    if (qs == null)
+        //        qs = string.Empty;
+
+        //    string str = CLeanQueryString(qs);
+
+        //    if (string.IsNullOrEmpty(str))
+        //    {
+        //        return dictionary;
+        //    }
+        //    if (!str.Contains('='))
+        //    {
+        //        return dictionary;
+        //    }
+        //    foreach (string arg in str.Split(new char[] { '&' }))
+        //    {
+        //        if (!string.IsNullOrEmpty(arg))
+        //        {
+        //            string[] strArray = arg.Split(new char[] { '=' });
+        //            if (strArray.Length == 2)
+        //            {
+        //                string key = Regx.RegexReplace("amp;", strArray[0],"");
+        //                dictionary[key] = strArray[1];
+        //            }
+        //            else
+        //            {
+        //                dictionary[arg] = null;
+        //            }
+        //        }
+        //    }
+
+        //    return dictionary;
+        //}
+
+        public static NameValueCollection ParseQueryString(params string[] qs)
         {
             StringBuilder sb = new StringBuilder();
-            int len=qs.Length;
+            int len = qs.Length;
             for (int i = 0; i < qs.Length; i++)
             {
                 sb.Append(qs[i]);
@@ -307,17 +367,11 @@ namespace Nistec.Generic
                 }
             }
 
-           return ParseQueryString(sb.ToString());
+            return ParseQueryString(sb.ToString());
         }
-
-        public static string CLeanQueryString(string qs)
+        public static NameValueCollection ParseQueryString(string qs)
         {
-            return qs.Replace("&amp;","&");
-        }
-
-        public static GenericArgs ParseQueryString(string qs)
-        {
-            GenericArgs dictionary = new GenericArgs();
+            NameValueCollection dictionary = new NameValueCollection();
 
             if (qs == null)
                 qs = string.Empty;
@@ -339,7 +393,7 @@ namespace Nistec.Generic
                     string[] strArray = arg.Split(new char[] { '=' });
                     if (strArray.Length == 2)
                     {
-                        string key = Regx.RegexReplace("amp;", strArray[0],"");
+                        string key = Regx.RegexReplace("amp;", strArray[0], "");
                         dictionary[key] = strArray[1];
                     }
                     else
@@ -468,6 +522,32 @@ namespace Nistec.Generic
                 arg4 = GenericTypes.Convert<T4>(list[3]);
             if (list.Length > 4)
                 arg5 = GenericTypes.Convert<T5>(list[4]);
+            return true;
+        }
+        public static bool SplitArgs<T1, T2, T3, T4, T5, T6>(string args, char splitter, ref T1 arg1, ref T2 arg2, ref T3 arg3, ref T4 arg4, ref T5 arg5, ref T6 arg6)
+        {
+            if (args == null)
+            {
+                return false;
+            }
+            string[] list = args.Split(splitter);
+
+            if (list == null || list.Length == 0)
+            {
+                return false;
+            }
+
+            arg1 = GenericTypes.Convert<T1>(list[0]);
+            if (list.Length > 1)
+                arg2 = GenericTypes.Convert<T2>(list[1]);
+            if (list.Length > 2)
+                arg3 = GenericTypes.Convert<T3>(list[2]);
+            if (list.Length > 3)
+                arg4 = GenericTypes.Convert<T4>(list[3]);
+            if (list.Length > 4)
+                arg5 = GenericTypes.Convert<T5>(list[4]);
+            if (list.Length > 5)
+                arg6 = GenericTypes.Convert<T6>(list[5]);
             return true;
         }
         public static bool SplitArgs<T1, T2, T3, T4, T5, T6, T7>(string args, char splitter, ref T1 arg1, ref T2 arg2, ref T3 arg3, ref T4 arg4, ref T5 arg5, ref T6 arg6, ref T7 arg7)
@@ -646,6 +726,196 @@ namespace Nistec.Generic
             }
 
             return dic;
+        }
+
+    
+        public static Dictionary<string, object> QueryStringToDictionary(string qs, bool enableRegexMatch)
+        {
+            Dictionary<string, object> dictionary = new Dictionary<string, object>();
+
+            if (qs == null)
+                return null;
+
+            string str = CLeanQueryString(qs);
+
+            if (string.IsNullOrEmpty(str))
+            {
+                return null;
+            }
+            if (!str.Contains('='))
+            {
+                return null;
+            }
+
+            foreach (string arg in str.Split(new char[] { '&' }))
+            {
+                if (string.IsNullOrEmpty(arg))
+                {
+                    continue;
+                }
+
+                string[] strArray = arg.Split(new char[] { '=' });
+                if (strArray.Length == 2)
+                {
+                    string key = Regx.RegexReplace("amp;", strArray[0], "");
+                    string type = "string";
+                    object val = strArray[1];
+                    string[] strType = key.Split(new char[] { ':' });
+                    if (strType.Length == 2)
+                    {
+                        key = strType[0];
+                        type = strType[1];
+                    }
+                    else if (enableRegexMatch)
+                    {
+                        //if(Types.IsNumber(strArray[1]))
+                        //if (Regex.IsMatch(strArray[1], @"^(-|)([0-9]\.|[1-9])+[0-9]+$"))
+                        //{
+                        //    type = "number";
+                        //}
+
+                        if (Regex.IsMatch(strArray[1], @"^(-|)[0-9]\.+[0-9]+$"))
+                        {
+                            type = "double";
+                        }
+                        else if (Regex.IsMatch(strArray[1], @"^(-|)[1-9]+[0-9]+$"))
+                        {
+                            type = "long";
+                        }
+                        else if (Regex.IsMatch(strArray[1], @"^(false|true)$", RegexOptions.IgnoreCase))
+                        {
+                            type = "bool";
+                        }
+
+                    }
+
+                    switch (type)
+                    {
+                        case "int":
+                            val= Types.ToInt(val);
+                            break;
+                        case "long":
+                            val=Types.ToLong(val);
+                            break;
+                        case "float":
+                            val=Types.ToFloat(val, 0);
+                            break;
+                        case "double":
+                            val=Types.ToDouble(val, 0);
+                            break;
+                        case "bool":
+                            val = Types.ToBool(val, false);
+                            break;
+                        case "string":
+                        default:
+                            
+                            break;
+                    }
+                    dictionary.Add(key,val);
+                }
+
+            }
+
+            return dictionary;
+        }
+        public static object[] QueryStringToArray(string qs, bool enableRegexMatch)
+        {
+            List<object> list = new List<object>();
+
+            if (qs == null)
+                return null;
+
+            string str = CLeanQueryString(qs);
+
+            if (string.IsNullOrEmpty(str))
+            {
+                return null;
+            }
+            if (!str.Contains('='))
+            {
+                return null;
+            }
+
+            foreach (string arg in str.Split(new char[] { '&' }))
+            {
+                if (string.IsNullOrEmpty(arg))
+                {
+                    continue;
+                }
+
+                string[] strArray = arg.Split(new char[] { '=' });
+                if (strArray.Length == 2)
+                {
+                    string key = Regx.RegexReplace("amp;", strArray[0], "");
+                    string type = "string";
+                    object val = strArray[1];
+                    string[] strType = key.Split(new char[] { ':' });
+                    if (strType.Length == 2)
+                    {
+                        key = strType[0];
+                        type = strType[1];
+                    }
+                    else if (enableRegexMatch)
+                    {
+                        //if(Types.IsNumber(strArray[1]))
+                        //if (Regex.IsMatch(strArray[1], @"^(-|)([0-9]\.|[1-9])+[0-9]+$"))
+                        //{
+                        //    type = "number";
+                        //}
+
+                        if (Regex.IsMatch(strArray[1], @"^(-|)[0-9]\.+[0-9]+$"))
+                        {
+                            type = "double";
+                        }
+                        else if (Regex.IsMatch(strArray[1], @"^(-|)[1-9]+[0-9]+$"))
+                        {
+                            type = "long";
+                        }
+                        else if (Regex.IsMatch(strArray[1], @"^(false|true)$", RegexOptions.IgnoreCase))
+                        {
+                            type = "bool";
+                        }
+
+                    }
+                    list.Add(key);
+
+                    switch (type)
+                    {
+                        case "int":
+                            list.Add(Types.ToInt(val));
+                            break;
+                        case "long":
+                            list.Add(Types.ToLong(val));
+                            break;
+                        case "float":
+                            list.Add(Types.ToFloat(val, 0));
+                            break;
+                        case "double":
+                            list.Add(Types.ToDouble(val, 0));
+                            break;
+                        case "bool":
+                            list.Add(Types.ToBool(val, false));
+                            break;
+                        case "string":
+                        default:
+                            list.Add(val);
+                            break;
+                    }
+                }
+
+            }
+
+            return list.ToArray();
+        }
+        public static object[] DictionaryToArray(Dictionary<string, object> dictionary)
+        {
+            List<object> list = new List<object>();
+            foreach(var entry in dictionary)
+            {
+                list.Add(entry.Key);
+                list.Add(entry.Value);
+            }
+            return list.ToArray();
         }
     }
 }

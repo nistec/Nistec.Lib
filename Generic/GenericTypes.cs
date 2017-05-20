@@ -109,7 +109,8 @@ namespace Nistec
         {
             if (type.IsNullableType() ||
              Nullable.GetUnderlyingType(type) != null ||
-             !type.IsValueType) return true; // ref-type
+             !type.IsValueType)
+                return true; // ref-type
             return false; // value-type
         }
 

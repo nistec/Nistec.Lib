@@ -28,6 +28,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.IO;
+using System.ComponentModel;
 
 namespace Nistec.Serialization
 {
@@ -99,8 +100,12 @@ namespace Nistec.Serialization
                 return CreateDataset(o as Dictionary<string, object>, null);
 
             if (type != null && type == typeof(DataTable))
-                return CreateDataTable(o as Dictionary<string, object>, null);
-
+            {
+                if (_Settings.UseDatasetSchema)
+                    return CreateDataTable(o as Dictionary<string, object>, null);
+                else //if (_Settings.)
+                    return ToDataTable(o as IList<object>);
+            }
             if (o is IDictionary)
             {
                 if (type != null && t == typeof(Dictionary<,>)) // deserialize a dictionary
@@ -635,8 +640,7 @@ namespace Nistec.Serialization
             return col;
         }
 
-
-        private DataSet CreateDataset(Dictionary<string, object> reader, Dictionary<string, object> globalTypes)
+         private DataSet CreateDataset(Dictionary<string, object> reader, Dictionary<string, object> globalTypes)
         {
             DataSet ds = new DataSet();
             ds.EnforceConstraints = false;
@@ -719,14 +723,62 @@ namespace Nistec.Serialization
             dt.EndInit();
         }
 
+        DataTable ToDataTable<T>(IList<T> data)
+        {
+            PropertyDescriptorCollection props =
+            TypeDescriptor.GetProperties(typeof(T));
+            DataTable table = new DataTable();
+            for (int i = 0; i < props.Count; i++)
+            {
+                PropertyDescriptor prop = props[i];
+                table.Columns.Add(prop.Name, prop.PropertyType);
+            }
+            object[] values = new object[props.Count];
+            foreach (T item in data)
+            {
+                for (int i = 0; i < values.Length; i++)
+                {
+                    values[i] = props[i].GetValue(item);
+                }
+                table.Rows.Add(values);
+            }
+            return table;
+        }
+        DataTable ToDataTable(IList<object> data)
+        {
+            DataTable table = new DataTable();
+            if (data != null && data.Count > 0)
+            {
+                Dictionary<string, object> columns = (Dictionary<string, object>)data[0];
+
+                foreach (var entry in columns)
+                {
+                    table.Columns.Add(entry.Key, entry.Value == null ? typeof(object) : entry.Value.GetType());
+                }
+                int count = table.Columns.Count;
+                foreach (Dictionary<string, object> row in data)
+                {
+                    int i = 0;
+                    object[] values = new object[count];
+                    foreach (var entry in row)
+                    {
+                        values[i] = entry.Value;
+                        i++;
+                    }
+                    table.Rows.Add(values);
+                }
+            }
+            return table;
+        }
+
         DataTable CreateDataTable(Dictionary<string, object> reader, Dictionary<string, object> globalTypes)
         {
             var dt = new DataTable();
 
-
             // read dataset schema here
-            var schema = reader["$schema"];
-
+            object schema= reader["$schema"];
+            //reader.TryGetValue("$schema", out schema);
+            
             if (schema != null && schema is string)
             {
                 TextReader tr = new StringReader((string)schema);
@@ -760,6 +812,8 @@ namespace Nistec.Serialization
 
             return dt;
         }
+
+       
 
         #endregion
     }

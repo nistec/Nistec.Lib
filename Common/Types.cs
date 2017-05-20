@@ -509,6 +509,11 @@ namespace Nistec
             return (value == null || value == DBNull.Value || value.ToString().Length < minLengrg) ? true : false;
         }
 
+        public static bool IsEmpty(this Guid guid)
+        {
+            return Guid.Empty == new Guid(guid.ToString());
+        }
+
         /// <summary>
         /// IsEmpty object|string|Guid or number==0
         /// </summary>
@@ -929,7 +934,31 @@ namespace Nistec
 		{
 			return Convert.ToDouble(ValueInterface.ToDecimal(null));
 		}
+        public static object ConvertToNumber(string value)
+        {
+            if (value == null)
+                return null;
 
+            if(Regex.IsMatch(value,@"^(-|)[0-9]\.+[0-9]+$"))
+            {
+                return ToDouble(value, 0);
+            }
+            else if (Regex.IsMatch(value, @"^(-|)[1-9]+[0-9]+$"))
+            {
+                return ToLong(value);
+            }
+
+            //var converter = ConverterUtil.GetConverter(typeof(T));
+            //if (converter != null)
+            //{
+            //    try
+            //    {
+            //        return converter.ConvertFromString(value.ToString());
+            //    }
+            //    catch { }
+            //}
+            return null;
+        }
 
 		internal static NumberFormatInfo GetNormalizedNumberFormat(NumberFormatInfo InNumberFormat)
 		{
@@ -1092,7 +1121,35 @@ namespace Nistec
 			}
 		}
 
+        public static string DateFormatExact(object value, string sourceFormt, string returnFormt)
+        {
+            if (value == null || value == DBNull.Value || value.ToString() == "")
+                return null;
 
+            DateTime val;
+            if (DateTime.TryParseExact(value.ToString(), sourceFormt, CultureInfo.InvariantCulture, DateTimeStyles.None, out val))
+                return val.ToString(returnFormt);
+            return null;
+        }
+        public static DateTime DateFormatExact(object value, string sourceFormt, DateTime defaultValue)
+        {
+            if (value == null || value == DBNull.Value || value.ToString() == "")
+                return defaultValue;
+
+            DateTime val;
+            if (DateTime.TryParseExact(value.ToString(), sourceFormt, CultureInfo.InvariantCulture, DateTimeStyles.None, out val))
+                return val;
+            return defaultValue;
+        }
+        public static DateTime? DateFormatExact(object value, string sourceFormt)
+        {
+            if (value == null || value == DBNull.Value || value.ToString() == "")
+                return (DateTime?)null;
+            DateTime val;
+            if (DateTime.TryParseExact(value.ToString(), sourceFormt, CultureInfo.InvariantCulture, DateTimeStyles.None, out val))
+                return (DateTime?)val;
+            return (DateTime?)null;
+        }
 		public static DateTime DateFromString(string Value)
 		{
             return ToDateTime(Value, Types.GetCultureInfo());
@@ -1676,6 +1733,26 @@ namespace Nistec
 
         #region Nullable
 
+        public static DateTime? ToNullableDateIso(object value)
+        {
+            if (value == null || value == DBNull.Value || value.ToString() == "")
+                return (DateTime?)null;
+
+            DateTime val;
+            if (DateTime.TryParseExact(value.ToString(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out val))
+                return (DateTime?)val;
+            return (DateTime?)null;
+        }
+        public static DateTime? ToNullableDateTimeIso(object value)
+        {
+            if (value == null || value == DBNull.Value || value.ToString() == "")
+                return (DateTime?)null;
+
+           DateTime val;
+           if(DateTime.TryParseExact(value.ToString(), "yyyy-MM-dd hh:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out val))
+               return (DateTime?)val;
+            return (DateTime?)null;
+        }
         public static DateTime? ToNullableDate(object value, string culture = "he-IL")
         {
             if (value == null || value == DBNull.Value || value.ToString() == "")

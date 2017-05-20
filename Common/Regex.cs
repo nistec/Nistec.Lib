@@ -676,8 +676,9 @@ namespace Nistec
 			public const string HtmlTag=@"<(?<tag>\w*)>(?<text>.*)</\k<tag>>";
 			
 			public const string KeyValue=@"(?<Key>\w+)\s*=\s*(?<Value>.*)((?=\W$)|\z)";
-			public const string Email=@"([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})";
-			public const string EmailSingle=@"^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})$";
+			public const string Email=@"([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,6}|[0-9]{1,3})";
+			public const string EmailSingle=@"^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,6}|[0-9]{1,3})$";
+
 			public const string Date=@"^(?<Day>\d{1,2})/(?<Month>\d{1,2})/(?<Year>(?:\d{4}|\d{2}))\z";
    			public const string DateTime=@"^(?<Day>\d{1,2})/(?<Month>\d{1,2})/(?<Year>(?:\d{4}|\d{2}))(?<Space>\s{1})(?<Hour>\d{1,2}):(?<Minute>\d{1,2}):(?<Seconde>\d{1,2})\z";
 			public const string Time=@"^(?<Hour>\d{1,2}):(?<Minute>\d{1,2}):(?<Seconde>\d{1,2})\z";

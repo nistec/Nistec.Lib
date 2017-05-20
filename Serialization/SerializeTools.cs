@@ -240,7 +240,7 @@ namespace Nistec.Serialization
                 return true;
             if (HasNoSerializeAttribute(type))
                 return false;
-            if (!HasSerializableAttribute(type))
+            if (!HasSerializableAttribute(type))//?????
                 return true;
             if (enableAny)
             {
@@ -883,6 +883,18 @@ namespace Nistec.Serialization
             }
         }
 
+        public static string GetTypeName(Type t, bool fullyQualifiedTypeName=true)
+        {
+            if (fullyQualifiedTypeName)
+                return t.AssemblyQualifiedName;
+            return t.FullName;
+        }
+        public static Type GetType(string fullyQualifiedTypeName)
+        {
+            if (fullyQualifiedTypeName == null)
+                return null;
+            return Type.GetType(fullyQualifiedTypeName);
+        }
         #endregion
 
         #region Constructor Info

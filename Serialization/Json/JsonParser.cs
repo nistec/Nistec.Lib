@@ -55,6 +55,8 @@ namespace Nistec.Serialization
 
         public static object Parse(string json, bool ignorecase)
         {
+            if (json == null)
+                return null;
             JsonParser parser = new JsonParser(json, ignorecase);
             return parser.ParseValue();
         }
@@ -423,7 +425,7 @@ namespace Nistec.Serialization
                     return Token.Colon;
 
                 case 'f':
-                    if (json.Length - index >= 4 &&
+                    if (json.Length - index >= 4 &&     
                         json[index + 0] == 'a' &&
                         json[index + 1] == 'l' &&
                         json[index + 2] == 's' &&

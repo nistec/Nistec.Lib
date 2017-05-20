@@ -244,6 +244,8 @@ namespace Nistec.Serialization
         public static IDictionary<string, object> ToDictionary(string json)
         {
             var parse = JsonSerializer.Parse(json);
+            if (parse == null)
+                return new Dictionary<string, object>();
             return (IDictionary<string, object>)parse;
         }
 

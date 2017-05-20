@@ -49,7 +49,7 @@ namespace Nistec.Serialization
     public interface IEntityDictionary : ISerialEntity
     {
         IDictionary EntityDictionary();
-        Type EntityType();
+        Type EntityType { get; }
     }
 
     public interface ISerialContext

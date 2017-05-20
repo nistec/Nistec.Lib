@@ -76,6 +76,7 @@
     <Reference Include="System.Design" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Net" />
+    <Reference Include="System.Net.Http, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.Transactions" />
@@ -161,6 +162,7 @@
     <Compile Include="Threading\ThreadPoolEx.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Web\HttpClientUtil.cs" />
     <Compile Include="Web\Mailer.cs" />
     <Compile Include="Generic\GenericEventArgs.cs" />
     <Compile Include="Generic\GenericArgs.cs" />

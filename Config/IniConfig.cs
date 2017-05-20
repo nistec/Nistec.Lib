@@ -701,7 +701,7 @@ namespace Nistec.Config
 				if (size < maxSize - 2)
 				{
 					// Convert the buffer to a string and split it
-					string entries = System.Text.Encoding.ASCII.GetString(bytes, 0, size - (size > 0 ? 1 : 0));			
+					string entries = System.Text.Encoding.UTF8.GetString(bytes, 0, size - (size > 0 ? 1 : 0));			
 					if (entries == "")
 						return new string[0];
 		            return entries.Split(new char[] {'\0'});			
@@ -731,7 +731,7 @@ namespace Nistec.Config
 				if (size < maxSize - 2)
 				{
 					// Convert the buffer to a string and split it
-					string sections = System.Text.Encoding.ASCII.GetString(bytes, 0, size - (size > 0 ? 1 : 0));			
+                    string sections = System.Text.Encoding.UTF8.GetString(bytes, 0, size - (size > 0 ? 1 : 0));			
 					if (sections == "")
 						return new string[0];
 		            return sections.Split(new char[] {'\0'});			

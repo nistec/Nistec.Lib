@@ -424,5 +424,48 @@ namespace Nistec.Runtime
 
         #endregion
 
+        #region ecape converter
+
+        public static string Escape(string text, string expression, string replacment)
+        {
+            if (text == null || expression == null || replacment == null)
+                return text;
+            return text.Replace(expression, replacment);
+        }
+
+        public static string UnEscape(string text, string expression, string replacment)
+        {
+            if (text == null || expression == null || replacment == null)
+                return text;
+            return text.Replace(replacment, expression);
+        }
+
+        public static string Escape(string text, string[] expReplacment)
+        {
+            if (text == null || expReplacment == null || expReplacment.Length == 0 || expReplacment.Length % 2 != 0)
+                return text;
+
+            for (int i = 0; i < expReplacment.Length;i++ )
+            {
+                text = text.Replace(expReplacment[i], expReplacment[i+1]);
+                i++;
+            }
+            return text;
+        }
+
+        public static string UnEscape(string text, string[] expReplacment)
+        {
+            if (text == null || expReplacment == null || expReplacment.Length==0 || expReplacment.Length % 2 != 0)
+                return text;
+
+            for (int i = 0; i < expReplacment.Length; i++)
+            {
+                text = text.Replace(expReplacment[i+1], expReplacment[i]);
+                i++;
+            }
+            return text;
+        }
+
+        #endregion
     }
 }

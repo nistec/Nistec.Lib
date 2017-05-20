@@ -299,7 +299,7 @@ namespace Nistec.Serialization
             return type;
         }
 
-
+       
         internal JsonFields[] GetFieldsGetter(Type type, bool showReadOnlyProperties = false, List<Type> ignoreAttributes = null)
         {
             JsonFields[] val = null;
@@ -311,7 +311,10 @@ namespace Nistec.Serialization
             List<JsonFields> fieldsGetter = new List<JsonFields>();
             foreach (PropertyInfo p in props)
             {
-                if (!p.CanWrite && showReadOnlyProperties == false) continue;
+                if (!p.CanWrite && showReadOnlyProperties == false) 
+                    continue;
+                if(SerializeTools.HasNoSerializeAttribute(p.PropertyType))
+                    continue;
                 if (ignoreAttributes != null)
                 {
                     bool found = false;
@@ -334,6 +337,8 @@ namespace Nistec.Serialization
             FieldInfo[] fi = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
             foreach (var f in fi)
             {
+                if (SerializeTools.HasNoSerializeAttribute(f.FieldType))
+                    continue;
                 if (ignoreAttributes != null)
                 {
                     bool found = false;

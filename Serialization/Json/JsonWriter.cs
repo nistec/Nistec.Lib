@@ -156,8 +156,8 @@ namespace Nistec.Serialization
                         WriteDataset((DataSet)obj);
 
                     else if (SerializeTools.IsDataTable(type))
-                        this.WriteDataTable((DataTable)obj);
-
+                            this.WriteDataTable((DataTable)obj);
+                 
                     else if (type == typeof(DataRow))
                         this.WriteDataRow((DataRow)obj);
 
@@ -432,9 +432,12 @@ namespace Nistec.Serialization
 
         private void WriteDataTableData(DataTable table)
         {
-            _output.Append('\"');
-            _output.Append(table.TableName);
-            _output.Append("\":[");
+            //_output.Append('\"');
+            //_output.Append(table.TableName);
+            //_output.Append("\":[");
+            
+            _output.Append("[");
+
             DataColumnCollection cols = table.Columns;
             bool rowseparator = false;
             foreach (DataRow row in table.Rows)
@@ -458,17 +461,33 @@ namespace Nistec.Serialization
 
         void WriteDataTable(DataTable dt)
         {
-            this._output.Append('{');
             if (_Settings.UseExtensions)
             {
+                this._output.Append('{');
                 this.WritePair("$schema", _Settings.UseDatasetSchema ? (object)this.GetSchema(dt) : this.GetXmlSchema(dt));
                 this._output.Append(',');
             }
             WriteDataTableData(dt);
 
             // end datatable
-            this._output.Append('}');
+            if (_Settings.UseExtensions)
+                this._output.Append('}');
         }
+
+        //void WriteDataTable(DataTable dt)
+        //{
+        //    this._output.Append('{');
+
+        //    if (_Settings.UseExtensions)
+        //    {
+        //        this.WritePair("$schema", _Settings.UseDatasetSchema ? (object)this.GetSchema(dt) : this.GetXmlSchema(dt));
+        //        this._output.Append(',');
+        //    }
+        //    WriteDataTableData(dt);
+
+        //    // end datatable
+        //    this._output.Append('}');
+        //}
 
 
         bool _TypesWritten = false;
