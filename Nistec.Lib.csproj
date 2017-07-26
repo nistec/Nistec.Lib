@@ -94,7 +94,9 @@
     <Compile Include="Common\Enums.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Common\Interfaces.cs" />
     <Compile Include="Common\Validation.cs" />
+    <Compile Include="Config\ConfigWatcher.cs" />
     <Compile Include="Config\Events.cs" />
     <Compile Include="Config\IniConfig.cs" />
     <Compile Include="Config\XConfig.cs" />

@@ -609,6 +609,72 @@ namespace Nistec.Generic
                 arg8 = GenericTypes.Convert<T8>(list[7]);
             return true;
         }
+        public static bool SplitArgs<T1, T2, T3, T4, T5, T6, T7, T8, T9>(string args, char splitter, ref T1 arg1, ref T2 arg2, ref T3 arg3, ref T4 arg4, ref T5 arg5, ref T6 arg6, ref T7 arg7, ref T8 arg8, ref T9 arg9)
+        {
+            if (args == null)
+            {
+                return false;
+            }
+            string[] list = args.Split(splitter);
+
+            if (list == null || list.Length == 0)
+            {
+                return false;
+            }
+
+            arg1 = GenericTypes.Convert<T1>(list[0]);
+            if (list.Length > 1)
+                arg2 = GenericTypes.Convert<T2>(list[1]);
+            if (list.Length > 2)
+                arg3 = GenericTypes.Convert<T3>(list[2]);
+            if (list.Length > 3)
+                arg4 = GenericTypes.Convert<T4>(list[3]);
+            if (list.Length > 4)
+                arg5 = GenericTypes.Convert<T5>(list[4]);
+            if (list.Length > 5)
+                arg6 = GenericTypes.Convert<T6>(list[5]);
+            if (list.Length > 6)
+                arg7 = GenericTypes.Convert<T7>(list[6]);
+            if (list.Length > 7)
+                arg8 = GenericTypes.Convert<T8>(list[7]);
+            if (list.Length > 8)
+                arg9 = GenericTypes.Convert<T9>(list[8]);
+            return true;
+        }
+        public static bool SplitArgs<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(string args, char splitter, ref T1 arg1, ref T2 arg2, ref T3 arg3, ref T4 arg4, ref T5 arg5, ref T6 arg6, ref T7 arg7, ref T8 arg8, ref T9 arg9, ref T10 arg10)
+        {
+            if (args == null)
+            {
+                return false;
+            }
+            string[] list = args.Split(splitter);
+
+            if (list == null || list.Length == 0)
+            {
+                return false;
+            }
+
+            arg1 = GenericTypes.Convert<T1>(list[0]);
+            if (list.Length > 1)
+                arg2 = GenericTypes.Convert<T2>(list[1]);
+            if (list.Length > 2)
+                arg3 = GenericTypes.Convert<T3>(list[2]);
+            if (list.Length > 3)
+                arg4 = GenericTypes.Convert<T4>(list[3]);
+            if (list.Length > 4)
+                arg5 = GenericTypes.Convert<T5>(list[4]);
+            if (list.Length > 5)
+                arg6 = GenericTypes.Convert<T6>(list[5]);
+            if (list.Length > 6)
+                arg7 = GenericTypes.Convert<T7>(list[6]);
+            if (list.Length > 7)
+                arg8 = GenericTypes.Convert<T8>(list[7]);
+            if (list.Length > 8)
+                arg9 = GenericTypes.Convert<T9>(list[8]);
+            if (list.Length > 9)
+                arg10 = GenericTypes.Convert<T10>(list[9]);
+            return true;
+        }
         #endregion
 
         #region SplitObjectArgs

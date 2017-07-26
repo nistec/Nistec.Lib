@@ -68,8 +68,24 @@ namespace Nistec.Generic
             return cnn == null ? null : cnn.ConnectionString;
         }
 
+        public static System.Configuration.ConnectionStringSettings ConnectionSpliter(string key)
+        {
+            if (key == null)
+                return null;
+            if (key.Contains('@'))
+            {
+                string[] args = key.Split('@');
+                if (args.Length > 1)
+                    return new ConnectionStringSettings(args[0], args[1], "SqlServer");
+            }
+
+            return ConfigurationManager.ConnectionStrings[key];
+        }
+
         public static System.Configuration.ConnectionStringSettings ConnectionSettings(string key)
         {
+            if (key == null)
+                return null;
             return ConfigurationManager.ConnectionStrings[key];
         }
 

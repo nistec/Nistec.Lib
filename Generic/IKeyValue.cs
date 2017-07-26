@@ -28,6 +28,11 @@ using Nistec.Serialization;
 namespace Nistec.Generic
 {
 
+    public interface IKeyValue<T>
+    {
+        T this[string key] { get; set; }
+        void Clear();
+    }
     public interface IKeyValue : ICollection, IEnumerable, ISerialEntity
     {
         #region collection methods
@@ -46,12 +51,10 @@ namespace Nistec.Generic
 
         #region properties
 
-
         TV Get<TV>(string key, TV defaultValue);
-
-
         TV Get<TV>(string key);
-       
+
+        //void Set<TV>(string key, TV value);
 
         #endregion
 

@@ -528,6 +528,13 @@ namespace Nistec
             return (T)Enum.Parse(typeof(T), value, true);
         }
 
+        public static T ReadEnum<T>(int value, T defaultValue)
+        {
+            if (Enum.IsDefined(typeof(T), value))
+                return (T) Cast<T>(value);
+            return defaultValue;
+        }
+
      
     }
 }

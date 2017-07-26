@@ -67,10 +67,10 @@ namespace Nistec.Runtime
         /// Occured when file has been changed.
         /// </summary>
         /// <param name="e"></param>
-        protected void OnFileChanged(FileSystemEventArgs e)
+        protected virtual void OnFileChanged(FileSystemEventArgs e)
         {
-            if (FileChanged != null)
-                FileChanged(this, e);
+            //if (FileChanged != null)
+            //    FileChanged(this, e);
         }
         /// <summary>
         /// Initialize a new instance of SysFileWatcher
@@ -170,7 +170,6 @@ namespace Nistec.Runtime
             get { return lastFileRead; }
         }
 
-
         internal void WatchFile_Changed(object sender, FileSystemEventArgs e)
         {
             if (FileChanged != null)
@@ -188,7 +187,7 @@ namespace Nistec.Runtime
                     }
                 }
             }
-
+            OnFileChanged(e);
         }
 
         internal void FileCreated(object sender, FileSystemEventArgs e)

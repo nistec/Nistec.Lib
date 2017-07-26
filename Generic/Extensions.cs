@@ -29,6 +29,7 @@ using System.Runtime.InteropServices;
 using Nistec.Runtime;
 using System.Collections.Specialized;
 using System.Globalization;
+using System.Data;
 
 namespace Nistec.Generic
 {
@@ -340,8 +341,7 @@ namespace Nistec.Generic
         #endregion
 
     }
-
-
+    
     public static class DictionaryExtension
     {
         #region method GetValue
@@ -499,7 +499,104 @@ namespace Nistec.Generic
         #endregion
 
     }
+    public static class KeyValueExtension
+    {
 
+        public static bool IsMatch(this object[] keyValueArray, string keyToFind, object matchTo)
+        {
+            if (keyValueArray == null || keyToFind == null || matchTo == null)
+                return false;
+            int i = Array.FindIndex(keyValueArray, item => item.ToString().ToLower() == keyToFind.ToLower());
+            if (i >= 0 && i < keyValueArray.Length && i % 2 == 0)
+            {
+                return keyValueArray[i + 1] == matchTo;
+            }
+            return false;
+        }
+        public static bool IsMatch(this object[] keyValueArray, string keyToFind, string matchTo)
+        {
+            if (keyValueArray == null || keyToFind == null || matchTo == null)
+                return false;
+            int i = Array.FindIndex(keyValueArray, item => item.ToString().ToLower() == keyToFind.ToLower());
+            if (i >= 0 && i < keyValueArray.Length && i % 2 == 0)
+            {
+                if (keyValueArray[i + 1] == null)
+                    return false;
+                return keyValueArray[i + 1].ToString().ToLower() == matchTo.ToLower();
+            }
+            return false;
+        }
+        public static bool IsMatch<T>(this object[] keyValueArray, string keyToFind, T matchTo)
+        {
+            if (keyValueArray == null || keyToFind == null || matchTo == null)
+                return false;
+            int i = Array.FindIndex(keyValueArray, item => item.ToString().ToLower() == keyToFind.ToLower());
+            if (i >= 0 && i < keyValueArray.Length && i % 2 == 0)
+            {
+                return matchTo.Equals(GenericTypes.Convert<T>(keyValueArray[i + 1]));
+            }
+            return false;
+        }
+
+        public static object FindValue(this object[] keyValueArray, string key, object defaulValue=null)
+        {
+            if (keyValueArray == null || key == null)
+                return defaulValue;
+            int i = Array.FindIndex(keyValueArray, item => item.ToString().ToLower() == key.ToLower());
+            if (i >= 0 && i < keyValueArray.Length && i % 2==0)
+                return keyValueArray[i + 1];
+            return defaulValue;
+        }
+        public static T FindValue<T>(this object[] keyValueArray, string key, T defaulValue = default(T))
+        {
+            if (keyValueArray == null || key == null)
+                return defaulValue;
+            int i = Array.FindIndex(keyValueArray, item => item.ToString().ToLower() == key.ToLower());
+            if (i >= 0 && i < keyValueArray.Length && i % 2 == 0)
+                return GenericTypes.Convert<T>(keyValueArray[i + 1]);
+            return defaulValue;
+        }
+
+        public static string FindValue(this string[] keyValueArray, string key, string defaulValue = null)
+        {
+            if (keyValueArray == null || key == null)
+                return defaulValue;
+            int i = Array.FindIndex(keyValueArray, item => item.ToLower() == key.ToLower());
+            if (i >= 0 && i < keyValueArray.Length && i % 2 == 0)
+                return keyValueArray[i + 1];
+            return defaulValue;
+        }
+       
+
+        public static void ToKeyValue<T>(this IKeyValue<T> instance, DataRow dr)
+        {
+            if (dr == null)
+                return;
+            DataTable dt = dr.Table;
+            if (dt == null)
+                return;
+            instance.Clear();
+            for (int i = 0; i < dt.Columns.Count; i++)
+            {
+                string colName = dt.Columns[i].ColumnName;
+                instance[colName] = GenericTypes.Convert<T>(dr[colName]);
+            }
+        }
+        public static void ToNameValue(this IKeyValue<string> instance, DataRow dr)
+        {
+            if (dr == null)
+                return;
+            DataTable dt = dr.Table;
+            if (dt == null)
+                return;
+            instance.Clear();
+            for (int i = 0; i < dt.Columns.Count; i++)
+            {
+                string colName = dt.Columns[i].ColumnName;
+                instance[colName] = GenericTypes.NZ(dr[colName], "");
+            }
+        }
+    }
     public static class CollectionExtension
     {
         public static T Get<T>(this NameValueCollection nv, string key)

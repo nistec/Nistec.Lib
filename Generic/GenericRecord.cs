@@ -31,6 +31,7 @@ using Nistec.IO;
 using Nistec.Xml;
 using Nistec.Serialization;
 using System.Collections.Specialized;
+using Nistec.Runtime;
 
 namespace Nistec.Generic
 {
@@ -38,7 +39,7 @@ namespace Nistec.Generic
     /// Represent Serializable Generic Dictionary that implement <see cref="ISerialEntity"/> and <see cref="IEntityDictionary"/>.
     /// </summary>
     [Serializable]
-    public class GenericRecord : Dictionary<string, object>, System.Xml.Serialization.IXmlSerializable, IEntityDictionary, ISerialJson
+    public class GenericRecord : Dictionary<string, object>, System.Xml.Serialization.IXmlSerializable, IEntityDictionary, ISerialJson, IKeyValue<object>
     {
         public const string EntityName = "EntityRecord";
         
@@ -250,9 +251,11 @@ namespace Nistec.Generic
 
         //    return record;
         //}
-        
+
         public static object[] StringToKeyValue(string value, char splitterOutside, char splitterInside)
         {
+            value = BaseConverter.Escape(value,'%',  splitterOutside.ToString(), splitterInside.ToString());
+
             List<object> o = new List<object>();
             string[] items = value.Split(splitterOutside);
             foreach (string s in items)
@@ -262,6 +265,9 @@ namespace Nistec.Generic
                 {
                     throw new ArgumentException("values parameter not correct, Not match key value arguments");
                 }
+                args[0] = BaseConverter.UnEscape(args[0], '%', splitterOutside.ToString(), splitterInside.ToString());
+                args[1] = BaseConverter.UnEscape(args[1], '%', splitterOutside.ToString(), splitterInside.ToString());
+
                 o.Add(args[0]);
                 o.Add(args[1]);
             }
@@ -351,7 +357,10 @@ namespace Nistec.Generic
                 this[entry.Key] = entry.Value;
             }
         }
-
+        public void Prepare(DataRow dr)
+        {
+            this.ToKeyValue(dr);
+        }
         #endregion
 
         #region DataUtil

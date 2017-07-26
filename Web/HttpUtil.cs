@@ -88,14 +88,14 @@ namespace Nistec.Web
 
         #region ctor
         /// <summary>
-        /// Initilaized new instance of HttpRequest class
+        /// Initialized new instance of HttpRequest class
         /// </summary>
         /// <param name="url"></param>
         public HttpUtil(string url):this(url,"POST")
         {
         }
         /// <summary>
-        /// Initilaized new instance of HttpRequest class
+        /// Initialized new instance of HttpRequest class
         /// </summary>
         /// <param name="url"></param>
         /// <param name="method"></param>
@@ -111,7 +111,7 @@ namespace Nistec.Web
         }
 
         /// <summary>
-        /// Initilaized new instance of HttpRequest class
+        /// Initialized new instance of HttpRequest class
         /// </summary>
         /// <param name="method"></param>
         /// <param name="codePage"></param>

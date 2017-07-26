@@ -27,6 +27,7 @@ using System.Threading;
 using System.Collections;
 using Nistec.Collections;
 using Nistec.Generic;
+using System.Collections.Concurrent;
 
 namespace Nistec.Threading
 {
@@ -125,6 +126,12 @@ namespace Nistec.Threading
 
         internal Action<GenericEventArgs<TaskItem>> FunctionCompleted;
 
+        public DateTime StartExecTime { get; internal set; }
+        public int Retry { get; internal set; }
+        internal bool IsExecuteTimedout
+        {
+            get { return DateTime.Now.Subtract(StartExecTime) > Timeout; }
+        }
         public bool IsEmpty
         {
             get { return Function == null && FunctionOneWay==null; }
@@ -143,6 +150,7 @@ namespace Nistec.Threading
             this.Function = fanction;
             this.Key = Guid.NewGuid();
             Args = args;
+            StartExecTime = ExecTime.AddSeconds(10);
         }
 
         public TaskItem(Action fanction, int timeoutSecond)
@@ -154,6 +162,7 @@ namespace Nistec.Threading
             this.FunctionOneWay = fanction;
             this.Key = Guid.NewGuid();
             Args = null;
+            StartExecTime = ExecTime.AddSeconds(10);
         }
 
         public TaskItem(Action<object> fanction, object args, Action<GenericEventArgs<TaskItem>> onCompleted)
@@ -171,6 +180,7 @@ namespace Nistec.Threading
             this.Function = fanction;
             this.Key = Guid.NewGuid();
             Args = args;
+            StartExecTime = execTime.AddSeconds(10);
         }
 
         ~TaskItem()
@@ -267,6 +277,8 @@ namespace Nistec.Threading
         internal void ExecuteWorkItem()
         {
             Thread watchedThread = null;
+            StartExecTime = DateTime.Now;
+            Retry++;
 
             if (IsOneWay)
             {
@@ -342,6 +354,8 @@ namespace Nistec.Threading
         internal void Execute(object args)
         {
             Thread threadToKill = null;
+            StartExecTime = DateTime.Now;
+            Retry++;
             AsyncCallback callBack = CreateAsyncCallBack();
 
             if (IsOneWay)
@@ -416,6 +430,8 @@ namespace Nistec.Threading
 
         internal IAsyncResult BeginTask(AsyncCallback callback)
         {
+            StartExecTime = DateTime.Now;
+            Retry++;
             TaskItemCallback caller = CreateTaskCacllBack();
 
             if (callback == null)
@@ -435,7 +451,8 @@ namespace Nistec.Threading
 
         internal IAsyncResult BeginTask(TaskItem task, AsyncCallback callback)
         {
-
+            StartExecTime = DateTime.Now;
+            Retry++;
             TaskItemCallback caller = CreateTaskCacllBack();
 
             if (callback == null)
@@ -569,7 +586,10 @@ namespace Nistec.Threading
 
     public class AsyncTasker : IAsyncTasker
     {
-
+        /// <summary>
+        /// Default Instance
+        /// </summary>
+        public static readonly AsyncTasker Instance = new AsyncTasker(true);
 
         #region  memebers
                 
@@ -581,10 +601,10 @@ namespace Nistec.Threading
      
         private ManualResetEvent resetEvent;
 
-        public bool Initilaized
-        {
-            get { return keepAlive; }
-        }
+        //public bool Initialized
+        //{
+        //    get { return keepAlive; }
+        //}
 
         public int Capacity
         {
@@ -668,42 +688,72 @@ namespace Nistec.Threading
 
         public bool RemoveTaskProcces(TaskItem item)
         {
-           return TasksProcess.Remove(item);
+            TaskItem task;
+            return TasksProcess.TryRemove(item.Key, out task);
         }
 
         #endregion
 
         #region Task queue
 
-        List<TaskItem> taskItems;
-
-        internal List<TaskItem> Tasks
+        ConcurrentDictionary<Guid, TaskItem> taskItems;
+        internal ConcurrentDictionary<Guid,TaskItem> Tasks
         {
             get
             {
                 if (this.taskItems == null)
                 {
-                    taskItems = new List<TaskItem>();
-                    taskItems.Capacity = 100;
+                    taskItems = new ConcurrentDictionary<Guid, TaskItem>();
+                    //taskItems.Capacity = 100;
                 }
                 return this.taskItems;
             }
         }
 
-        List<TaskItem> taskProcess;
+        ConcurrentDictionary<Guid, TaskItem> taskProcess;
 
-        internal List<TaskItem> TasksProcess
+        internal ConcurrentDictionary<Guid, TaskItem> TasksProcess
         {
             get
             {
                 if (this.taskProcess == null)
                 {
-                    taskProcess = new List<TaskItem>();
-                    taskProcess.Capacity = 100;
+                    taskProcess = new ConcurrentDictionary<Guid, TaskItem>();
+                    //taskProcess.Capacity = 100;
                 }
                 return this.taskProcess;
             }
         }
+
+        //List<TaskItem> taskItems;
+
+        //internal List<TaskItem> Tasks
+        //{
+        //    get
+        //    {
+        //        if (this.taskItems == null)
+        //        {
+        //            taskItems = new List<TaskItem>();
+        //            taskItems.Capacity = 100;
+        //        }
+        //        return this.taskItems;
+        //    }
+        //}
+
+        //List<TaskItem> taskProcess;
+
+        //internal List<TaskItem> TasksProcess
+        //{
+        //    get
+        //    {
+        //        if (this.taskProcess == null)
+        //        {
+        //            taskProcess = new List<TaskItem>();
+        //            taskProcess.Capacity = 100;
+        //        }
+        //        return this.taskProcess;
+        //    }
+        //}
 
         internal TaskItem Dequeue()
         {
@@ -711,11 +761,19 @@ namespace Nistec.Threading
             TaskItem task = null;
             if (Tasks.Count > 0)
             {
-                task = Tasks.Where(item => item.ExecTime < DateTime.Now).OrderBy(item => item.ExecTime).FirstOrDefault();
+                task = Tasks.Values.Where(item => item.ExecTime < DateTime.Now).OrderBy(item => item.ExecTime).FirstOrDefault();
                 if (task != null)
                 {
-                    Tasks.Remove(task);
-                    TasksProcess.Add(task);
+                    //Tasks.Remove(task);
+                    if (Tasks.TryRemove(task.Key,out task))
+                    {
+                        //TasksProcess.Add(task);
+                        TasksProcess[task.Key] = task;
+                    }
+                    else
+                    {
+                        task = null;
+                    }
                 }
             }
             return task;
@@ -724,11 +782,12 @@ namespace Nistec.Threading
 
         public void Add(TaskItem item)
         {
-            lock (mlock)
-            {
+            //lock (mlock)
+            //{
                 item.Owner = this;
-                Tasks.Add(item);
-            }
+                //Tasks.Add(item);
+                Tasks[item.Key] = item;
+            //}
         }
 
         public Guid Add(Action<object> fanction, object args)
@@ -748,72 +807,108 @@ namespace Nistec.Threading
         public TaskItem Peek(Guid key)
         {
             TaskItem task = null;
-            lock (mlock)
-            {
-                if (Tasks.Count > 0)
-                {
-                    task = Tasks.Where(item => item.Key ==key).FirstOrDefault();
-                }
-            }
+
+            Tasks.TryGetValue(key, out task);
+
+            //lock (mlock)
+            //{
+            //if (Tasks.Count > 0)
+            //{
+            //    task = Tasks.Where(item => item.Key == key).FirstOrDefault();
+            //}
+            //}
             return task;
         }
 
         public bool Remove(Guid key)
         {
-            lock (mlock)
-            {
-                if (Tasks.Count > 0)
-                {
-                    TaskItem task = Tasks.Where(item => item.Key == key).FirstOrDefault();
-                    if (task != null)
-                    {
-                       return Tasks.Remove(task);
-                    }
-                }
-            }
-            return false;
+
+            TaskItem task = null;
+
+            return Tasks.TryRemove(key, out task);
+
+            //lock (mlock)
+            //{
+            //if (Tasks.Count > 0)
+            //{
+            //    TaskItem task = Tasks.Where(item => item.Key == key).FirstOrDefault();
+            //    if (task != null)
+            //    {
+            //        return Tasks.Remove(task);
+            //    }
+            //}
+            //}
+            //return false;
         }
 
         internal bool RemoveProcess(TaskItem item)
         {
-            lock (mlock)
-            {
-                if (TasksProcess.Count > 0)
-                {
-                    if (item != null)
-                    {
-                        return TasksProcess.Remove(item);
-                    }
-                }
-            }
-            return false;
+            TaskItem task = null;
+
+            return TasksProcess.TryRemove(item.Key, out task);
+
+            //lock (mlock)
+            //{
+            //if (!TasksProcess.IsEmpty)//(TasksProcess.Count > 0)
+            //{
+            //    if (item != null)
+            //    {
+            //        return TasksProcess.Remove(item);
+            //    }
+            //}
+            //}
+            //return false;
         }
 
         internal bool RemoveProcess(Guid key)
         {
-            lock (mlock)
+            TaskItem task = null;
+
+            return TasksProcess.TryRemove(key, out task);
+
+            //lock (mlock)
+            //{
+            //if (!TasksProcess.IsEmpty)//(TasksProcess.Count > 0)
+            //{
+            //    TaskItem task = TasksProcess.Where(item => item.Key == key).FirstOrDefault();
+            //    if (task != null)
+            //    {
+            //        return TasksProcess.Remove(task);
+            //    }
+            //}
+            //}
+            //return false;
+
+        }
+
+        internal void ClearProcessTimedout()
+        {
+            if (TasksProcess.Count > 0)
             {
-                if (TasksProcess.Count > 0)
+                var tasks = TasksProcess.Values.Where(item => item.IsExecuteTimedout);
+                if (tasks != null)
                 {
-                    TaskItem task = TasksProcess.Where(item => item.Key == key).FirstOrDefault();
-                    if (task != null)
+                    foreach (var t in tasks)
                     {
-                        return TasksProcess.Remove(task);
+                        if (t.Retry < 3)
+                        {
+                            Add(t);
+                        }
+                        TaskItem tsk;
+                        TasksProcess.TryRemove(t.Key, out tsk);
                     }
                 }
             }
-            return false;
-
         }
 
         public int Count
         {
             get
             {
-                lock (mlock)
-                {
+                //lock (mlock)
+                //{
                     return Tasks.Count;
-                }
+                //}
             }
         }
 
@@ -821,10 +916,10 @@ namespace Nistec.Threading
         {
             get
             {
-                lock (mlock)
-                {
+                //lock (mlock)
+                //{
                     return TasksProcess.Count;
-                }
+                //}
             }
         }
 
@@ -832,15 +927,15 @@ namespace Nistec.Threading
         #endregion
 
         #region timer
-
-        static object mlock = new object();
+        /*
+        //static object mlock = new object();
         Thread thTask;
         private bool keepAlive;
 
-        public static object TaskLock
-        {
-            get { return mlock; }
-        }
+        //public static object TaskLock
+        //{
+        //    get { return mlock; }
+        //}
 
         public void Start()
         {
@@ -864,15 +959,15 @@ namespace Nistec.Threading
                 TaskItem item = null;
                 try
                 {
-                    lock (mlock)
-                    {
+                    //lock (mlock)
+                    //{
                         item = Dequeue();
 
                         if (item != null && !item.IsEmpty)
                         {
                             item.ExecuteWorkItem();
                         }
-                    }
+                    //}
                 }
                 catch (Exception ex)
                 {
@@ -882,8 +977,109 @@ namespace Nistec.Threading
                 Thread.Sleep(Interval);
             }
         }
-
+        */
         
+        #endregion
+
+        #region Timer Sync
+
+        int synchronized;
+        
+        private ThreadTimer SettingTimer;
+
+        public bool Initialized
+        {
+            get;
+            private set;
+        }
+        public DateTime LastSyncTime
+        {
+            get;
+            private set;
+        }
+ 
+        public DateTime NextSyncTime
+        {
+            get
+            {
+                return this.LastSyncTime.AddMilliseconds((double)this.Interval);
+            }
+        }
+
+        private void SettingTimer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        {
+            if (this.Initialized)
+            {
+                this.LastSyncTime = DateTime.Now;
+                this.DequeueWorker();
+                DateTime time = this.LastSyncTime.AddMilliseconds((double)this.Interval);
+                //this.NextSyncTime = time;
+            }
+        }
+
+        public void Start()
+        {
+
+            if (!this.Initialized)
+            {
+                //this.SyncState = CacheSyncState.Idle;
+                this.Initialized = true;
+                this.InitializeTimer();
+            }
+        }
+
+        public void Stop()
+        {
+            if (this.Initialized)
+            {
+                this.Initialized = false;
+                //this.SyncState = CacheSyncState.Idle;
+                this.DisposeTimer();
+            }
+        }
+
+        private void DisposeTimer()
+        {
+            this.SettingTimer.Stop();
+            this.SettingTimer.Enabled = false;
+            this.SettingTimer.Elapsed -= new System.Timers.ElapsedEventHandler(this.SettingTimer_Elapsed);
+            this.SettingTimer = null;
+        }
+
+        private void InitializeTimer()
+        {
+            this.SettingTimer = new ThreadTimer((long)(this.Interval));
+            this.SettingTimer.AutoReset = true;
+            this.SettingTimer.Elapsed += new System.Timers.ElapsedEventHandler(this.SettingTimer_Elapsed);
+            this.SettingTimer.Enabled = true;
+            this.SettingTimer.Start();
+        }
+
+        private void DequeueWorker()
+        {
+            if (0 == Interlocked.Exchange(ref synchronized, 1))
+            {
+                TaskItem item = null;
+                do
+                {
+                    try
+                    {
+                        item = Dequeue();
+
+                        if (item != null && !item.IsEmpty)
+                        {
+                            item.ExecuteWorkItem();
+                            Thread.Sleep(100);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        OnError(item == null ? Guid.Empty : item.Key, ex);
+                    }
+                } while (item != null);
+            }
+            Interlocked.Exchange(ref synchronized, 0);
+        }
         #endregion
 
     }
@@ -901,7 +1097,7 @@ namespace Nistec.Threading
         //private AsyncCallback onRequestCompleted;
         private ManualResetEvent resetEvent;
 
-        public bool Initilaized
+        public bool Initialized
         {
             get { return keepAlive; }
         }
@@ -995,15 +1191,15 @@ namespace Nistec.Threading
 
         #region Task queue
 
-        Queue<TaskItem> taskItems;
+        ConcurrentQueue<TaskItem> taskItems;
 
-        internal Queue<TaskItem> Tasks
+        internal ConcurrentQueue<TaskItem> Tasks
         {
             get
             {
                 if (this.taskItems == null)
                 {
-                    taskItems = new Queue<TaskItem>();
+                    taskItems = new ConcurrentQueue<TaskItem>();
                     //taskItems.Capacity = 100;
                 }
                 return this.taskItems;
@@ -1017,7 +1213,7 @@ namespace Nistec.Threading
             TaskItem task = null;
             if (Tasks.Count > 0)
             {
-                task = Tasks.Dequeue();
+                Tasks.TryDequeue(out task);
             }
             return task;
 
@@ -1025,11 +1221,11 @@ namespace Nistec.Threading
 
         public void Add(TaskItem item)
         {
-            lock (mlock)
-            {
+            //lock (mlock)
+            //{
                 item.Owner = this;
                 Tasks.Enqueue(item);
-            }
+            //}
         }
 
         public Guid Add(Action<object> fanction, object args)
@@ -1049,20 +1245,25 @@ namespace Nistec.Threading
         public TaskItem Peek(Guid key)
         {
             TaskItem task = null;
-            lock (mlock)
+            //lock (mlock)
+            //{
+            //    if (Tasks.Count > 0)
+            //    {
+            //        task = Tasks.Peek();
+            //    }
+            //}
+
+            if (Tasks.Count > 0)
             {
-                if (Tasks.Count > 0)
-                {
-                    task = Tasks.Peek();
-                }
+                Tasks.TryPeek(out task);
             }
             return task;
         }
 
         public bool Remove(Guid key)
         {
-            lock (mlock)
-            {
+            //lock (mlock)
+            //{
                 if (Tasks.Count > 0)
                 {
                     TaskItem task = Tasks.Where(item => item.Key == key).FirstOrDefault();
@@ -1073,37 +1274,37 @@ namespace Nistec.Threading
                         return true;
                     }
                 }
-            }
+            //}
             return false;
         }
 
-        internal bool RemoveProcess(TaskItem item)
-        {
-            lock (mlock)
-            {
-                if (Tasks.Count > 0)
-                {
-                    TaskItem task = Tasks.Where(p => p.Key == item.Key).FirstOrDefault();
-                    if (task != null)
-                    {
-                        task.Dispose();
-                        task = null;
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
+        //internal bool RemoveProcess(TaskItem item)
+        //{
+        //    //lock (mlock)
+        //    //{
+        //        if (Tasks.Count > 0)
+        //        {
+        //            TaskItem task = Tasks.Where(p => p.Key == item.Key).FirstOrDefault();
+        //            if (task != null)
+        //            {
+        //                task.Dispose();
+        //                task = null;
+        //                return true;
+        //            }
+        //        }
+        //    //}
+        //    return false;
+        //}
 
         
         public int Count
         {
             get
             {
-                lock (mlock)
-                {
+                //lock (mlock)
+                //{
                     return Tasks.Count;
-                }
+                //}
             }
         }
 
@@ -1111,10 +1312,10 @@ namespace Nistec.Threading
         {
             get
             {
-                lock (mlock)
-                {
+                //lock (mlock)
+                //{
                     return Tasks.Count;
-                }
+                //}
             }
         }
 
@@ -1154,15 +1355,15 @@ namespace Nistec.Threading
                 TaskItem item = null;
                 try
                 {
-                    lock (mlock)
-                    {
+                    //lock (mlock)
+                    //{
                         item = Dequeue();
 
                         if (item != null && !item.IsEmpty)
                         {
                             item.ExecuteWorkItem();
                         }
-                    }
+                    //}
                 }
                 catch (Exception ex)
                 {

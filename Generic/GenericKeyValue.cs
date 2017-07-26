@@ -27,6 +27,8 @@ using System.IO;
 using System.Collections;
 using Nistec.IO;
 using Nistec.Serialization;
+using System.Data;
+using Nistec.Data;
 
 namespace Nistec.Generic
 {
@@ -64,6 +66,10 @@ namespace Nistec.Generic
             Load(ParseQuery(keyValue));
         }
 
+        public override void Prepare(DataRow dr)
+        {
+            this.ToKeyValue(dr);
+        }
         public static GenericKeyValue Create(params object[] keyValue)
         {
             GenericKeyValue query = new GenericKeyValue(ParseQuery(keyValue));
@@ -102,7 +108,7 @@ namespace Nistec.Generic
     }
 
     [Serializable]
-    public class GenericNameValue : GenericKeyValue<string>, ISerialEntity, IKeyValue
+    public class GenericNameValue : GenericKeyValue<string>, ISerialEntity, IKeyValue, IDataRowAdaptor
     {
 
         #region collection methods
@@ -153,14 +159,48 @@ namespace Nistec.Generic
             Load(ParseQuery(keyValue));
         }
 
-        public static GenericNameValue Create(params string[] keyValue)
+        //public static GenericNameValue Create(params string[] keyValue)
+        //{
+        //    var pair = ParseQuery(keyValue);
+        //    GenericNameValue query = new GenericNameValue();
+        //    query.Load(pair);
+        //    return query;
+        //}
+        
+        public override void Prepare(DataRow dr)
         {
-            var pair = ParseQuery(keyValue);
-            GenericNameValue query = new GenericNameValue();
-            query.Load(pair);
-            return query;
+            this.ToNameValue(dr);
         }
 
+        public static GenericNameValue Create(params string[] keyValue)
+        {
+            GenericNameValue pair = new GenericNameValue();
+            if (keyValue == null)
+                return pair;
+            string[] array = null;
+            if(keyValue.Length==1)
+            {
+                array = keyValue[0].Split('|');
+            }
+            else
+            {
+                array = keyValue;
+            }
+            int count = array.Length;
+            if (count % 2 != 0)
+            {
+                throw new ArgumentException("keyValues parameter is not correct, Not match key value arguments");
+            }
+            for (int i = 0; i < count; i++)
+            {
+                string o = array[i];
+                if (o != null)
+                {
+                    pair.Add(new KeyValuePair<string, string>(array[i].ToString(), array[++i]));
+                }
+            }
+            return pair;
+        }
         internal static List<KeyValuePair<string, string>> ParseQuery(params string[] keyValue)
         {
             List<KeyValuePair<string, string>> pair = new List<KeyValuePair<string, string>>();
@@ -171,7 +211,6 @@ namespace Nistec.Generic
             {
                 throw new ArgumentException("keyValues parameter is not correct, Not match key value arguments");
             }
-            Dictionary<string, string> args = new Dictionary<string, string>();
             for (int i = 0; i < count; i++)
             {
                 string o = keyValue[i];
@@ -187,6 +226,10 @@ namespace Nistec.Generic
 
         #region properties
 
+        public string Get(string key)
+        {
+            return this[key];
+        }
         public TV Get<TV>(string key)
         {
             return GenericTypes.Convert<TV>(this[key]);
@@ -237,7 +280,11 @@ namespace Nistec.Generic
             }
             return list.ToArray();
         }
-
+        public string ToKeyValuePipe()
+        {
+            string[] val = ToKeyValueArray();
+            return JoinArg(val);
+        }
         #endregion
 
         #region ParseArgs
@@ -359,7 +406,7 @@ namespace Nistec.Generic
     }
 
     [Serializable]
-    public class GenericKeyValue<T> : List<KeyValuePair<string, T>>, ISerialEntity
+    public class GenericKeyValue<T> : List<KeyValuePair<string, T>>, ISerialEntity, IKeyValue<T>
     {
 
         #region collection methods
@@ -446,6 +493,10 @@ namespace Nistec.Generic
             Load(ParseQuery(keyValue));
         }
 
+        public virtual void Prepare(DataRow dr)
+        {
+            this.ToKeyValue(dr);
+        }
         internal static GenericKeyValue<T> CreateList(params object[] keyValue)
         {
             GenericKeyValue<T> query = new GenericKeyValue<T>(ParseQuery(keyValue));

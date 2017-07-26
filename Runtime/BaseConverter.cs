@@ -466,6 +466,29 @@ namespace Nistec.Runtime
             return text;
         }
 
+        public static string Escape(string text,char wrapper, params string[] replacments)
+        {
+            if (text == null || replacments == null || replacments.Length == 0 || replacments.Length % 2 != 0)
+                return text;
+
+            for (int i = 0; i < replacments.Length; i++)
+            {
+                text = text.Replace(replacments[i], wrapper.ToString() + replacments[i] + wrapper.ToString());
+            }
+            return text;
+        }
+
+        public static string UnEscape(string text, char wrapper, params string[] replacments)
+        {
+            if (text == null || replacments == null || replacments.Length == 0 || replacments.Length % 2 != 0)
+                return text;
+
+            for (int i = 0; i < replacments.Length; i++)
+            {
+                text = text.Replace(wrapper.ToString() + replacments[i] + wrapper.ToString(), replacments[i]);
+            }
+            return text;
+        }
         #endregion
     }
 }

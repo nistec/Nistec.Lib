@@ -76,6 +76,9 @@ namespace Nistec.Serialization
         private Stream m_stream;
         private const int MaxCharBytesSize = 0x80;
 
+        //private StreamWriter m_streamWriter;
+        //private StreamReader m_streamReader;
+
         //============== writer ====================
 
         private Encoder m_encoder;
@@ -160,6 +163,11 @@ namespace Nistec.Serialization
             this.m_isOwnerStream = isOwnerStream;
             this.m_encoding = encoding;
             this.m_stream = stream;
+
+            //m_streamWriter = new StreamWriter(m_stream);
+            //m_streamReader = new StreamReader(m_stream);
+            //m_streamWriter.AutoFlush = true;
+
             this.m_decoder = NetDecoder.GetDecoder(encoding);// encoding.GetDecoder();
             this.m_maxCharsSize = encoding.GetMaxCharCount(0x80);
             int maxByteCount = encoding.GetMaxByteCount(1);
@@ -188,6 +196,9 @@ namespace Nistec.Serialization
                 throw new ArgumentNullException("stream");
             }
             this.m_stream = stream;
+            //m_streamWriter = new StreamWriter(m_stream);
+            //m_streamReader = new StreamReader(m_stream);
+
             int maxByteCount = m_encoding.GetMaxByteCount(1);
             if (maxByteCount < 0x10)
             {
