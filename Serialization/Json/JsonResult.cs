@@ -30,6 +30,19 @@ using System.Text;
 namespace Nistec.Serialization
 {
        
+   
+    //
+    // Summary:
+    //     Provides the base class for json type.
+    public abstract class JsonType
+    {
+        //
+        // Summary:
+        //     Initializes a new instance of the System.ValueType class.
+        protected JsonType()
+        { }
+    }
+
     public class JsonResults
     {
         public static JsonResults Get(object o, JsonSettings settings = null)
@@ -64,9 +77,9 @@ namespace Nistec.Serialization
         public string TypeName { get; set; }
         public string Result { get; set; }
 
-        public object Deserialize()
+        public object Deserialize(Type returnType)
         {
-           return JsonSerializer.Deserialize(Result, Option);
+           return JsonSerializer.Deserialize(Result, returnType, Option);
         }
 
         public T Deserialize<T>()

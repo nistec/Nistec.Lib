@@ -28,11 +28,14 @@ using Nistec.Serialization;
 namespace Nistec.Generic
 {
 
-    public interface IKeyValue<T>
+    public interface IKeyValue<T> 
     {
         T this[string key] { get; set; }
         void Clear();
+
+        IDictionary<string, T> ToDictionary();
     }
+
     public interface IKeyValue : ICollection, IEnumerable, ISerialEntity
     {
         #region collection methods
@@ -58,8 +61,7 @@ namespace Nistec.Generic
 
         #endregion
 
-        IDictionary ToDictionary();
-
+        IDictionary Dictionary();
         List<KeyValuePair<string,object>> ToList();
     }
 }

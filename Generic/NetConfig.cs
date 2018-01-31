@@ -329,7 +329,7 @@ namespace Nistec.Generic
         {
             return GenericTypes.Convert<T>(Get(key), defaultValue);
         }
-
+        [Serialization.NoSerialize]
         public NetConfigItem this[int index]
         {
             get
@@ -345,7 +345,7 @@ namespace Nistec.Generic
                 this.BaseAdd(index, value);
             }
         }
-
+        [Serialization.NoSerialize]
         public new NetConfigItem this[string key]
         {
             get { return (NetConfigItem)BaseGet(key); }

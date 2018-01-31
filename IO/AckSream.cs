@@ -19,6 +19,7 @@
 //===============================================================================================================
 //licHeader|
 //using Nistec.Channels;
+using Nistec.Runtime;
 using Nistec.Serialization;
 using System;
 using System.Collections.Generic;
@@ -38,6 +39,7 @@ namespace Nistec.IO
     [Serializable]
     public class AckStream : NetStream, IDisposable
     {
+        #region static
         public static AckStream GetAckStream(bool state, string action)
         {
             return new AckStream(state ? MessageState.Ok : MessageState.Failed,
@@ -54,22 +56,23 @@ namespace Nistec.IO
              return new AckStream(MessageState.ItemNotFound, action + ": " + key + " , item not found.");
          }
 
-         public static AckStream Read(NetworkStream stream, Type returnType, int readTimeout, int InBufferSize)
-        {
-            return new AckStream(stream, returnType, readTimeout, InBufferSize);
-        }
+        // public static AckStream Read(NetworkStream stream, Type returnType, int readTimeout, int InBufferSize)
+        //{
+        //    return new AckStream(stream, returnType, readTimeout, InBufferSize);
+        //}
 
-         public static AckStream Read(PipeStream stream, Type returnType, int InBufferSize)
-        {
-            return new AckStream(stream, returnType, InBufferSize);
-        }
+        // public static AckStream Read(PipeStream stream, Type returnType, int InBufferSize)
+        //{
+        //    return new AckStream(stream, returnType, InBufferSize);
+        //}
 
-         public static AckStream Read(NetStream stream, Type returnType, int InBufferSize = 4096)
+         public static AckStream Read(NetStream stream, TransformType returnType, int InBufferSize = 4096)
         {
             if (stream != null)
                 stream.Position = 0;
             return new AckStream(stream, returnType, InBufferSize);
         }
+        #endregion
 
         #region properties
 
@@ -105,7 +108,7 @@ namespace Nistec.IO
             Message = null;
             WriteAck(stream, typeName,MessageState.Ok, null);
         }
-
+         
         public AckStream(object value)
         {
             Modified = DateTime.Now;
@@ -114,30 +117,44 @@ namespace Nistec.IO
             WriteAck(value, value == null ? null : value.GetType().FullName, MessageState.Ok, null);
         }
 
-        private AckStream(NetworkStream stream, Type returnType, int readTimeout, int InBufferSize)
+        public AckStream(NetworkStream stream, TransformType returnType, int readTimeout, int InBufferSize)
         {
-            Stopwatch watch = Stopwatch.StartNew();
-
-            CopyWithTerminateCount(stream, readTimeout, InBufferSize);
-            if (watch != null)
-            {
-                watch.Stop();
-                Console.WriteLine("Tcp CopyWithTerminateCount elapsed:{0}", watch.ElapsedMilliseconds);
-            }
+            //CopyWithTerminateCount(stream, readTimeout, InBufferSize);
+            CopyFrom(stream, readTimeout, InBufferSize);
             ReadAck(returnType);
         }
 
-        private AckStream(PipeStream stream, Type returnType, int InBufferSize)
+        public AckStream(PipeStream stream, TransformType returnType, int InBufferSize)
         {
             CopyFrom(stream, InBufferSize);
             ReadAck(returnType);
         }
 
-        private AckStream(NetStream stream, Type returnType, int InBufferSize)
+        private AckStream(NetStream stream, TransformType returnType, int InBufferSize)
             : base(stream.ToArray())
         {
             ReadAck(returnType);
         }
+
+        //public AckStream(NetworkStream stream, Type returnType, int readTimeout, int InBufferSize)
+        //{
+        //    //CopyWithTerminateCount(stream, readTimeout, InBufferSize);
+        //    CopyFrom(stream,readTimeout, InBufferSize);
+        //    ReadAck(returnType);
+        //}
+
+        //public AckStream(PipeStream stream, Type returnType, int InBufferSize)
+        //{
+        //    CopyFrom(stream, InBufferSize);
+        //    ReadAck(returnType);
+        //}
+
+        //private AckStream(NetStream stream, Type returnType, int InBufferSize)
+        //    : base(stream.ToArray())
+        //{
+        //    ReadAck(returnType);
+        //}
+
         #endregion
 
         #region Dispose
@@ -169,14 +186,14 @@ namespace Nistec.IO
                 typeName = value == null ? null : value.GetType().FullName;
 
 
-            streamer.WriteValue((int)0);
+            //streamer.WriteValue((int)0);
             streamer.WriteValue((int)State);
             streamer.WriteString(message);
             streamer.WriteValue(DateTime.Now);
             streamer.WriteValue(value);
             streamer.WriteString(typeName);
             int count = this.iLength;
-            this.Replace(count, 1);
+            //this.Replace(count, 1);
             streamer.Flush();
         }
 
@@ -184,7 +201,7 @@ namespace Nistec.IO
         {
             IBinaryStreamer streamer = new BinaryStreamer(this);
             this.Position = 0;
-            int count = streamer.ReadValue<int>();
+            //int count = streamer.ReadValue<int>();
             State = (MessageState)streamer.ReadValue<int>();
             Message = streamer.ReadString();
             Modified = streamer.ReadValue<DateTime>();
@@ -200,11 +217,36 @@ namespace Nistec.IO
             }
         }
 
-        void ReadAck(Type returnType)
+        //void ReadAck(Type returnType)
+        //{
+        //    IBinaryStreamer streamer = new BinaryStreamer(this);
+        //    this.Position = 0;
+        //    //int count = streamer.ReadValue<int>();
+        //    State = (MessageState)streamer.ReadValue<int>();
+        //    Message = streamer.ReadString();
+        //    Modified = streamer.ReadValue<DateTime>();
+        //    object value = streamer.ReadValue();
+        //    string TypeName = streamer.ReadString();
+
+        //    if (value == null)
+        //        Value = value;
+        //    else if (returnType == value.GetType())
+        //        Value = value;
+        //    else if (value.GetType() == typeof(NetStream) && !TypeName.Contains("NetStream"))
+        //        Value = streamer.StreamToValue((NetStream)value);
+        //    else
+        //        Value = value;
+
+        //    //if (TypeName != null && Type.GetType(TypeName) == typeof(JsonType))
+        //    //    Value = ValueToJson();
+
+        //}
+
+        void ReadAck(TransformType returnType)
         {
             IBinaryStreamer streamer = new BinaryStreamer(this);
             this.Position = 0;
-            int count = streamer.ReadValue<int>();
+            //int count = streamer.ReadValue<int>();
             State = (MessageState)streamer.ReadValue<int>();
             Message = streamer.ReadString();
             Modified = streamer.ReadValue<DateTime>();
@@ -213,16 +255,44 @@ namespace Nistec.IO
 
             if (value == null)
                 Value = value;
-            else if (returnType == value.GetType())
-                Value = value;
-            else if (value.GetType() == typeof(NetStream) && !TypeName.Contains("NetStream"))
+            else if(returnType== TransformType.Stream)
+            {
+                if(value.GetType() == typeof(NetStream))
+                    Value = value;
+                else
+                    Value = BinarySerializer.SerializeToStream(value);
+            }
+            else if (value.GetType() == typeof(NetStream))// && !TypeName.Contains("NetStream"))
                 Value = streamer.StreamToValue((NetStream)value);
             else
                 Value = value;
+
+            //if (TypeName != null && Type.GetType(TypeName) == typeof(JsonType))
+            //    Value = ValueToJson();
+
         }
 
         #endregion
 
+        public string ValueToJson()
+        {
+            return JsonSerializer.Serialize(Value);
+        }
+
+        public string ToJson()
+        {
+            ReadAck();
+            return JsonSerializer.Serialize(Value);
+        }
+
+        //public NetStream ToJsonStream()
+        //{
+        //    string json = ToJson();
+        //    NetStream nstream = new NetStream();
+        //    var bytes= Encoding.UTF8.GetBytes(json);
+        //    nstream.Write(bytes, 0, bytes.Length);
+        //    return nstream;
+        //}
 
     }
 

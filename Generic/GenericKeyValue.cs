@@ -34,27 +34,30 @@ namespace Nistec.Generic
 {
 
     [Serializable]
-    public class GenericKeyValue : GenericKeyValue<object>, ISerialEntity, IKeyValue
+    public class GenericKeyValue : GenericKeyValue<object>, ISerialEntity, IKeyValue, IKeyValue<object>,ISerialJson
     {
       
         #region ctor
 
         public GenericKeyValue()
         {
-
+            EnableDuplicate = false;
         }
         public GenericKeyValue(List<KeyValuePair<string, object>> keyValueList)
         {
+            EnableDuplicate = false;
             Load(keyValueList);
         }
 
         public GenericKeyValue(KeyValuePair<string, object>[] keyValueArray)
         {
+            EnableDuplicate = false;
             this.AddRange(keyValueArray);
         }
 
         public GenericKeyValue(byte[] bytes)
         {
+            EnableDuplicate = false;
             using (MemoryStream ms = new MemoryStream(bytes))
             {
                 EntityRead(ms, null);
@@ -63,6 +66,7 @@ namespace Nistec.Generic
 
         public GenericKeyValue(object[] keyValue)
         {
+            EnableDuplicate = false;
             Load(ParseQuery(keyValue));
         }
 
@@ -95,20 +99,47 @@ namespace Nistec.Generic
 
         #endregion
 
-        /// <summary>
-        /// Get this as sorted <see cref="IOrderedEnumerable<KeyValuePair<string, object>>"./>
-        /// </summary>
-        /// <returns></returns>
-        public IOrderedEnumerable<KeyValuePair<string, object>> Sorted()
+        #region ISerialJson
+
+        public string ToJson(bool pritty = false)
         {
-            var sortedDict = from entry in this orderby entry.Key ascending select entry;
-            return sortedDict;
+            return EntityWrite(new JsonSerializer(JsonSerializerMode.Write, null), pritty);
         }
+
+        public string EntityWrite(IJsonSerializer serializer, bool pretty = false)
+        {
+            if (serializer == null)
+                serializer = new JsonSerializer(JsonSerializerMode.Write, null);
+
+            foreach (var entry in this)
+            {
+                serializer.WriteToken(entry.Key, entry.Value);
+            }
+            return serializer.WriteOutput(pretty);
+        }
+
+        public object EntityRead(string json, IJsonSerializer serializer)
+        {
+            if (serializer == null)
+                serializer = new JsonSerializer(JsonSerializerMode.Read, null);
+
+            Dictionary<string, object> d = new Dictionary<string, object>();
+            serializer.ParseTo(d, json);
+
+            //var dic = serializer.ParseToDictionary(json);
+
+            AddRange(d.ToArray());
+
+            return this;
+        }
+
+
+        #endregion
 
     }
 
     [Serializable]
-    public class GenericNameValue : GenericKeyValue<string>, ISerialEntity, IKeyValue, IDataRowAdaptor
+    public class GenericNameValue : GenericKeyValue<string>, ISerialEntity, IKeyValue, IDataRowAdaptor, IKeyValue<string>, ISerialJson
     {
 
         #region collection methods
@@ -129,20 +160,23 @@ namespace Nistec.Generic
 
         public GenericNameValue()
         {
-
+            EnableDuplicate = false;
         }
         public GenericNameValue(List<KeyValuePair<string, string>> keyValueList)
         {
+            EnableDuplicate = false;
             Load(keyValueList);
         }
 
         public GenericNameValue(KeyValuePair<string, string>[] keyValueArray)
         {
+            EnableDuplicate = false;
             this.AddRange(keyValueArray);
         }
 
         public GenericNameValue(byte[] bytes)
         {
+            EnableDuplicate = false;
             using (MemoryStream ms = new MemoryStream(bytes))
             {
                 EntityRead(ms, null);
@@ -151,12 +185,15 @@ namespace Nistec.Generic
 
         public GenericNameValue(NetStream stream)
         {
+            EnableDuplicate = false;
             EntityRead(stream, null);
         }
 
         public GenericNameValue(string[] keyValue)
         {
-            Load(ParseQuery(keyValue));
+            EnableDuplicate = false;
+            Parse(keyValue);
+            //Load(ParseQuery(keyValue));
         }
 
         //public static GenericNameValue Create(params string[] keyValue)
@@ -166,7 +203,24 @@ namespace Nistec.Generic
         //    query.Load(pair);
         //    return query;
         //}
-        
+
+        void Parse(string[] keyValueParameters)
+        {
+            if (keyValueParameters==null)
+            {
+                throw new ArgumentNullException("keyValueParameters");
+            }
+
+            int count = keyValueParameters.Length;
+            if (count % 2 != 0)
+            {
+                throw new ArgumentException("values parameter not correct, Not match key value arguments");
+            }
+            for (int i = 0; i < count; i++)
+            {
+                this[keyValueParameters[i]] = keyValueParameters[++i];
+            }
+        }
         public override void Prepare(DataRow dr)
         {
             this.ToNameValue(dr);
@@ -178,8 +232,10 @@ namespace Nistec.Generic
             if (keyValue == null)
                 return pair;
             string[] array = null;
-            if(keyValue.Length==1)
+            if (keyValue.Length == 1)
             {
+                if (string.IsNullOrEmpty(keyValue[0]))
+                    return pair;
                 array = keyValue[0].Split('|');
             }
             else
@@ -285,6 +341,54 @@ namespace Nistec.Generic
             string[] val = ToKeyValueArray();
             return JoinArg(val);
         }
+
+        public string ToQueryString()
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (var entry in this)
+            {
+                sb.Append(entry.Key + "=" + entry.Value + "&");
+            }
+            return (sb.Length == 0) ? "" : sb.ToString().TrimEnd('&');
+        }
+
+        public void LoadQueryString(string qs, bool cleanAmp=true)
+        {
+            if (qs == null)
+            {
+                throw new ArgumentNullException("ParseQueryString.qs");
+            }
+
+            string str = cleanAmp ? CLeanQueryString(qs) : qs;
+
+            if (string.IsNullOrEmpty(str))
+            {
+                throw new ArgumentNullException("ParseQueryString.qs");
+            }
+            if (!str.Contains('='))
+            {
+                throw new ArgumentException("QueryString is incorrect");
+            }
+            this.Clear();
+            foreach (string arg in str.Split(new char[] { '&' }))
+            {
+                if (!string.IsNullOrEmpty(arg))
+                {
+                    string[] strArray = arg.Split(new char[] { '=' });
+                    if (strArray.Length == 2)
+                    {
+                        string key = cleanAmp ? strArray[0] : Regx.RegexReplace("amp;", strArray[0], "");
+                        this[key] = strArray[1];
+                    }
+                    else
+                    {
+                        this[arg] = null;
+                    }
+                }
+            }
+
+        }
+
         #endregion
 
         #region ParseArgs
@@ -320,35 +424,35 @@ namespace Nistec.Generic
 
         #region ParseQueryString
 
-        public static GenericNameValue ParseQueryString(params string[] qs)
-        {
-            StringBuilder sb = new StringBuilder();
-            int len = qs.Length;
-            for (int i = 0; i < qs.Length; i++)
-            {
-                sb.Append(qs[i]);
-                if (i < len - 1 && !qs[i].EndsWith("&") && !qs[i + 1].StartsWith("&"))
-                {
-                    sb.Append("&");
-                }
-            }
+        //public static GenericNameValue ParseQueryString(params string[] qs)
+        //{
+        //    StringBuilder sb = new StringBuilder();
+        //    int len = qs.Length;
+        //    for (int i = 0; i < qs.Length; i++)
+        //    {
+        //        sb.Append(qs[i]);
+        //        if (i < len - 1 && !qs[i].EndsWith("&") && !qs[i + 1].StartsWith("&"))
+        //        {
+        //            sb.Append("&");
+        //        }
+        //    }
 
-            return ParseQueryString(sb.ToString());
-        }
+        //    return ParseQueryString(sb.ToString());
+        //}
 
         public static string CLeanQueryString(string qs)
         {
             return qs.Replace("&amp;", "&");
         }
 
-        public static GenericNameValue ParseQueryString(string qs)
+        public static GenericNameValue ParseQueryString(string qs, bool cleanAmp = true)
         {
             GenericNameValue dictionary = new GenericNameValue();
 
             if (qs == null)
                 qs = string.Empty;
 
-            string str = CLeanQueryString(qs);
+            string str = cleanAmp ? CLeanQueryString(qs) : qs;
 
             if (string.IsNullOrEmpty(str))
             {
@@ -366,7 +470,7 @@ namespace Nistec.Generic
                     string[] strArray = arg.Split(new char[] { '=' });
                     if (strArray.Length == 2)
                     {
-                        string key = Regx.RegexReplace("amp;", strArray[0], "");
+                        string key = cleanAmp ? strArray[0] : Regx.RegexReplace("amp;", strArray[0], "");
                         dictionary[key] = strArray[1];
                     }
                     else
@@ -394,7 +498,7 @@ namespace Nistec.Generic
         #endregion
 
         /// <summary>
-        /// Get this as sorted <see cref="IOrderedEnumerable<KeyValuePair<string, object>>"./>
+        /// Get this as sorted <see cref="IOrderedEnumerable<KeyValuePair<string, object>>"/>
         /// </summary>
         /// <returns></returns>
         public IOrderedEnumerable<KeyValuePair<string, string>> Sorted()
@@ -403,14 +507,88 @@ namespace Nistec.Generic
             return sortedDict;
         }
 
+       
+        #region ISerialJson
+
+        public string ToJson(bool pritty = false)
+        {
+            return EntityWrite(new JsonSerializer(JsonSerializerMode.Write, null), pritty);
+        }
+
+
+        public string EntityWrite(IJsonSerializer serializer, bool pretty = false)
+        {
+            if (serializer == null)
+                serializer = new JsonSerializer(JsonSerializerMode.Write, null);
+
+            foreach (var entry in this)
+            {
+                serializer.WriteToken(entry.Key, entry.Value);
+            }
+            return serializer.WriteOutput(pretty);
+        }
+
+        public object EntityRead(string json, IJsonSerializer serializer)
+        {
+            if (serializer == null)
+                serializer = new JsonSerializer(JsonSerializerMode.Read, null);
+            Dictionary<string, string> d = new Dictionary<string, string>();
+            serializer.ParseTo(d,json);
+
+            //var dic = serializer.ParseToDictionaryString(json);
+
+            AddRange(d.ToArray());
+
+            return this;
+        }
+
+
+        #endregion
+
     }
 
     [Serializable]
     public class GenericKeyValue<T> : List<KeyValuePair<string, T>>, ISerialEntity, IKeyValue<T>
     {
+        //static object olock = new object();
 
         #region collection methods
 
+
+        void Set(KeyValuePair<string, T> item)
+        {
+            if (item.Key == null)
+            {
+                throw new ArgumentNullException("GenericKeyValue.Add item");
+            }
+            var index = (this.Count == 0) ? -1 : IndexOf(item.Key);
+
+            if (index < 0)
+                base.Add(item);
+            else
+                base[index] = item;
+        }
+
+        public new void Add(KeyValuePair<string, T> item)
+        {
+            if (item.Key == null)
+            {
+                throw new ArgumentNullException("GenericKeyValue.Add item");
+            }
+            if (EnableDuplicate)
+            {
+                base.Add(item);
+            }
+            else
+            {
+                var index = (this.Count == 0) ? -1 : IndexOf(item.Key);
+
+                if (index < 0)
+                    base.Add(item);
+                else
+                    base[index] = item;
+            }
+        }
 
         public virtual void Add(string key, T value)
         {
@@ -418,10 +596,26 @@ namespace Nistec.Generic
             {
                 throw new ArgumentNullException("GenericKeyValue.Add key");
             }
-            if (Contains(key))
-                RemoveItem(key);
+
             this.Add(new KeyValuePair<string, T>(key, value));
+
+            //var index = (this.Count == 0) ? -1: IndexOf(key);
+
+            //if (index < 0)
+            //    this.Add(new KeyValuePair<string, T>(key, value));
+            //else
+            //    this[index] = new KeyValuePair<string, T>(key, value);
+
+
+            //if (Contains(key))
+            //    RemoveItem(key);
+            //this.Add(new KeyValuePair<string, T>(key, value));
         }
+
+        //public new void AddRange(IEnumerable<KeyValuePair<string, T>> items)
+        //{
+        //    AddRange(items);
+        //}
 
         public virtual void RemoveItem(string key)
         {
@@ -437,9 +631,19 @@ namespace Nistec.Generic
         {
             return this.Where(p => p.Key == key).FirstOrDefault();
         }
-
-
-
+        [Serialization.NoSerialize]
+        public new KeyValuePair<string, T> this[int index]
+        {
+            get
+            {
+                return this[index];
+            }
+            set
+            {
+                this.Insert(index, value);
+            }
+        }
+        [Serialization.NoSerialize]
         public T this[string key]
         {
             get
@@ -448,7 +652,7 @@ namespace Nistec.Generic
             }
             set
             {
-                Add(key, value);
+                this.Set(new KeyValuePair<string, T>(key, value));
             }
         }
 
@@ -459,7 +663,9 @@ namespace Nistec.Generic
 
         public int IndexOf(string key)
         {
-            return this.Select((n, i) => new { Value = n, Index = i }).First().Index;
+            return this.FindIndex(p => p.Key == key);
+            //var item = this.Select((n, i) => new { Value = n, Index = i }).FirstOrDefault();
+            //return item == null ? -1 : item.Index;
         }
 
         #endregion
@@ -468,20 +674,23 @@ namespace Nistec.Generic
 
         public GenericKeyValue()
         {
-
+            EnableDuplicate = false;
         }
         public GenericKeyValue(List<KeyValuePair<string, T>> keyValueList)
         {
+            EnableDuplicate = false;
             Load(keyValueList);
         }
 
         public GenericKeyValue(KeyValuePair<string, T>[] keyValueArray)
         {
+            EnableDuplicate = false;
             this.AddRange(keyValueArray);
         }
 
         public GenericKeyValue(byte[] bytes)
         {
+            EnableDuplicate = false;
             using (MemoryStream ms = new MemoryStream(bytes))
             {
                 EntityRead(ms, null);
@@ -490,6 +699,7 @@ namespace Nistec.Generic
 
         public GenericKeyValue(object[] keyValue)
         {
+            EnableDuplicate = false;
             Load(ParseQuery(keyValue));
         }
 
@@ -497,6 +707,26 @@ namespace Nistec.Generic
         {
             this.ToKeyValue(dr);
         }
+
+        /// <summary>
+        /// Get this as sorted <see cref="IOrderedEnumerable<KeyValuePair<string, T>>"./>
+        /// </summary>
+        /// <returns></returns>
+        public IOrderedEnumerable<KeyValuePair<string, T>> Sorted()
+        {
+            var sortedDict = from entry in this orderby entry.Key ascending select entry;
+            return sortedDict;
+        }
+
+        public void Load(List<KeyValuePair<string, T>> keyValueList)
+        {
+                this.Clear();
+                this.AddRange(keyValueList.ToArray());
+        }
+
+        #endregion
+
+        #region static
         internal static GenericKeyValue<T> CreateList(params object[] keyValue)
         {
             GenericKeyValue<T> query = new GenericKeyValue<T>(ParseQuery(keyValue));
@@ -525,17 +755,17 @@ namespace Nistec.Generic
             }
             return pair;
         }
-
-        public void Load(List<KeyValuePair<string, T>> keyValueList)
-        {
-            this.Clear();
-            this.AddRange(keyValueList.ToArray());
-        }
-
         #endregion
 
         #region properties
 
+        /// <summary>
+        /// Get or Set if enable duplicate keys, Default is (false)
+        /// </summary>
+        public bool EnableDuplicate
+        {
+            get;set;
+        }
 
         public T Get(string key)
         {
@@ -554,7 +784,7 @@ namespace Nistec.Generic
 
         public Type GetValueType()
         {
-            return typeof(string);
+            return typeof(T);
         }
 
         #endregion
@@ -591,7 +821,7 @@ namespace Nistec.Generic
 
         #region converter
 
-        public IDictionary ToDictionary()
+        public IDictionary Dictionary()
         {
             var dict = this
                .Select(item => new { Key = item.Key, Value = item.Value })
@@ -600,13 +830,32 @@ namespace Nistec.Generic
             return dict;
         }
 
-        public IDictionary<string, T> ToGenericDictionary()
+        public IDictionary<string, T> ToDictionary()
         {
             var dict = this
                .Select(item => new { Key = item.Key, Value = item.Value })
                .Distinct()
                .ToDictionary(item => item.Key, item => item.Value, StringComparer.OrdinalIgnoreCase);
             return dict;
+        }
+
+        //public IDictionary<string, T> ToGenericDictionary()
+        //{
+        //    var dict = this
+        //       .Select(item => new { Key = item.Key, Value = item.Value })
+        //       .Distinct()
+        //       .ToDictionary(item => item.Key, item => item.Value, StringComparer.OrdinalIgnoreCase);
+        //    return dict;
+        //}
+
+        public IEnumerable<string> Keys()
+        {
+            return this.Select(item => item.Key);
+        }
+
+        public IEnumerable<T> Values()
+        {
+            return this.Select(item => item.Value);
         }
 
         public List<KeyValuePair<string, object>> ToList()
@@ -619,5 +868,4 @@ namespace Nistec.Generic
         
     }
 
-   
 }

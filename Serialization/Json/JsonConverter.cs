@@ -196,6 +196,9 @@ namespace Nistec.Serialization
         }
         public static string PrintJson(string input)
         {
+            if (string.IsNullOrEmpty(input))
+                return input;
+
             var output = new StringBuilder();
             int depth = 0;
             int len = input.Length;

@@ -33,7 +33,7 @@ namespace Nistec.Serialization
 
         public DynamicJson(string json)
         {
-            var parse = JsonSerializer.Parse(json);
+            var parse = JsonSerializer.Parse(json,typeof(DynamicObject));
 
             if (parse is IDictionary<string, object>)
                 _dictionary = (IDictionary<string, object>)parse;

@@ -153,7 +153,7 @@ namespace Nistec.Generic
 
         public static GenericRecord Parse(string json)
         {
-            var dic= (IDictionary)JsonSerializer.Deserialize(json);
+            var dic= (IDictionary<string, object>)JsonSerializer.Deserialize(json,typeof(Dictionary<string,object>));
             GenericRecord record = new GenericRecord(dic);
             return record;
         }
@@ -273,6 +273,7 @@ namespace Nistec.Generic
             }
             return o.ToArray();
         }
+
         #endregion
 
         #region ctor
@@ -730,9 +731,9 @@ namespace Nistec.Generic
         /// Convert GenericRecord to Json string
         /// </summary>
         /// <returns></returns>
-        public string ToJson()
+        public string ToJson(bool pretty = false)
         {
-            var json = JsonSerializer.Serialize(this.Record);
+            var json = JsonSerializer.Serialize(this.Record, pretty);
             return json;
         }
 
@@ -816,11 +817,16 @@ namespace Nistec.Generic
 
         #region ISerialJson
 
-        public string EntityWrite(IJsonSerializer serializer)
+        public string EntityWrite(IJsonSerializer serializer, bool pretty = false)
         {
             if (serializer == null)
                 serializer = new JsonSerializer( JsonSerializerMode.Write,null);
-            return serializer.Write(this, this.GetType().BaseType);
+            if(pretty)
+            {
+                var json= serializer.Write(this.Record, this.GetType().BaseType);
+                return JsonSerializer.Print(json);
+            }
+            return serializer.Write(this.Record, this.GetType().BaseType);
         }
 
         public object EntityRead(string json, IJsonSerializer serializer)
@@ -842,7 +848,7 @@ namespace Nistec.Generic
         
         #region IEntityDictionary
 
-        public Dictionary<string,object> ToDictionary()
+        public IDictionary<string,object> ToDictionary()
         {
             return this; 
         }
@@ -859,23 +865,41 @@ namespace Nistec.Generic
 
         public void EntityWrite(Stream stream, IBinaryStreamer streamer)
         {
+            bool rwSerialType = true;
+
             if (streamer == null)
                 streamer = new BinaryStreamer(stream);
-            streamer.WriteValue(this, this.GetType().BaseType);
+            else
+                rwSerialType = false;
+
+            ((BinaryStreamer)streamer).WriteDictionaryAsEntity(this.Record, rwSerialType, rwSerialType);
+
+            //streamer.WriteValue(this, this.GetType().BaseType);
         }
 
         public void EntityRead(Stream stream, IBinaryStreamer streamer)
         {
+            bool rwSerialType = true;
+
             if (streamer == null)
                 streamer = new BinaryStreamer(stream);
+            else
+                rwSerialType = false;
 
-            IDictionary<string, object> gr = (IDictionary<string, object>)streamer.ReadValue();
+            this.Clear();
             
-            if (gr != null)
-            {
-                Load(gr as IDictionary);
-            }
+            ((BinaryStreamer)streamer).TryReadEntityToDictionary(this, rwSerialType, rwSerialType);
+
+            //((BinaryStreamer)streamer).ReadToDictionary(this,true);
         }
+
+        public NetStream ToStream()
+        {
+            NetStream stream = new NetStream();
+            EntityWrite(stream, null);
+            return stream;
+        }
+
         #endregion
 
     }

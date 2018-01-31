@@ -31,24 +31,34 @@ using Nistec.Serialization;
 
 namespace Nistec.Runtime
 {
-    public interface IMessage : IMessageStream
+    public enum TransformType : byte { None = 0, Object = 100, Stream = 101, Json = 102 }//{Message=0,Stream=1,Json=2 }
+
+    public interface IMessageStream
     {
-       /// <summary>
-        /// Get or Set The message key.
+        /// <summary>
+        /// Get or Set the message key.
         /// </summary>
-        string Key { get; set; }
+        string Id { get; set; }
         /// <summary>
         /// Get or Set The serializer formatter.
         /// </summary>
         Formatters Formatter { get; set; }
         /// <summary>
-        /// Get or Set The message key.
+        /// Get or Set the message detail.
         /// </summary>
-        string Id { get; set; }
+        string Label { get; set; }
         /// <summary>
-        /// Get or Set The message command.
+        /// Get or Set the message group.
+        /// </summary>
+        string GroupId { get; set; }
+        /// <summary>
+        /// Get or Set the message command.
         /// </summary>
         string Command { get; set; }
+        /// <summary>
+        /// Get or Set who send the message.
+        /// </summary>
+        string Sender { get; set; }
         /// <summary>
         /// Get or Set indicate wether the message is a duplex type.
         /// </summary>
@@ -58,33 +68,73 @@ namespace Nistec.Runtime
         /// </summary>
         int Expiration { get; set; }
         /// <summary>
-        /// Get or Set The last time that message was modified.
+        /// Get or Set the last time that message was modified.
         /// </summary>
         DateTime Modified { get; set; }
         /// <summary>
-        /// Get or Set The extra arguments for current message.
+        /// Get or Set the extra arguments for current message.
         /// </summary>
-        GenericNameValue Args { get; set; }
+        NameValueArgs Args { get; set; }
+        /// <summary>
+        /// Get or Set the transform type name.
+        /// </summary>
+        TransformType TransformType { get; set; }
+        /// <summary>
+        /// Get entity as json
+        /// </summary>
+        /// <param name="pretty"></param>
+        /// <returns></returns>
+        string ToJson(bool pretty = false);
+        /// <summary>
+        /// Get body stream ready to read from position 0.
+        /// </summary>
+        /// <returns></returns>
+        NetStream GetStream();
+        ///// <summary>
+        ///// Get or Set The return type name.
+        ///// </summary>
+        //string ReturnTypeName { get; set; }
     }
 
-    public interface IMessageStream
-    {
-        NetStream GetBodyStream();
+    //public interface IMessageStream : IDisposable
+    //{
 
-        NetStream BodyStream { get; }
+    //    ///// <summary>
+    //    ///// Get or Set The message command.
+    //    ///// </summary>
+    //    //string Command { get; set; }
+    //    /// <summary>
+    //    /// Get or Set indicate wether the message is a duplex type.
+    //    /// </summary>
+    //    bool IsDuplex { get; set; }
+    //    /// <summary>
+    //    ///  Get or Set The message expiration.
+    //    /// </summary>
+    //    int Expiration { get; set; }
+    //    ///// <summary>
+    //    ///// Get or Set The result type name.
+    //    ///// </summary>
+    //    //string ReturnTypeName { get; set; }
+    //}
 
-        string TypeName { get; }
+    //public interface IMessageStream
+    //{
+    //    NetStream GetBodyStream();
 
-        void SetBody(object value);
+    //    NetStream BodyStream { get; }
 
-        void SetBody(byte[] body, Type type);
+    //    string TypeName { get; }
 
-        object DecodeBody();
+    //    void SetBody(object value);
 
-        bool IsEmpty { get; }
-    }
+    //    void SetBody(byte[] body, Type type);
 
-   
+    //    object DecodeBody();
 
-    
+    //    bool IsEmpty { get; }
+    //}
+
+
+
+
 }

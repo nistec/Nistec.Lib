@@ -202,7 +202,7 @@ namespace Nistec.Serialization
             else
             {
                 td = new Dictionary<string, TypeInfo>();
-                PropertyInfo[] pr = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                PropertyInfo[] pr = type.GetProperties(BindingFlags.Public | BindingFlags.Instance,false);
                 foreach (PropertyInfo p in pr)
                 {
                     TypeInfo ti = GetTypeInfo(p.PropertyType, p.Name, p.CanWrite, customType);
@@ -307,13 +307,13 @@ namespace Nistec.Serialization
             if (_jsonFieldsCache.TryGetValue(type, out val))
                 return val;
 
-            PropertyInfo[] props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            PropertyInfo[] props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance,false);
             List<JsonFields> fieldsGetter = new List<JsonFields>();
             foreach (PropertyInfo p in props)
             {
                 if (!p.CanWrite && showReadOnlyProperties == false) 
                     continue;
-                if(SerializeTools.HasNoSerializeAttribute(p.PropertyType))
+                if(SerializeTools.HasNoSerializeAttribute(p))
                     continue;
                 if (ignoreAttributes != null)
                 {
@@ -337,7 +337,7 @@ namespace Nistec.Serialization
             FieldInfo[] fi = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
             foreach (var f in fi)
             {
-                if (SerializeTools.HasNoSerializeAttribute(f.FieldType))
+                if (SerializeTools.HasNoSerializeAttribute(f))
                     continue;
                 if (ignoreAttributes != null)
                 {

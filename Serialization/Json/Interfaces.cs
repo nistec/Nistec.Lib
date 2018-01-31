@@ -34,6 +34,17 @@ namespace Nistec.Serialization
         object Read(string json, Type type);
 
         T Read<T>(string json);
+
+        void WriteToken(string name, object obj, Type baseType);
+        void WriteToken(string name, object obj);
+        string WriteOutput(bool pretty = false);
+
+        void ParseTo(Dictionary<string, object> d, string json);
+
+        void ParseTo(Dictionary<string, string> d, string json);
+
+        //IDictionary<string, object> ParseToDictionary(string json);
+        //void ParseToDictionary<T>(string json, IDictionary<string, T> d);
     }
 
     public interface ISerialJson
@@ -42,7 +53,8 @@ namespace Nistec.Serialization
         /// Write entity to stream.
         /// </summary>
         /// <param name="serializer"></param>
-        string EntityWrite(IJsonSerializer serializer);
+        /// <param name="pretty"></param>
+        string EntityWrite(IJsonSerializer serializer, bool pretty = false);
 
         /// <summary>
         /// Read entity from json.

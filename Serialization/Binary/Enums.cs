@@ -30,7 +30,7 @@ namespace Nistec.Serialization
     {
         None = 0,
         ListGenericType = 28,
-        DictionaryType = 29,
+        hashtableType = 29,
         DictionaryGenericType = 30,
         DataTableType = 31,
         DataSetType = 32,
@@ -42,6 +42,9 @@ namespace Nistec.Serialization
         SerialContextType = 38,
         GenericKeyValueType = 39,
         IEntityDictionaryType=40,
+        dictionaryAssignType = 43,
+        netStreamType = 44,
+        dictionaryEntityType = 45,
         OtherType = 99,
         GenericEntityAsIDictionaryType = 100,
         GenericEntityAsIEntityType = 101
@@ -105,7 +108,7 @@ namespace Nistec.Serialization
         objectArrayType = 26,
         iCollectionType = 27,
         listGenericType = 28,
-        dictionaryType = 29,
+        hashtableType = 29,
         dictionaryGenericType = 30,
         dataTableType = 31,
         dataSetType = 32,
@@ -119,6 +122,9 @@ namespace Nistec.Serialization
         iEntityDictionaryType = 40,
         stringDictionary=41,
         nameValueCollection=42,
+        dictionaryAssignType = 43,
+        netStreamType = 44,
+        dictionaryEntityType = 45,
         otherType = 99,
         genericEntityAsIDictionaryType = 100,
         genericEntityAsIEntityType = 101

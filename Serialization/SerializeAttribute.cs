@@ -25,11 +25,22 @@ using System.Text;
 
 namespace Nistec.Serialization
 {
-    public enum Formatters
+
+    //[AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, Inherited = false)]
+    //public class EntitySerializeAttribute : Attribute
+    //{
+    //    public EntitySerializeAttribute() { }
+    //}
+
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Class, Inherited = false)]
+    public class NoSerializeAttribute : Attribute
     {
-        BinaryFormatter,
-        BinarySerializer,
-        Xml,
-        Json
+        public NoSerializeAttribute() { }
+    }
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Class, Inherited = false)]
+    public class SerializeAttribute : Attribute
+    {
+        public SerializeAttribute() { }
     }
 }

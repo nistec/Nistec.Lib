@@ -23,6 +23,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Reflection;
+using Nistec.Runtime;
 
 namespace Nistec.Generic
 {
@@ -84,7 +85,7 @@ namespace Nistec.Generic
         public static IEnumerable<PropertyAttributeInfo<T>> GetPropertiesInfo<T>(Type t)
         {
 
-            IEnumerable<PropertyAttributeInfo<T>> props = from p in t.GetProperties()
+            IEnumerable<PropertyAttributeInfo<T>> props = from p in t.GetProperties(true)
                                                           let attr = p.GetCustomAttributes(typeof(T), true)
                                                           where attr.Length == 1
                                                           select new PropertyAttributeInfo<T>() { Property = p, Attribute = (T)attr.First() };
@@ -96,27 +97,66 @@ namespace Nistec.Generic
         public static IEnumerable<object> GetPropertiesValues(object instance, bool sorted = false)
         {
             if (sorted)
-                return from p in instance.GetType().GetProperties().OrderBy(p => p.Name)
+                return from p in instance.GetType().GetProperties(true).OrderBy(p => p.Name)
                        select p.GetValue(instance, null);
             else
-                return from p in instance.GetType().GetProperties()
+                return from p in instance.GetType().GetProperties(true)
                        select p.GetValue(instance, null);
         }
 
         public static IEnumerable<object> GetPropertiesValues(object instance, IEnumerable<string> fields, bool sorted = false)
         {
             if (sorted)
-                return from p in instance.GetType().GetProperties().Where(p => fields.Contains(p.Name)).OrderBy(p => p.Name)
+                return from p in instance.GetType().GetProperties(true).Where(p => fields.Contains(p.Name)).OrderBy(p => p.Name)
                        select p.GetValue(instance, null);
             else
-                return from p in instance.GetType().GetProperties().Where(p => fields.Contains(p.Name))
+                return from p in instance.GetType().GetProperties(true).Where(p => fields.Contains(p.Name))//.OrderBy(P=> fields)
                        select p.GetValue(instance, null);
+        }
+
+        public static IEnumerable<object> SelectPropertiesValues(object instance, IEnumerable<string> fields, bool sortedByFields)
+        {
+            if (sortedByFields)
+                return from f in fields
+                       join p in instance.GetType().GetProperties(true)//.Where(p => fields.Contains(p.Name))
+                            on f equals p.Name
+                       let val = p.GetValue(instance, null)
+                       select new
+                       {
+                           val
+                       };
+            else
+                return from p in instance.GetType().GetProperties(true)//.Where(p => fields.Contains(p.Name))
+                       join f in fields
+                            on p.Name equals f
+                       let val = p.GetValue(instance, null)
+                       select new
+                       {
+                           val
+                       };
+        }
+        public static IDictionary<string,object> SelectPropertiesKeyValues(object instance, IEnumerable<string> fields, bool sortedByFields)
+        {
+            if (sortedByFields)
+                return (from f in fields
+                       join p in instance.GetType().GetProperties(true)
+                            on f equals p.Name
+                       let val = p.GetValue(instance, null)
+                       let key = f
+                       select new { key, val }).ToDictionary(c => c.key, c => c.val);
+            else
+                return (from p in instance.GetType().GetProperties(true)
+                       join f in fields
+                            on p.Name equals f
+                       let val = p.GetValue(instance, null)
+                       let key = f
+                       select new { key, val }).ToDictionary(c => c.key, c => c.val);
         }
 
         public static IEnumerable<PropertyAttributeInfo<T>> GetPropertiesInfo<T>(object instance)
         {
 
-            IEnumerable<PropertyAttributeInfo<T>> props = from p in instance.GetType().GetProperties()
+            IEnumerable<PropertyAttributeInfo<T>> props = from p in instance.GetType().GetProperties(true)
              let attr = p.GetCustomAttributes(typeof(T), true)
              where attr.Length == 1
             select new PropertyAttributeInfo<T>() { Property = p, Attribute = (T)attr.First() };
@@ -127,7 +167,7 @@ namespace Nistec.Generic
         public static IEnumerable<PropertyAttributeInfo<T>> GetPropertiesInfoOptional<T>(object instance)
         {
 
-            IEnumerable<PropertyAttributeInfo<T>> props = from p in instance.GetType().GetProperties()
+            IEnumerable<PropertyAttributeInfo<T>> props = from p in instance.GetType().GetProperties(true)
                                                           let attr = p.GetCustomAttributes(typeof(T), true)
                                                           //where attr.Length == 1
                                                           select new PropertyAttributeInfo<T>() { Property = p, Attribute =attr==null?default(T):(T)attr.FirstOrDefault() };
@@ -177,7 +217,7 @@ namespace Nistec.Generic
             if (instance == null)
                 throw new ArgumentNullException("instance");
 
-            PropertyInfo[] properties = instance.GetType().GetProperties();
+            PropertyInfo[] properties = instance.GetType().GetProperties(true);
             List<T> list = new List<T>();
 
             foreach (PropertyInfo property in properties)
@@ -210,7 +250,7 @@ namespace Nistec.Generic
         public static PropertyInfo[] GetActiveProperties<T>(object instance, bool canRead, bool canWright) where T : Attribute
         {
 
-            PropertyInfo[] properties = instance.GetType().GetProperties();
+            PropertyInfo[] properties = instance.GetType().GetProperties(true);
             List<PropertyInfo> list = new List<PropertyInfo>();
 
             foreach (PropertyInfo property in properties)
@@ -244,7 +284,7 @@ namespace Nistec.Generic
         public static PropertyInfo[] GetActiveProperties<T>(object instance, bool canRead, bool canWright, bool disableIdentity) where T : Attribute
         {
 
-            PropertyInfo[] properties = instance.GetType().GetProperties();
+            PropertyInfo[] properties = instance.GetType().GetProperties(true);
             List<PropertyInfo> list = new List<PropertyInfo>();
 
             foreach (PropertyInfo property in properties)

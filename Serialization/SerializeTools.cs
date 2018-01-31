@@ -33,11 +33,12 @@ using Nistec.Generic;
 using Nistec.IO;
 using System.Runtime.Serialization.Formatters;
 using System.Collections.Specialized;
-
+using Nistec.Runtime;
+using System.Collections.Concurrent;
 
 namespace Nistec.Serialization
 {
-  
+
     /// <summary>
     ///   Some help functions for the serializing framework. As these functions are complexer
     ///   they can be converted to single classes.
@@ -47,10 +48,23 @@ namespace Nistec.Serialization
 
         #region PropertyInfo
 
+        
+        //public static PropertyInfo[] GetValidProperties(Type type, bool isPublic)
+        //{
+        //    return type.GetProperties(isPublic, false, SerializeTools.GetExcludeAttribute());
+        //}
+        //public static Type[] GetExcludeAttribute()
+        //{
+        //    return new Type[] { typeof(NoSerializeAttribute) };//, typeof(EntitySerializeAttribute) };
+        //}
+
+
+        /*
         public static PropertyInfo[] GetValidProperties(Type type, bool isPublic)
         {
+           //&& p.PropertyType.IsSerializable
             if (isPublic)
-                return type.GetProperties().Where(p => ((p.PropertyType.IsPublic && !p.IsDefined(typeof(NoSerializeAttribute), false)) || (p.IsDefined(typeof(EntitySerializeAttribute), false))) /*&& p.PropertyType.IsSerializable*/ && p.CanWrite && p.CanRead).ToArray();
+                return type.GetProperties().Where(p => ((p.PropertyType.IsPublic && !p.IsDefined(typeof(NoSerializeAttribute), false)) || (p.IsDefined(typeof(EntitySerializeAttribute), false)))  && p.CanWrite && p.CanRead).ToArray();
             return type.GetProperties().Where(p => p.CanWrite && p.CanRead).ToArray();
         }
 
@@ -62,8 +76,10 @@ namespace Nistec.Serialization
             }
             var type = instance.GetType();
 
+        //&& p.PropertyType.IsSerializable
+
             if (isPublic)
-                return type.GetProperties().Where(p => ((p.PropertyType.IsPublic && !p.IsDefined(typeof(NoSerializeAttribute), false)) || (p.IsDefined(typeof(EntitySerializeAttribute), false))) /*&& p.PropertyType.IsSerializable*/ && p.CanWrite && p.CanRead).ToArray();
+                return type.GetProperties().Where(p => ((p.PropertyType.IsPublic && !p.IsDefined(typeof(NoSerializeAttribute), false)) || (p.IsDefined(typeof(EntitySerializeAttribute), false)))  && p.CanWrite && p.CanRead).ToArray();
 
             return type.GetProperties().Where(p => p.CanWrite && p.CanRead).ToArray();
         }
@@ -75,9 +91,9 @@ namespace Nistec.Serialization
                 throw new ArgumentNullException("instance");
             }
             var type = instance.GetType();
-
+            // && p.PropertyType.IsSerializable
             if (isPublic)
-                return type.GetProperties().Where(p => ((p.PropertyType.IsPublic && !p.IsDefined(typeof(NoSerializeAttribute), false)) || (p.IsDefined(typeof(EntitySerializeAttribute), false))) /*&& p.PropertyType.IsSerializable*/ && p.CanWrite && p.CanRead).Count();
+                return type.GetProperties().Where(p => ((p.PropertyType.IsPublic && !p.IsDefined(typeof(NoSerializeAttribute), false)) || (p.IsDefined(typeof(EntitySerializeAttribute), false))) && p.CanWrite && p.CanRead).Count();
 
             return type.GetProperties().Where(p => p.CanWrite && p.CanRead).Count();
         }
@@ -168,7 +184,7 @@ namespace Nistec.Serialization
             }
             return instance;
         }
-
+        */
 
         #endregion
 
@@ -180,7 +196,7 @@ namespace Nistec.Serialization
                 return false;
             if (IsCollection(type))
                 return false;
-            if (IsDictionary(type))
+            if (IsAssignableFromDictionary(type))
                 return false;
             if (IsArray(type))
                 return false;
@@ -200,10 +216,50 @@ namespace Nistec.Serialization
                 return false;
             return IsEntityClassOrStruct(type);
         }
-
         public static bool HasNoSerializeAttribute(Type type)
         {
-            if (type.IsDefined(typeof(NoSerializeAttribute),false))
+            if (type.IsDefined(typeof(NoSerializeAttribute), false))
+            {
+                return true;
+            }
+            return false;
+        }
+        
+        public static bool HasNoSerializeAttribute(FieldInfo p)
+        {
+            if (p.IsDefined(typeof(NoSerializeAttribute), false))
+            {
+                return true;
+            }
+            return false;
+        }
+        public static bool HasNoSerializeAttribute(PropertyInfo p)
+        {
+            if (p.IsDefined(typeof(NoSerializeAttribute),false))
+            {
+                return true;
+            }
+            return false;
+        }
+        public static bool HasSerializeAttribute(FieldInfo p)
+        {
+            if (p.IsDefined(typeof(SerializeAttribute), false))
+            {
+                return true;
+            }
+            return false;
+        }
+        public static bool HasSerializeAttribute(PropertyInfo p)
+        {
+            if (p.IsDefined(typeof(SerializeAttribute), false))
+            {
+                return true;
+            }
+            return false;
+        }
+        public static bool HasSerializeAttribute(Type type)
+        {
+            if (type.IsDefined(typeof(SerializeAttribute), false))
             {
                 return true;
             }
@@ -225,18 +281,31 @@ namespace Nistec.Serialization
             }
             return false;
         }
-        public static bool IsEntitySerialize(Type type)
-        {
-            if (type.IsDefined(typeof(EntitySerializeAttribute), false))
-            {
-                return true;
-            }
-            return false;
-        }
 
+        //public static bool IsEntitySerialize(Type type)
+        //{
+        //    if (type.IsDefined(typeof(EntitySerializeAttribute), false))
+        //    {
+        //        return true;
+        //    }
+        //    return false;
+        //}
+
+        //public static bool IsSerialize(PropertyInfo p)
+        //{
+        //    if (p.IsDefined(typeof(SerializeAttribute), false))
+        //    {
+        //        return true;
+        //    }
+        //    return false;
+        //}
         public static bool EnableEntitySerialize(Type type, bool enableAny)
         {
-            if (type.IsDefined(typeof(EntitySerializeAttribute), false))
+            //if (type.IsDefined(typeof(EntitySerializeAttribute), false))
+            //    return true;
+            //if (p.IsDefined(typeof(SerializeAttribute), false))
+            //    return true;
+            if (HasSerializeAttribute(type))
                 return true;
             if (HasNoSerializeAttribute(type))
                 return false;
@@ -353,10 +422,28 @@ namespace Nistec.Serialization
         ///   Is type IDictionary
         /// </summary>
         /// <param name = "type"></param>
+        /// <param name = "includeGeneric"></param>
         /// <returns></returns>
-        public static bool IsDictionary(Type type)
+        public static bool IsAssignableFromDictionary(Type type, bool includeGeneric=false)
         {
+            if (includeGeneric)
+                return (type.IsGenericType || (type.BaseType != null && type.BaseType.IsGenericType)) && typeof(IDictionary).IsAssignableFrom(type);
             return typeof(IDictionary).IsAssignableFrom(type);
+        }
+
+        public static bool IsHashtable(Type type)
+        {
+            return type== typeof(Hashtable);
+        }
+
+        /// <summary>
+        ///   Is type Is Generic Dictionary{string,object}
+        /// </summary>
+        /// <param name = "type"></param>
+        /// <returns></returns>
+        public static bool IsStringObjectDictionary(Type type)
+        {
+            return type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(Dictionary<string,object>) || type.GetGenericTypeDefinition() == typeof(ConcurrentDictionary<string, object>));
         }
 
         /// <summary>
@@ -366,13 +453,24 @@ namespace Nistec.Serialization
         /// <returns></returns>
         public static bool IsGenericDictionary(Type type)
         {
-            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>);
-            //return type.IsGenericType && typeof(IDictionary).IsAssignableFrom(type);
+            return type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(Dictionary<,>) || type.GetGenericTypeDefinition() == typeof(ConcurrentDictionary<,>));
         }
+       
         public static bool IsGenericKeyStringDictionary(Type type)
         {
-            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>) && type.GetGenericArguments()[0] == typeof(string);
+            return type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(Dictionary<,>) || type.GetGenericTypeDefinition() == typeof(ConcurrentDictionary<,>)) && type.GetGenericArguments()[0] == typeof(string);
+            //return type.IsGenericType && typeof(IDictionary<,>).IsAssignableFrom(type) && type.GetGenericArguments()[0] == typeof(string);
         }
+
+        public static bool IsKeyValuePair(Type type)
+        {
+            if (type.IsGenericType)
+            {
+                return type.GetGenericTypeDefinition() != null ? type.GetGenericTypeDefinition() == typeof(KeyValuePair<,>) : false;
+            }
+            return false;
+        }
+
 
         /// <summary>
         ///   Is type Is Generic List
@@ -459,7 +557,19 @@ namespace Nistec.Serialization
                  return null;
              try
              {
-                 return Type.GetType(fullTypeName) ??
+                //var type1 = Type.GetType(fullTypeName);
+
+                //var type2 = 
+                //        AppDomain.CurrentDomain.GetAssemblies()
+                //                 .Select(a => a.GetType(fullTypeName))
+                //                 .FirstOrDefault(t => t != null);
+
+                //var type3 =
+                //         AppDomain.CurrentDomain.GetAssemblies()
+                //                  .Select(a => a.GetType(fullTypeName))
+                //                  .FirstOrDefault();
+
+                return Type.GetType(fullTypeName) ??
                         AppDomain.CurrentDomain.GetAssemblies()
                                  .Select(a => a.GetType(fullTypeName))
                                  .FirstOrDefault(t => t != null);
@@ -513,6 +623,17 @@ namespace Nistec.Serialization
 
             return baseType;
         }
+        public static bool IsGenericBaseType(Type type)
+        {
+            if (type == null)
+                return false;
+            if (type.IsGenericType)
+                return true;
+            if (type.BaseType != null)
+                return type.BaseType.IsGenericType;
+
+            return false;
+        }
 
         public static bool IsKnownGenericType(Type type)
         {
@@ -530,33 +651,40 @@ namespace Nistec.Serialization
             if (type == null)
                 return SerialType.nullType;
 
-            switch (type.Name)
+            switch (type.FullName)
             {
 
-                case "Boolean": return SerialType.boolType;
-                case "Byte": return SerialType.byteType;
-                case "UInt16": return SerialType.uint16Type;
-                case "UInt32": return SerialType.uint32Type;
-                case "UInt64": return SerialType.uint64Type;
-                case "SByte": return SerialType.sbyteType;
-                case "Int16": return SerialType.int16Type;
-                case "Int32": return SerialType.int32Type;
-                case "Int64": return SerialType.int64Type;
-                case "Char": return SerialType.charType;
-                case "String": return SerialType.stringType;
-                case "Single": return SerialType.singleType;
-                case "Double": return SerialType.doubleType;
-                case "Decimal": return SerialType.decimalType;
-                case "DateTime": return SerialType.dateTimeType;
-                case "TimeSpan": return SerialType.timeSpanType;
-                case "Byte[]": return SerialType.byteArrayType;
-                case "Char[]": return SerialType.charArrayType;
-                case "Guid": return SerialType.guidType;
-                case "Int16[]": return SerialType.int16ArrayType;
-                case "Int32[]": return SerialType.int32ArrayType;
-                case "Int64[]": return SerialType.int64ArrayType;
-                case "String[]": return SerialType.stringArrayType;
-                case "Object[]": return SerialType.objectArrayType;
+                case "System.Boolean": return SerialType.boolType;
+                case "System.Byte": return SerialType.byteType;
+                case "System.UInt16": return SerialType.uint16Type;
+                case "System.UInt32": return SerialType.uint32Type;
+                case "System.UInt64": return SerialType.uint64Type;
+                case "System.SByte": return SerialType.sbyteType;
+                case "System.Int16": return SerialType.int16Type;
+                case "System.Int32": return SerialType.int32Type;
+                case "System.Int64": return SerialType.int64Type;
+                case "System.Char": return SerialType.charType;
+                case "System.String": return SerialType.stringType;
+                case "System.Single": return SerialType.singleType;
+                case "System.Double": return SerialType.doubleType;
+                case "System.Decimal": return SerialType.decimalType;
+                case "System.DateTime": return SerialType.dateTimeType;
+                case "System.TimeSpan": return SerialType.timeSpanType;
+                case "System.Byte[]": return SerialType.byteArrayType;
+                case "System.Char[]": return SerialType.charArrayType;
+                case "System.Guid": return SerialType.guidType;
+                case "System.Int16[]": return SerialType.int16ArrayType;
+                case "System.Int32[]": return SerialType.int32ArrayType;
+                case "System.Int64[]": return SerialType.int64ArrayType;
+                case "System.String[]": return SerialType.stringArrayType;
+                case "System.Object[]": return SerialType.objectArrayType;
+                case "System.Data.DataSet": return SerialType.dataSetType;
+                case "System.Data.DataTable": return SerialType.dataTableType;
+                case "Nistec.IO.NetStream": return SerialType.netStreamType;
+                case "System.Collections.Specialized.StringDictionary": return SerialType.stringDictionary;
+                case "System.Collections.Specialized.NameValueCollection": return SerialType.nameValueCollection;
+                case "System.Xml.XmlDocument": return SerialType.xmlDocumentType;
+                    
                 default:
                     if (type.IsEnum)
                         return SerialType.enumType;
@@ -564,24 +692,18 @@ namespace Nistec.Serialization
                         return SerialType.serialEntityType;
                     else if (SerializeTools.IsISerialContext(type) && baseType == null)
                         return SerialType.serialContextType;
-                    else if (type == typeof(StringDictionary))
-                        return SerialType.stringDictionary;
-                    else if (type == typeof(NameValueCollection))
-                        return SerialType.nameValueCollection;
+                    else if (SerializeTools.IsStringObjectDictionary(type))
+                        return SerialType.dictionaryEntityType;
                     else if (SerializeTools.IsGenericDictionary(type))
                         return SerialType.dictionaryGenericType;
                     else if (SerializeTools.IsGenericList(type))
                         return SerialType.listGenericType;
-                    else if (SerializeTools.IsDictionary(type))
-                        return SerialType.dictionaryType;
-                    else if (SerializeTools.IsDataTable(type))
-                        return SerialType.dataTableType;
-                    else if (SerializeTools.IsDataSet(type))
-                        return SerialType.dataSetType;
+                    else if (SerializeTools.IsHashtable(type))
+                        return SerialType.hashtableType;
+                    else if (SerializeTools.IsAssignableFromDictionary(type))
+                        return SerialType.dictionaryAssignType;
                     else if (SerializeTools.IsStream(type))
                         return SerialType.streamType;
-                    else if (SerializeTools.IsXmlDocument(type))
-                        return SerialType.xmlDocumentType;
                     else if (SerializeTools.IsXmlNode(type))
                         return SerialType.xmlNodeType;
                     else if (SerializeTools.IsListKeyValue<string, object>(type))
@@ -598,7 +720,7 @@ namespace Nistec.Serialization
             } // switch
 
         }
-
+ 
         internal static SerialType GetSerializePrimitiveType(Type type)
         {
 
@@ -674,7 +796,7 @@ namespace Nistec.Serialization
         {
             Type[] typeArgs = { keyType, valueType };
             Type constructed = genericType.MakeGenericType(typeArgs);
-            object o = Activator.CreateInstance(constructed);
+            object o = ActivatorUtil.CreateInstance(constructed);
 
             return (IKeyValue)o;
         }
@@ -684,7 +806,7 @@ namespace Nistec.Serialization
             Type d1 = typeof(Dictionary<,>);
             Type[] typeArgs = { keyType, valueType };
             Type constructed = d1.MakeGenericType(typeArgs);
-            object o = Activator.CreateInstance(constructed);
+            object o = ActivatorUtil.CreateInstance(constructed);
 
             return (IDictionary)o;
         }
@@ -694,7 +816,7 @@ namespace Nistec.Serialization
             Type d1 = typeof(List<>);
             Type[] typeArgs = { type };
             Type constructed = d1.MakeGenericType(typeArgs);
-            object o = Activator.CreateInstance(constructed);
+            object o = ActivatorUtil.CreateInstance(constructed);
             return (IList)o;
         }
 
@@ -729,7 +851,7 @@ namespace Nistec.Serialization
                 return new NetStream(bytes);
             }
 
-            object stream=Activator.CreateInstance(type);
+            object stream=ActivatorUtil.CreateInstance(type);
 
             ((Stream)stream).Write(bytes, 0, bytes.Length);
 
@@ -1259,7 +1381,50 @@ namespace Nistec.Serialization
                     throw new ArgumentException("MemberInfo must be of type FieldInfo, PropertyInfo, EventInfo or MethodInfo", "member");
             }
         }
+        public static MethodInfo GetMethodInfo(string typeClassName, string method)
+        {
+            if (typeClassName == null || method == null)
+            {
+                throw new ArgumentNullException("GetMethodInfo.typeClassName|method");
+            }
+            Type type = Type.GetType(typeClassName);
+            MethodInfo methodinfo = type.GetMethod(method);
+            return methodinfo;
+        }
 
+        public static Type GetMethodReturnType(string typeClassName, string method)
+        {
+            MethodInfo methodinfo = GetMethodInfo(typeClassName, method);
+            return methodinfo.ReturnType;
+        }
+
+        public static Type GetElementType(Type type)
+        {
+            if(type==null)
+            {
+                throw new ArgumentNullException("GetElementType.type");
+            }
+            //Type generic = type.GetGenericTypeDefinition();
+
+            if (type.IsGenericType)
+            {
+                var types = type.GetGenericArguments();
+                if (types == null)
+                    return type;
+                if (types.Length > 1)//dictionary<string,object>
+                    return types[1];
+                if (types.Length > 0)
+                    return types[0];
+                else
+                    return type;
+            }
+            else if (type.IsArray)
+            {
+                return type.GetElementType();
+            }
+            else
+                return type;
+        }
         public static bool IsIndexedProperty(MemberInfo member)
         {
             Validation.ArgumentNull(member, "member");
@@ -1421,7 +1586,98 @@ namespace Nistec.Serialization
                 : bindingAttr;
         }
 
-         #endregion
+        #endregion
+        public static void MapToDictionary(
+    Dictionary<string, object> dictionary, object source, string name, bool allowReadOnly = false)
+        {
+            Type sourceType = source.GetType();
+            if (sourceType.IsEnum)
+            {
+                dictionary[sourceType.Name] = (int)Convert.ToInt32(source);
+                return;
+            }
+            else if (SerializeTools.IsSimple(sourceType))
+            {
+                dictionary[sourceType.Name] = source;
+                return;
+            }
+            else if (SerializeTools.IsStream(sourceType))
+            {
+                dictionary[sourceType.Name] = source;
+                return;
+            }
+            else if (SerializeTools.IsType(sourceType))
+            {
+                dictionary[sourceType.Name] = sourceType.FullName;
+                return;
+            }
+
+            var properties = source.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance, allowReadOnly);
+            foreach (var p in properties)
+            {
+
+                if (!allowReadOnly && !p.CanWrite) { continue; }
+
+                if (p.CanRead)
+                {
+                    var key = !string.IsNullOrWhiteSpace(name) ? name + "." + p.Name : p.Name;
+                    object value = p.GetValue(source, null);
+                    if (value == null)
+                        continue;
+                    Type valueType = value.GetType();
+
+                    if (valueType.IsEnum)
+                    {
+                        dictionary[key] = (int)Convert.ToInt32(value);
+                    }
+                    else if (SerializeTools.IsSimple(valueType))
+                    {
+                        dictionary[key] = value;
+                    }
+                    else if (SerializeTools.IsStream(valueType))
+                    {
+                        dictionary[key] = value;
+                    }
+                    else if (SerializeTools.IsType(valueType))
+                    {
+                        dictionary[key] = valueType.FullName;
+                    }
+                    else if (SerializeTools.IsDataTable(valueType) || SerializeTools.IsDataSet(valueType))
+                    {
+                        dictionary[key] = value;
+                    }
+                    else if (typeof(IKeyValue).IsAssignableFrom(valueType))
+                    {
+                        dictionary[key] = ((IKeyValue)value).Dictionary();
+                    }
+                    else if (typeof(IKeyValue<object>).IsAssignableFrom(valueType))
+                    {
+                        dictionary[key] = ((IKeyValue<object>)value).ToDictionary();
+                    }
+                    else if (SerializeTools.IsAssignableFromDictionary(valueType, true))
+                    {
+                        dictionary[key] = value;
+                    }
+                    else if (SerializeTools.IsEnumerable(valueType))
+                    {
+                        var i = 0;
+                        var subdictionary = new Dictionary<string, object>();
+                        foreach (object o in (IEnumerable)value)
+                        {
+                            MapToDictionary(subdictionary, o, key + "[" + i + "]");
+                            i++;
+                        }
+                        dictionary[key] = subdictionary;
+                    }
+                    else
+                    {
+                        var subdictionary = new Dictionary<string, object>();
+                        MapToDictionary(subdictionary, value, key, allowReadOnly);
+                        dictionary[key] = subdictionary;
+                    }
+                }
+            }
+        }
 
     }
 

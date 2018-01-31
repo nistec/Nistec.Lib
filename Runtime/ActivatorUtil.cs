@@ -18,6 +18,8 @@
 // 10/01/2006  Nissim   Created the code
 //===============================================================================================================
 //licHeader|
+using Nistec.Generic;
+using Nistec.Serialization;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -31,9 +33,62 @@ using System.Text;
 
 namespace Nistec.Runtime
 {
+   
+    public static class ActivatorExtension
+    {
+        public static object CreateInstance(this Type type)
+        {
+            return ActivatorUtil.Get.CreateInstanceInternal(type);
+        }
+        //public static PropertyInfo[] GetProperties(this Type type, bool enableReadOnly, params Type[] attributesExclude)
+        //{
+        //    return ActivatorUtil.Get.GetProperties(type, enableReadOnly, false, attributesExclude);
+        //}
+
+
+        public static PropertyInfo[] GetProperties(this Type type, bool isPublic)
+        {
+            return type.GetProperties(isPublic ? BindingFlags.Public | BindingFlags.Instance : BindingFlags.Instance)
+                .Where(p => ((p.PropertyType.IsPublic && isPublic) &&
+                (!p.IsDefined(typeof(NoSerializeAttribute), true) && !p.IsDefined(typeof(NonSerializedAttribute), true)) && 
+                (p.CanWrite || p.IsDefined(typeof(SerializeAttribute), false)) && 
+                p.CanRead)).ToArray();
+        }
+        public static PropertyInfo[] GetProperties(this Type type, bool isPublic, bool enableReadOnly)
+        {
+            return type.GetProperties(isPublic ? BindingFlags.Public | BindingFlags.Instance : BindingFlags.Instance)
+                .Where(p => ((p.PropertyType.IsPublic && isPublic) &&
+                (!p.IsDefined(typeof(NoSerializeAttribute), true) && !p.IsDefined(typeof(NonSerializedAttribute), true)) &&
+                (enableReadOnly || p.CanWrite || p.IsDefined(typeof(SerializeAttribute), false)) &&
+                p.CanRead)).ToArray();
+        }
+        public static PropertyInfo[] GetProperties(this Type type, BindingFlags flags, bool enableReadOnly)
+        {
+
+            return type.GetProperties(flags).Where(p => (
+                (!p.IsDefined(typeof(NoSerializeAttribute), true) && !p.IsDefined(typeof(NonSerializedAttribute), true)) &&
+                (enableReadOnly || p.CanWrite || p.IsDefined(typeof(SerializeAttribute), false)) 
+                && p.CanRead)).ToArray();
+        }
+
+        //public static PropertyInfo[] GetProperties(this Type type, BindingFlags flags, bool enableReadOnly, params Type[] attributesExclude)
+        //{
+        //    return ActivatorUtil.Get.GetProperties(type, flags, enableReadOnly, type.FullName, false, attributesExclude);
+        //}
+        //public static PropertyInfo[] GetProperties(this Type type, bool isPublic, bool enableReadOnly=false, params Type[] attributesExclude)
+        //{
+        //    return ActivatorUtil.Get.GetProperties(type, isPublic ? BindingFlags.Public | BindingFlags.Instance : BindingFlags.Instance, enableReadOnly, type.FullName, false, attributesExclude);
+        //}
+
+         public static FieldInfo[] GetFields(Type type, bool isPublic)
+        {
+            return ActivatorUtil.Get.GetFields(type, isPublic ? BindingFlags.Public | BindingFlags.Instance : BindingFlags.Instance, type.FullName, false);
+        }
+    }
 
     public class ActivatorUtil
     {
+        #region members
         private static readonly ActivatorUtil instance = new ActivatorUtil();
 
         // Explicit static constructor to tell C# compiler
@@ -53,6 +108,7 @@ namespace Nistec.Runtime
         private ConcurrentDictionary<Type, CreateObjectDeligate> _ctorCache = new ConcurrentDictionary<Type, CreateObjectDeligate>();
         private ConcurrentDictionary<string, Dictionary<string, FieldInfo>> _fieldCache = new ConcurrentDictionary<string, Dictionary<string, FieldInfo>>();
         private ConcurrentDictionary<string, Dictionary<string, PropertyInfo>> _propertyCache = new ConcurrentDictionary<string, Dictionary<string, PropertyInfo>>();
+        #endregion
 
         public static object CreateInstance(Type objtype)
         {
@@ -62,6 +118,13 @@ namespace Nistec.Runtime
         {
             return (T)ActivatorUtil.Get.CreateInstanceInternal(typeof(T));
         }
+
+        public static BindingFlags GetFlags(bool isPublic)
+        {
+            return isPublic ? BindingFlags.Public | BindingFlags.Instance : BindingFlags.Instance;
+        }
+
+        #region properties/fields
         public object CreateInstanceInternal(Type objtype)
         {
             try
@@ -105,8 +168,50 @@ namespace Nistec.Runtime
             }
         }
 
-        public PropertyInfo[] GetProperties(Type type, string typename, bool ignoreCase, bool customType)
+        //public PropertyInfo[] GetProperties(Type type, bool enableReadOnly=false, bool ignoreCase= false, Type[] attributesExclude=null)
+        //{
+        //    return GetProperties(type, BindingFlags.Public | BindingFlags.Instance, enableReadOnly, type.FullName, ignoreCase, attributesExclude);
+        //}
+
+        //public PropertyInfo[] GetProperties(Type type, BindingFlags flags, bool enableReadOnly, string typename, bool ignoreCase, Type[] attributesExclude)
+        //{
+
+        //    Dictionary<string, PropertyInfo> td = null;
+        //    if (_propertyCache.TryGetValue(typename, out td))
+        //    {
+        //        return td.Values.ToArray();
+        //    }
+        //    else
+        //    {
+        //        td = new Dictionary<string, PropertyInfo>();
+        //        PropertyInfo[] pr = type.GetProperties(flags);// BindingFlags.Public | BindingFlags.Instance);
+        //        bool hasAttributes = attributesExclude != null && attributesExclude.Length > 0;
+
+        //        foreach (PropertyInfo p in pr)
+        //        {
+        //            if(hasAttributes)
+        //            {
+        //                foreach(var attr in attributesExclude)
+        //                {
+        //                    if (p.IsDefined(attr, false))
+        //                        continue;
+        //                }
+        //            }
+        //            if ((!enableReadOnly && !p.CanWrite) || !p.CanRead)
+        //                continue;
+        //            if (ignoreCase)
+        //                td.Add(p.Name.ToLower(), p);
+        //            else
+        //                td.Add(p.Name, p);
+        //        }
+        //        _propertyCache.TryAdd(typename, td);
+        //        return td.Values.ToArray();
+        //    }
+        //}
+
+        public PropertyInfo[] GetProperties(Type type, BindingFlags flags, string typename, bool ignoreCase)
         {
+
             Dictionary<string, PropertyInfo> td = null;
             if (_propertyCache.TryGetValue(typename, out td))
             {
@@ -115,7 +220,32 @@ namespace Nistec.Runtime
             else
             {
                 td = new Dictionary<string, PropertyInfo>();
-                PropertyInfo[] pr = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                PropertyInfo[] pr = type.GetProperties(flags);// BindingFlags.Public | BindingFlags.Instance);
+
+                foreach (PropertyInfo p in pr)
+                {
+                    if (ignoreCase)
+                        td.Add(p.Name.ToLower(), p);
+                    else
+                        td.Add(p.Name, p);
+                }
+                _propertyCache.TryAdd(typename, td);
+                return td.Values.ToArray();
+            }
+        }
+        public PropertyInfo[] GetProperties(Type type, bool isPublic, string typename, bool ignoreCase)
+        {
+
+            Dictionary<string, PropertyInfo> td = null;
+            if (_propertyCache.TryGetValue(typename, out td))
+            {
+                return td.Values.ToArray();
+            }
+            else
+            {
+                td = new Dictionary<string, PropertyInfo>();
+                PropertyInfo[] pr = type.GetProperties(isPublic);// BindingFlags.Public | BindingFlags.Instance);
+                
                 foreach (PropertyInfo p in pr)
                 {
                     if (ignoreCase)
@@ -128,7 +258,11 @@ namespace Nistec.Runtime
             }
         }
 
-        public FieldInfo[] GetFields(Type type, string typename, bool ignoreCase, bool customType)
+        public FieldInfo[] GetFields(Type type, bool ignoreCase= false)
+        {
+            return GetFields(type, BindingFlags.Public | BindingFlags.Instance, type.FullName, ignoreCase);
+        }
+        public FieldInfo[] GetFields(Type type, BindingFlags flags, string typename, bool ignoreCase)
         {
             Dictionary<string, FieldInfo> td = null;
             if (_fieldCache.TryGetValue(typename, out td))
@@ -138,7 +272,7 @@ namespace Nistec.Runtime
             else
             {
                 td = new Dictionary<string, FieldInfo>();
-                FieldInfo[] fi = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
+                FieldInfo[] fi = type.GetFields(flags);// BindingFlags.Public | BindingFlags.Instance);
                 foreach (FieldInfo f in fi)
                 {
                     if (ignoreCase)
@@ -151,7 +285,9 @@ namespace Nistec.Runtime
                 return td.Values.ToArray();
             }
         }
+        #endregion
 
+        #region CreateSet/Get
         internal static GenericSetterDeligate CreateSetField(Type type, FieldInfo fieldInfo)
         {
             Type[] arguments = new Type[2];
@@ -301,6 +437,7 @@ namespace Nistec.Runtime
 
             return (GenericGetterDeligate)fieldsGetter.CreateDelegate(typeof(GenericGetterDeligate));
         }
+        #endregion
 
         public void ClearCache()
         {
@@ -309,5 +446,234 @@ namespace Nistec.Runtime
             _propertyCache = new ConcurrentDictionary<string, Dictionary<string, PropertyInfo>>();
 
         }
+
+        #region PropertyInfo
+
+        public static object[] GetObjectPropertiesValues(object instance, bool isPublic, bool enableReadOnly)
+        {
+            var properties = instance.GetType().GetProperties(isPublic, enableReadOnly);
+            List<object> values = new List<object>();
+
+            foreach (var property in properties)
+            {
+                if (!property.CanWrite)
+                {
+                    continue;
+                }
+
+                object fieldValue = property.GetValue(instance, null);
+
+                values.Add(fieldValue);
+            }
+            return values.ToArray();
+        }
+
+        public static NameValueArgs GetObjectPropertiesNameValuesArgs(object instance, bool isPublic, bool enableReadOnly)
+        {
+            NameValueArgs values = new NameValueArgs();
+            //var properties = GetObjectProperties(instance, isPublic);
+            var properties = instance.GetType().GetProperties(isPublic , enableReadOnly);
+            foreach (var property in properties)
+            {
+                if (!property.CanWrite)
+                {
+                    continue;
+                }
+
+                object fieldValue = property.GetValue(instance, null);
+
+                values.Add(property.Name, fieldValue);
+            }
+            return values;
+        }
+
+        public static GenericNameValue GetObjectPropertiesNameValues(object instance, bool isPublic, bool enableReadOnly)
+        {
+            GenericNameValue values = new GenericNameValue();
+            //var properties = GetObjectProperties(instance, isPublic);
+            var properties = instance.GetType().GetProperties(isPublic , enableReadOnly);
+
+            foreach (var property in properties)
+            {
+                if (!property.CanWrite)
+                {
+                    continue;
+                }
+
+                object fieldValue = property.GetValue(instance, null);
+
+                values.Add(property.Name, fieldValue);
+            }
+            return values;
+        }
+
+        public static string GetObjectPropertiesNameValuesString(object instance, bool isPublic, bool enableReadOnly)
+        {
+            StringBuilder values = new StringBuilder();
+            //var properties = GetObjectProperties(instance, isPublic);
+            var properties = instance.GetType().GetProperties(isPublic , enableReadOnly);
+
+            foreach (var property in properties)
+            {
+                if (!property.CanWrite)
+                {
+                    continue;
+                }
+
+                object fieldValue = property.GetValue(instance, null);
+
+                values.AppendFormat("{0}:{1}|", property.Name, fieldValue);
+            }
+            if (values.Length == 0)
+                return null;
+            return values.ToString().TrimEnd('|');
+        }
+
+        public static T CreateInstance<T>(object[] values, bool isPublic, bool enableReadOnly)
+        {
+            T instance = ActivatorUtil.CreateInstance<T>();
+
+            //var properties = GetObjectProperties(instance, true);
+            var properties = instance.GetType().GetProperties(isPublic, enableReadOnly);
+
+            if (values.Length != properties.Length)
+            {
+                throw new Exception("Object properties not match to record values");
+            }
+            int i = 0;
+            foreach (var property in properties)
+            {
+                if (!property.CanWrite)
+                {
+                    continue;
+                }
+
+                object fieldValue = values[i];
+
+                object value = GenericTypes.ConvertProperty(fieldValue, property);
+
+                property.SetValue(instance, value, null);
+
+                i++;
+            }
+            return instance;
+        }
+
+
+        #endregion
+
+        #region PropertyInfo
+        /*
+                public static object[] GetObjectPropertiesValues(object instance, bool isPublic, bool enableReadOnly, Type[] attributesExclude)
+                {
+                    var properties = instance.GetType().GetProperties(isPublic? BindingFlags.Public| BindingFlags.Instance: BindingFlags.Instance, enableReadOnly,attributesExclude);// GetObjectProperties(instance, isPublic);
+                    List<object> values = new List<object>();
+
+                    foreach (var property in properties)
+                    {
+                        if (!property.CanWrite)
+                        {
+                            continue;
+                        }
+
+                        object fieldValue = property.GetValue(instance, null);
+
+                        values.Add(fieldValue);
+                    }
+                    return values.ToArray();
+                }
+
+                public static NameValueArgs GetObjectPropertiesNameValuesArgs(object instance, bool isPublic, bool enableReadOnly, Type[] attributesExclude)
+                {
+                    NameValueArgs values = new NameValueArgs();
+                    //var properties = GetObjectProperties(instance, isPublic);
+                    var properties = instance.GetType().GetProperties(isPublic ? BindingFlags.Public | BindingFlags.Instance : BindingFlags.Instance, enableReadOnly, attributesExclude);
+                    foreach (var property in properties)
+                    {
+                        if (!property.CanWrite)
+                        {
+                            continue;
+                        }
+
+                        object fieldValue = property.GetValue(instance, null);
+
+                        values.Add(property.Name, fieldValue);
+                    }
+                    return values;
+                }
+
+                public static GenericNameValue GetObjectPropertiesNameValues(object instance, bool isPublic, bool enableReadOnly, Type[] attributesExclude)
+                {
+                    GenericNameValue values = new GenericNameValue();
+                    //var properties = GetObjectProperties(instance, isPublic);
+                    var properties = instance.GetType().GetProperties(isPublic ? BindingFlags.Public | BindingFlags.Instance : BindingFlags.Instance, enableReadOnly, attributesExclude);
+
+                    foreach (var property in properties)
+                    {
+                        if (!property.CanWrite)
+                        {
+                            continue;
+                        }
+
+                        object fieldValue = property.GetValue(instance, null);
+
+                        values.Add(property.Name, fieldValue);
+                    }
+                    return values;
+                }
+
+                public static string GetObjectPropertiesNameValuesString(object instance, bool isPublic, bool enableReadOnly, Type[] attributesExclude)
+                {
+                    StringBuilder values = new StringBuilder();
+                    //var properties = GetObjectProperties(instance, isPublic);
+                    var properties = instance.GetType().GetProperties(isPublic ? BindingFlags.Public | BindingFlags.Instance : BindingFlags.Instance, enableReadOnly, attributesExclude);
+
+                    foreach (var property in properties)
+                    {
+                        if (!property.CanWrite)
+                        {
+                            continue;
+                        }
+
+                        object fieldValue = property.GetValue(instance, null);
+
+                        values.AppendFormat("{0}:{1}|", property.Name, fieldValue);
+                    }
+                    if (values.Length == 0)
+                        return null;
+                    return values.ToString().TrimEnd('|');
+                }
+                public static T CreateInstance<T>(object[] values, bool isPublic, bool enableReadOnly, Type[] attributesExclude)
+                {
+                    T instance = ActivatorUtil.CreateInstance<T>();
+
+                    //var properties = GetObjectProperties(instance, true);
+                    var properties = instance.GetType().GetProperties(isPublic ? BindingFlags.Public | BindingFlags.Instance : BindingFlags.Instance, enableReadOnly, attributesExclude);
+
+                    if (values.Length != properties.Length)
+                    {
+                        throw new Exception("Object properties not match to record values");
+                    }
+                    int i = 0;
+                    foreach (var property in properties)
+                    {
+                        if (!property.CanWrite)
+                        {
+                            continue;
+                        }
+
+                        object fieldValue = values[i];
+
+                        object value = GenericTypes.ConvertProperty(fieldValue, property);
+
+                        property.SetValue(instance, value, null);
+
+                        i++;
+                    }
+                    return instance;
+                }
+
+        */
+        #endregion
     }
 }

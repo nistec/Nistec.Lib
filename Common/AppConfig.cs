@@ -218,6 +218,7 @@ namespace Nistec
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
+        [Serialization.NoSerialize]
         public string this[string key]
         {
             get

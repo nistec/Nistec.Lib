@@ -40,7 +40,7 @@ namespace Nistec.Collections
         ConcurrentQueue<T> _queue = new ConcurrentQueue<T>();
         CancellationTokenSource canceller = new CancellationTokenSource();
         Action<T> _action;
-       
+        int intervalMilliseconds;
 
         #region message events
 
@@ -91,12 +91,13 @@ namespace Nistec.Collections
         #endregion
 
         #region ctor
-        public QueueListener()
+        public QueueListener(int intervalMilliseconds = 100)
         {
-
+            this.intervalMilliseconds = intervalMilliseconds;
         }
-        public QueueListener(Action<T> action)
+        public QueueListener(Action<T> action, int intervalMilliseconds = 100)
         {
+            this.intervalMilliseconds = intervalMilliseconds;
             _action = action;
 
         }
@@ -106,7 +107,7 @@ namespace Nistec.Collections
 
         long _counter;
         /// <summary>
-        /// Gets the number of elements contained in the Queue<T>.
+        /// Gets the number of elements contained in the Queue{T}.
         /// </summary>
         public long Count
         {
@@ -134,7 +135,7 @@ namespace Nistec.Collections
         #region enqueue/dequeue
 
         /// <summary>
-        /// Adds an object to the end of the Queue<T>.
+        /// Adds an object to the end of the Queue{T}.
         /// </summary>
         /// <param name="item"></param>
         public void Enqueue(T item)
@@ -148,7 +149,7 @@ namespace Nistec.Collections
             Console.WriteLine("<{0}> QListener item added, Count: {1}", Thread.CurrentThread.ManagedThreadId,Interlocked.Read(ref _counter));
         }
         /// <summary>
-        /// Attempts to remove and return the object at the beginning of the Queue<T>.
+        /// Attempts to remove and return the object at the beginning of the Queue{T}.
         /// </summary>
         /// <returns></returns>
         public T Dequeue()
@@ -187,7 +188,7 @@ namespace Nistec.Collections
                         else
                             OnMessageReceived(new GenericEventArgs<T>(item));
                     }
-                    Thread.Sleep(10);
+                    Thread.Sleep(intervalMilliseconds);
                 }
 
                 Console.WriteLine("QListener stoped...");

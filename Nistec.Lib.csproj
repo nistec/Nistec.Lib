@@ -48,7 +48,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>..\References\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -70,6 +70,7 @@
     <DocumentationFile>..\..\References\Release\Nistec.Lib.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
     <Reference Include="System" />
     <Reference Include="System.configuration" />
     <Reference Include="System.Data" />
@@ -87,6 +88,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Accessor\CallSiteCache.cs" />
+    <Compile Include="Accessor\MemberSet.cs" />
+    <Compile Include="Accessor\ObjectAccessor.cs" />
+    <Compile Include="Accessor\ObjectReader.cs" />
+    <Compile Include="Accessor\TypeAccessor.cs" />
+    <Compile Include="Accessor\TypeHelpers.cs" />
     <Compile Include="Collections\CircleCollection.cs" />
     <Compile Include="Collections\GenericArray.cs" />
     <Compile Include="Collections\QueueListener.cs" />
@@ -95,22 +102,29 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Common\Interfaces.cs" />
+    <Compile Include="Common\TaskExtensions.cs" />
     <Compile Include="Common\Validation.cs" />
     <Compile Include="Config\ConfigWatcher.cs" />
     <Compile Include="Config\Events.cs" />
+    <Compile Include="Config\IConfigurable.cs" />
+    <Compile Include="Config\GenericConfig.cs" />
     <Compile Include="Config\IniConfig.cs" />
     <Compile Include="Config\XConfig.cs" />
     <Compile Include="Drawing\ColorUtils.cs" />
+    <Compile Include="Drawing\ImageResizer.cs" />
     <Compile Include="Drawing\Imageutil.cs" />
+    <Compile Include="Generic\DynamicEntity.cs" />
+    <Compile Include="Generic\GenericKeyValue.cs" />
+    <Compile Include="Generic\KeySet.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Generic\KeyValueTuple.cs" />
     <Compile Include="Generic\ConverterUtil.cs" />
     <Compile Include="Generic\Enums.cs" />
     <Compile Include="Generic\GenericRecord.cs" />
-    <Compile Include="Generic\KeySet.cs">
-      <SubType>Code</SubType>
-    </Compile>
+    <Compile Include="Generic\KeyValueArgs.cs" />
+    <Compile Include="Generic\NameValueArgs.cs" />
     <Compile Include="IO\BinaryConverter.cs" />
-    <Compile Include="IO\AckSream.cs" />
     <Compile Include="IO\MapStream.cs" />
     <Compile Include="IO\Unsafe\FileStreamer.cs" />
     <Compile Include="IO\Win32Io.cs" />
@@ -123,10 +137,10 @@
     <Compile Include="Runtime\Advanced\SyncItemEvent.cs" />
     <Compile Include="Runtime\Advanced\SyncQueueBox.cs" />
     <Compile Include="Runtime\Advanced\SyncTimerDispatcher.cs" />
+    <Compile Include="Runtime\Diagnostics.cs" />
     <Compile Include="Serialization\Binary\Interfaces.cs" />
     <Compile Include="Serialization\Formatters.cs" />
     <Compile Include="Serialization\Binary\SerializerExtension.cs" />
-    <Compile Include="Generic\GenericKeyValue.cs" />
     <Compile Include="Generic\IKeyValue.cs" />
     <Compile Include="IO\CharsDecoder.cs" />
     <Compile Include="Serialization\Binary\BinaryStreamer.cs">
@@ -149,7 +163,7 @@
     <Compile Include="Serialization\Json\JsonSerializer.cs" />
     <Compile Include="Serialization\Json\JsonSettings.cs" />
     <Compile Include="Serialization\Json\JsonWriter.cs" />
-    <Compile Include="Serialization\NoSerialize.cs" />
+    <Compile Include="Serialization\SerializeAttribute.cs" />
     <Compile Include="Serialization\SerializeTools.cs" />
     <Compile Include="Runtime\Interfaces.cs" />
     <Compile Include="IO\IoErrors.cs" />
@@ -161,6 +175,7 @@
     <Compile Include="IO\StreamHelper.cs" />
     <Compile Include="Runtime\SysFileWatcher.cs" />
     <Compile Include="Threading\AsyncTasker.cs" />
+    <Compile Include="Threading\ListenerDelay.cs" />
     <Compile Include="Threading\ThreadPoolEx.cs">
       <SubType>Code</SubType>
     </Compile>

@@ -42,7 +42,7 @@ namespace Nistec.Threading
         private string currentTime;
         
         private DateTime signalTime;
-
+        public Action<DateTime> Function { get; set; }
           
         /// <summary>
         /// ThreadTimer
@@ -76,9 +76,10 @@ namespace Nistec.Threading
         /// OnElapsed
         /// </summary>
         /// <param name="e"></param>
-        protected void OnElapsed(System.Timers.ElapsedEventArgs e)
+        protected virtual void OnElapsed(System.Timers.ElapsedEventArgs e)
         {
-
+            if (Function != null)
+                Function(e.SignalTime);
         }
 
         private void SetTimeElapsed()

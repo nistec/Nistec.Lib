@@ -28,6 +28,29 @@ using System.Text;
 
 namespace Nistec.Serialization
 {
+
+    public interface IBodyStream
+    {
+        
+        //string Command { get;}
+        //NetStream BodyStream { get; }
+        /// <summary>
+        /// Get body stream ready to read.
+        /// </summary>
+        /// <returns></returns>
+        NetStream GetStream();
+        /// <summary>
+        /// Get copy of body stream.
+        /// </summary>
+        /// <returns></returns>
+        NetStream GetCopy();
+    }
+
+    public interface ISerialable
+    {
+        byte[] Serilaize();
+    }
+
     public interface ISerialEntity
     {
         /// <summary>
@@ -58,16 +81,16 @@ namespace Nistec.Serialization
         void WriteContext(ISerializerContext context);
     }
 
-    public interface IBinaryStreamer
+    public interface IBinaryStreamer: IDisposable
     {
         Stream BaseStream { get; }
         void WriteValue(object value, Type baseType = null);
         void WriteCount(int value);
         int ReadCount();
         object ReadValue();
-        object StreamToValue(NetStream stream);
+        //object StreamToValue(NetStream stream);
         T ReadValue<T>();
-        T ReadValue<T>(SerialContextType contextType);
+        //T ReadValue<T>(SerialContextType contextType);
         void WriteString(string str);
         string ReadString();
         void WriteFixedString(string str, int length);
@@ -77,6 +100,8 @@ namespace Nistec.Serialization
         string ReadMapString();
         List<int> GetMapper();
         void MapperBegin();
+        //void WriteDictionary<TKey, TValue>(IDictionary<TKey, TValue> d);
+        //IDictionary<TKey, TValue> ReadDictionary<TKey, TValue>();
     }
 
     public interface ISerializerContext

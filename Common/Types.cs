@@ -443,6 +443,19 @@ namespace Nistec
             return string.Join(splitter, ReTrim(str));
         }
 
+        public static bool IsEqual(string[] strA, string[] strB)
+        {
+            if (strA == null && strB == null)
+                return true;
+
+            if (strA == null || strB == null)
+            {
+                return false;
+            }
+
+            return string.Join(" ", strA) == string.Join(" ", strB);
+        }
+
         public static bool IsWhiteSpace(string s)
         {
             if (s == null)

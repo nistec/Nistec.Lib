@@ -226,7 +226,7 @@ namespace Nistec.IO
             input.CopyTo(output, DEFAULT_BUFFER_SIZE);
             return;
         }
-        public static void CopyTo(Stream input, Stream output, int bufferSize)
+        public static void CopyToAsync(Stream input, Stream output, int bufferSize)
         {
             if (!input.CanRead) throw new InvalidOperationException("input must be open for reading");
             if (!output.CanWrite) throw new InvalidOperationException("output must be open for writing");

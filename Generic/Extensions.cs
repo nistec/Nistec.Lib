@@ -30,6 +30,9 @@ using Nistec.Runtime;
 using System.Collections.Specialized;
 using System.Globalization;
 using System.Data;
+using System.Collections.Concurrent;
+using System.Threading.Tasks;
+using Nistec.Serialization;
 
 namespace Nistec.Generic
 {
@@ -65,11 +68,25 @@ namespace Nistec.Generic
             return array;
         }
 
-        public static string[] SplitTrim(this string str, string defaultValue, char splitter = ',')
+        public static string[] SplitTrim(this string s, string[] spliter, char[] trimChars)
         {
-            string[] list = string.IsNullOrEmpty(str) ? new string[] { defaultValue } : str.SplitTrim(splitter);
-            return list;
+            if (s == null || spliter == null)
+            {
+                throw new ArgumentNullException();
+            }
+            string[] array = s.Split(spliter, StringSplitOptions.None);
+            foreach (string a in array)
+            {
+                a.Trim(trimChars);
+            }
+            return array;
         }
+
+        //public static string[] SplitTrim(this string str, string defaultValue, char splitter = ',')
+        //{
+        //    string[] list = string.IsNullOrEmpty(str) ? new string[] { defaultValue } : str.SplitTrim(splitter);
+        //    return list;
+        //}
 
         public static string[] ReTrim(this string[] str, string defaultValue = "")
         {
@@ -93,18 +110,47 @@ namespace Nistec.Generic
 
             return string.Join(splitter, ReTrim(str));
         }
+        public static int IndexOf(this string[] array, string stringToFind)
+        {
+            if (array == null)
+            {
+                throw new ArgumentNullException("IndexOf.array");
+            }
+
+            return Array.FindIndex(array, t => t.Equals(stringToFind, StringComparison.InvariantCultureIgnoreCase));
+        }
+       
     }
 
     public static class EnumExtension
     {
+        public static bool IsEnum<T>(string value)
+        {
+            if (value == null)
+                return false;
+            return Enum.IsDefined(typeof(T), value);
+        }
+
+        public static T Cast<T>(int value, T defaultValue)
+        {
+            if (Enum.IsDefined(typeof(T), value))
+            {
+              return (T)Enum.ToObject(typeof(T), value);
+            }
+            else
+            {
+                return defaultValue;
+            }
+        }
+
         public static T Parse<T>(string value, T defaultValue)
         {
             try
             {
                 if (value == null)
                     return defaultValue;
-                if (!Enum.IsDefined(typeof(T), value))
-                    return defaultValue;
+                //if (!Enum.IsDefined(typeof(T), value))
+                //    return defaultValue;
                 return (T) Enum.Parse(typeof(T), value, true);
             }
             catch
@@ -119,8 +165,8 @@ namespace Nistec.Generic
             {
                 if (value == null)
                     return defaultValue;
-                if (!Enum.IsDefined(type, value))
-                    return defaultValue;
+                //if (!Enum.IsDefined(type, value))
+                //    return defaultValue;
                 return Enum.Parse(type, value, true);
             }
             catch
@@ -214,7 +260,6 @@ namespace Nistec.Generic
         }
 
     }
-
     public static class UUID
     {
 
@@ -344,6 +389,7 @@ namespace Nistec.Generic
     
     public static class DictionaryExtension
     {
+ 
         #region method GetValue
 
         public static bool TryGetValue<T>(this Dictionary<string,object> dic, string field, out T value)
@@ -384,6 +430,49 @@ namespace Nistec.Generic
             dic.TryGetValue(key, out value);
             return value;
         }
+        public static T Get<T>(this IDictionary<string, object> dic, string key)
+        {
+            object value = null;
+            dic.TryGetValue(key, out value);
+            return GenericTypes.Convert<T>(value);
+        }
+        public static T GetEnum<T>(this Dictionary<string, object> dic, string key, T defaultValue)
+        {
+            object value = null;
+            if(dic.TryGetValue(key, out value))
+            {
+                if (value == null)
+                {
+                    return defaultValue;
+                }
+                if (value is string)
+                {
+                    return EnumExtension.Parse<T>(value.ToString(), defaultValue);
+                }
+                return (T)value;
+            }
+            return defaultValue;
+        }
+
+        public static T Get<T>(this IDictionary<string, object> dic, string key, T valueIfNull)
+        {
+            object value = null;
+            dic.TryGetValue(key, out value);
+            return GenericTypes.Convert<T>(value, valueIfNull);
+        }
+
+        public static bool TryGetValue<T>(this IDictionary<string, object> dic, string key, out T value)
+        {
+            object o = null;
+            if (dic.TryGetValue(key, out o))
+            {
+                value = GenericTypes.Convert<T>(o);
+                return value != null;
+            }
+
+            value = default(T);
+            return false;
+        }
 
         public static T Get<T>(this IDictionary dic, object key)//, ConvertDescriptor cd= ConvertDescriptor.Default)
         {
@@ -422,7 +511,8 @@ namespace Nistec.Generic
             }
             for (int i = 0; i < count; i++)
             {
-                dic[keyValueParameters[i].ToString()] = keyValueParameters[++i];
+                string key = KeySet.CleanKey(keyValueParameters[i].ToString());
+                dic[key] = keyValueParameters[++i];
             }
         }
 
@@ -439,7 +529,8 @@ namespace Nistec.Generic
             Dictionary<string, string> list = new Dictionary<string, string>();
             for (int i = 0; i < count; i++)
             {
-                list[keyValueArgs[i]] = keyValueArgs[++i];
+                string key = KeySet.CleanKey(keyValueArgs[i]);
+                list[key] = keyValueArgs[++i];
             }
 
             return list;
@@ -498,6 +589,44 @@ namespace Nistec.Generic
 
         #endregion
 
+        public static T Cast<T>(this IDictionary<string, object> de)
+        {
+            T entity = ActivatorUtil.CreateInstance<T>();
+            PropertyInfo[] p = entity.GetType().GetProperties(true);
+
+            if (entity == null)
+            {
+                return default(T);
+            }
+            if (p == null)
+            {
+                return default(T);
+            }
+            else
+            {
+                foreach (var entry in de)
+                {
+                    PropertyInfo pi = p.Where(pr => pr.Name == entry.Key).FirstOrDefault();
+                    if (pi != null && pi.CanWrite)
+                    {
+                        pi.SetValue(entity, entry.Value, null);
+                    }
+                }
+
+                return entity;
+            }
+        }
+
+        public static Dictionary<TKey, TValue> CloneDictionary<TKey, TValue> (this Dictionary<TKey, TValue> original) where TValue : ICloneable
+        {
+            Dictionary<TKey, TValue> ret = new Dictionary<TKey, TValue>(original.Count, original.Comparer);
+            foreach (KeyValuePair<TKey, TValue> entry in original)
+            {
+                ret.Add(entry.Key, (TValue)entry.Value.Clone());
+            }
+            return ret;
+        }
+ 
     }
     public static class KeyValueExtension
     {
@@ -566,8 +695,83 @@ namespace Nistec.Generic
                 return keyValueArray[i + 1];
             return defaulValue;
         }
-       
 
+        //public static string ToJson(params object[] keyValueArray)
+        //{
+        //    int count = keyValueArray.Length;
+        //    if (count % 2 != 0)
+        //    {
+        //        throw new ArgumentException("values parameter not correct, Not match key value arguments");
+        //    }
+        //    StringBuilder _output = new StringBuilder();
+        //    _output.Append("{");
+        //    for (int i = 0; i < count; i++)
+        //    {
+
+        //        string key = string.Format("{0}", keyValueArray[i]);
+        //        _output.AppendFormat("{0}:", keyValueArray[i]);
+
+        //        object obj = keyValueArray[++i];
+
+        //        if (obj == null || obj is DBNull)
+        //        {
+        //            _output.Append("null");
+        //        }
+        //        else
+        //        {
+        //            Type type = obj.GetType();
+
+        //            switch (type.Name)
+        //            {
+        //                case "Boolean":
+        //                    _output.Append(((bool)obj) ? "true" : "false"); break;// conform to standard
+        //                case "Byte":
+        //                case "UInt16":
+        //                case "UInt32":
+        //                case "UInt64":
+        //                case "SByte":
+        //                case "Int16":
+        //                case "Int32":
+        //                case "Int64":
+        //                case "Single":
+        //                case "Double":
+        //                case "Decimal":
+        //                    _output.Append(((IConvertible)obj).ToString(NumberFormatInfo.InvariantInfo)); break;
+        //                case "Char":
+        //                case "String":
+        //                    _output.Append(obj.ToString()); break;
+        //                case "DateTime":
+        //                    _output.Append((DateTime)obj); break;
+        //                case "TimeSpan":
+        //                    _output.Append((TimeSpan)obj); break;
+        //                case "Guid":
+        //                    _output.Append((Guid)obj); break;
+
+        //                //case "Byte[]":
+        //                //    WriteBytes((byte[])obj); break;
+        //                //case "Char[]":
+        //                //    WriteArray<Char>((Char[])obj); break;
+        //                //case "Int16[]":
+        //                //    WriteArray<Int16>((Int16[])obj); break;
+        //                //case "Int32[]":
+        //                //    WriteArray<Int32>((Int32[])obj); break;
+        //                //case "Int64[]":
+        //                //    WriteArray<Int64>((Int64[])obj); break;
+        //                //case "String[]":
+        //                //    WriteArray<String>((String[])obj); break;
+        //                //case "Object[]":
+        //                //    WriteArray<Object>((Object[])obj); break;
+        //                default:
+        //                    _output.Append(obj.ToString()); break;
+        //            }
+        //        }
+        //        _output.Append(",");
+
+        //    }
+        //    _output.Remove(_output.Length - 1, 1);// remove las "," 
+        //    _output.Append("}");
+        //    return _output.ToString();
+        //}
         public static void ToKeyValue<T>(this IKeyValue<T> instance, DataRow dr)
         {
             if (dr == null)
@@ -596,9 +800,50 @@ namespace Nistec.Generic
                 instance[colName] = GenericTypes.NZ(dr[colName], "");
             }
         }
+        public static string[] SplitArg(this IKeyValue kv, string key, string valueIfNull)
+        {
+            string val = kv.Get<string>(key, valueIfNull);
+            if (val == null)
+                return valueIfNull == null ? null : new string[] { valueIfNull };
+            return val.SplitTrim('|');
+        }
+
+
+        public static TimeSpan TimeArg(this IKeyValue kv, string key, string valueIfNull)
+        {
+            string val = kv.Get<string>(key, valueIfNull);
+            TimeSpan time = string.IsNullOrEmpty(val) ? TimeSpan.Zero : TimeSpan.Parse(val);
+            return time;
+        }
+        public static string[] SplitArg(this NameValueArgs dic, string key, string valueIfNull)
+        {
+            string val = dic.Get<string>(key, valueIfNull);
+            if (val == null)
+                return valueIfNull == null ? null : new string[] { valueIfNull };
+            return val.SplitTrim('|');
+        }
+
+        public static TimeSpan TimeArg(this NameValueArgs dic, string key, string valueIfNull)
+        {
+            string val = dic.Get<string>(key, valueIfNull);
+            TimeSpan time = string.IsNullOrEmpty(val) ? TimeSpan.Zero : TimeSpan.Parse(val);
+            return time;
+        }
     }
     public static class CollectionExtension
     {
+
+        public static string ToQueryString(this NameValueCollection args)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            foreach (string key in args)
+            {
+                var value = args[key];
+                sb.AppendFormat("{0}={1}&", key, value);
+            }
+            return sb.ToString().TrimEnd('&');
+        }
         public static T Get<T>(this NameValueCollection nv, string key)
         {
             return GenericTypes.Convert<T>(nv[key]);
@@ -608,12 +853,437 @@ namespace Nistec.Generic
         {
             return GenericTypes.Convert<T>(nv[key], valueIfNull);
         }
+        public static T GetEnum<T>(this NameValueCollection nv, string key, T defaultValue)
+        {
+            string value = nv[key];
+            if (value == null)
+            {
+                return defaultValue;
+            }
+            int val;
+            if(int.TryParse(value, out val))
+            {
+                return (T)EnumExtension.Cast<T>(val,defaultValue);
+            }
+            return EnumExtension.Parse<T>(value.ToString(), defaultValue);
+        }
         public static T Get<T>(this NameValueCollection nv, string key, T minValue, T maxValue, T defaultValue)
         {
             T result = GenericTypes.Convert<T>(nv[key], defaultValue);
             if(Comparer<T>.Default.Compare(result,minValue)<0 || Comparer<T>.Default.Compare(result,maxValue)>0)
                 return defaultValue;
             return result;
+        }
+    }
+
+    public class KeyValueUtil
+    {
+        public static string KeyValueToQueryString(params string[] keyValueParameters)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            if (keyValueParameters == null || keyValueParameters.Length == 0)
+                return null;
+
+            int count = keyValueParameters.Length;
+            if (count % 2 != 0)
+            {
+                throw new ArgumentException("values parameter not correct, Not match key value arguments");
+            }
+            for (int i = 0; i < count; i++)
+            {
+                sb.AppendFormat("{0}={1}&", keyValueParameters[i], keyValueParameters[++i]);
+            }
+            return sb.ToString().TrimEnd('&');
+        }
+
+        public static NameValueCollection KeyValueToNameValue(params string[] keyValueParameters)
+        {
+            NameValueCollection dic = new NameValueCollection();
+
+            if (keyValueParameters == null || keyValueParameters.Length == 0)
+                return dic;
+
+            int count = keyValueParameters.Length;
+            if (count % 2 != 0)
+            {
+                throw new ArgumentException("values parameter not correct, Not match key value arguments");
+            }
+            for (int i = 0; i < count; i++)
+            {
+                dic.Add(keyValueParameters[i], keyValueParameters[++i]);
+            }
+
+            return dic;
+        }
+        public static IDictionary<string,object> KeyValueToDictionary(params object[] keyValueParameters)
+        {
+            IDictionary<string, object> dic = new Dictionary<string, object>();
+
+            if (keyValueParameters == null || keyValueParameters.Length == 0)
+                return dic;
+
+            int count = keyValueParameters.Length;
+            if (count % 2 != 0)
+            {
+                throw new ArgumentException("values parameter not correct, Not match key value arguments");
+            }
+            for (int i = 0; i < count; i++)
+            {
+                dic.Add(keyValueParameters[i].ToString(), keyValueParameters[++i]);
+            }
+
+            return dic;
+        }
+        public static IDictionary<string, string> KeyValueToDictionaryString(params string[] keyValueParameters)
+        {
+            IDictionary<string, string> dic = new Dictionary<string, string>();
+
+            if (keyValueParameters == null || keyValueParameters.Length == 0)
+                return dic;
+
+            int count = keyValueParameters.Length;
+            if (count % 2 != 0)
+            {
+                throw new ArgumentException("values parameter not correct, Not match key value arguments");
+            }
+            for (int i = 0; i < count; i++)
+            {
+                dic.Add(keyValueParameters[i] , keyValueParameters[++i]);
+            }
+
+            return dic;
+        }
+    }
+
+    public class DictionaryUtil
+    {
+        public static ConcurrentDictionary<TKey, TValue> CreateConcurrentDictionary<TKey, TValue>(int initialCapacity = 101)
+        {
+            // We know how many items we want to insert into the ConcurrentDictionary.
+            // So set the initial capacity to some prime number above that, to ensure that
+            // the ConcurrentDictionary does not need to be resized while initializing it.
+            //int initialCapacity = 101;
+
+            // The higher the concurrencyLevel, the higher the theoretical number of operations
+            // that could be performed concurrently on the ConcurrentDictionary.  However, global
+            // operations like resizing the dictionary take longer as the concurrencyLevel rises. 
+            // For the purposes of this example, we'll compromise at numCores * 2.
+            int numProcs = Environment.ProcessorCount;
+            int concurrencyLevel = numProcs * 2;
+
+            // Construct the dictionary with the desired concurrencyLevel and initialCapacity
+            return new ConcurrentDictionary<TKey, TValue>(concurrencyLevel, initialCapacity);
+
+        }
+
+        public static object ToDictionaryOrObject(object source, string name, bool allowReadOnly = false)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+            Type sourceType = source.GetType();
+
+            if (sourceType.IsEnum)
+            {
+                return (int)Convert.ToInt32(source);
+            }
+            else if (SerializeTools.IsSimple(sourceType))
+            {
+                return source;
+            }
+            else if (SerializeTools.IsStream(sourceType))
+            {
+                return source;
+            }
+            else if (SerializeTools.IsType(sourceType))
+            {
+                return sourceType;
+            }
+
+            var dictionary = new Dictionary<string, object>();
+            SerializeTools.MapToDictionary(dictionary, source, name);
+            return dictionary;
+        }
+
+        public static IDictionary<string, object> ToDictionary(object source, string name, bool allowReadOnly = false)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+            var dictionary = new Dictionary<string, object>();
+            SerializeTools.MapToDictionary(dictionary, source, name);
+            return dictionary;
+        }
+
+        //internal static void MapToDictionaryInternal(
+        //    Dictionary<string, object> dictionary, object source, string name, bool allowReadOnly = false)
+        //{
+        //    Type sourceType = source.GetType();
+        //    if (sourceType.IsEnum)
+        //    {
+        //        dictionary[sourceType.Name] = (int)Convert.ToInt32(source);
+        //        return;
+        //    }
+        //    else if (SerializeTools.IsSimple(sourceType))
+        //    {
+        //        dictionary[sourceType.Name] = source;
+        //        return;
+        //    }
+        //    else if (SerializeTools.IsStream(sourceType))
+        //    {
+        //        dictionary[sourceType.Name] = source;
+        //        return;
+        //    }
+        //    else if (SerializeTools.IsType(sourceType))
+        //    {
+        //        dictionary[sourceType.Name] = sourceType.FullName;
+        //        return;
+        //    }
+
+        //    var properties = source.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance, allowReadOnly);
+        //    foreach (var p in properties)
+        //    {
+
+        //        if(!allowReadOnly && !p.CanWrite) { continue; }
+
+        //        if (p.CanRead)
+        //        {
+        //            var key = !string.IsNullOrWhiteSpace(name) ? name + "." + p.Name : p.Name;
+        //            object value = p.GetValue(source, null);
+        //            if (value == null)
+        //                continue;
+        //            Type valueType = value.GetType();
+
+        //            if (valueType.IsEnum)
+        //            {
+        //                dictionary[key] =(int) Convert.ToInt32(value);
+        //            }
+        //            else if (SerializeTools.IsSimple(valueType))
+        //            {
+        //                dictionary[key] = value;
+        //            }
+        //            else if (SerializeTools.IsStream(valueType))
+        //            {
+        //                dictionary[key] = value;
+        //            }
+        //            else if (SerializeTools.IsType(valueType))
+        //            {
+        //                dictionary[key] = valueType.FullName;
+        //            }
+        //            else if (SerializeTools.IsDataTable(valueType) || SerializeTools.IsDataSet(valueType))
+        //            {
+        //                dictionary[key] = value;
+        //            }
+        //            else if (typeof(IKeyValue).IsAssignableFrom(valueType))
+        //            {
+        //                dictionary[key] = ((IKeyValue)value).Dictionary();
+        //            }
+        //            else if (typeof(IKeyValue<object>).IsAssignableFrom(valueType))
+        //            {
+        //                dictionary[key] = ((IKeyValue<object>)value).ToDictionary();
+        //            }
+        //            else if (SerializeTools.IsAssignableFromDictionary(valueType, true))
+        //            {
+        //                dictionary[key] = value;
+        //            }
+        //            else if (SerializeTools.IsEnumerable(valueType))
+        //            {
+        //                var i = 0;
+        //                var subdictionary = new Dictionary<string, object>();
+        //                foreach (object o in (IEnumerable)value)
+        //                {
+        //                    MapToDictionaryInternal(subdictionary, o, key + "[" + i + "]");
+        //                    i++;
+        //                }
+        //                dictionary[key]= subdictionary;
+        //            }
+        //            else
+        //            {
+        //                var subdictionary = new Dictionary<string, object>();
+        //                MapToDictionaryInternal(subdictionary, value, key, allowReadOnly);
+        //                dictionary[key] = subdictionary;
+        //            }
+        //        }
+        //    }
+        //}
+
+        public void Synchronize<TKey, TValue>(IDictionary<TKey, TValue> source, IDictionary<TKey, TValue> itemsToSync, bool removeNonExists, Action<string> logAction)
+        {
+            object osync = new Object();
+
+            List<TKey> itemsToRemove = new List<TKey>();
+
+            //stor all the keys that should be removed
+            if (removeNonExists)
+            {
+                foreach(var entry in source)
+                {
+                    var searchKey = entry.Key;
+                    if (!itemsToSync.ContainsKey(searchKey))
+                    {
+                        itemsToRemove.Add(searchKey);
+                    }
+                };
+            }
+
+            //synchronize data with the new 
+            foreach (var entry in itemsToSync)
+            {
+                var searchKey = entry.Key;
+                TValue retrievedValue;
+                TValue newValue = entry.Value;
+                retrievedValue = source[searchKey] = newValue;
+            };
+
+            //remove all items from data that not exists in the new data
+            if (removeNonExists && itemsToRemove.Count > 0)
+            {
+                foreach (var searchKey in itemsToRemove)
+                {
+                    if (!source.Remove(searchKey))
+                    {
+                        //The data was not updated. Log error, throw exception, etc.
+                        if (logAction != null)
+                            logAction(string.Format("Synchronize.TryRemove Item failed : {0}", searchKey));
+                        //CacheLogger.Logger.LogAction(CacheAction.SyncItem, CacheActionState.Failed, "Synchronize.TryRemove Item failed : {0}", searchKey);
+                    }
+                };
+            }
+        }
+        public void SynchronizeParallel<TKey, TValue>(Dictionary<TKey, TValue> source, Dictionary<TKey, TValue> itemsToSync, bool removeNonExists, Action<string> logAction)
+        {
+
+            ConcurrentBag<TKey> itemsToRemove = new ConcurrentBag<TKey>();
+
+            //stor all the keys that should be removed
+            if (removeNonExists)
+            {
+                Parallel.ForEach(source, entry =>
+                {
+                    var searchKey = entry.Key;
+                    if (!itemsToSync.ContainsKey(searchKey))
+                    {
+                        itemsToRemove.Add(searchKey);
+                    }
+                });
+            }
+
+            //synchronize data with the new 
+            Parallel.ForEach(itemsToSync, entry =>
+            {
+                var searchKey = entry.Key;
+                TValue retrievedValue;
+                TValue newValue = entry.Value;
+                retrievedValue = source[searchKey]=newValue;
+
+            });
+
+            //remove all items from data that not exists in the new data
+            if (removeNonExists && itemsToRemove.Count > 0)
+            {
+                Parallel.ForEach(itemsToRemove, searchKey =>
+                {
+                    TValue retrievedValue;
+                    if(source.TryGetValue(searchKey, out retrievedValue))
+                    {
+                        source.Remove(searchKey);
+                        if (logAction != null)
+                            logAction(string.Format("Synchronize.TryRemove Item failed : {0}", searchKey));
+
+                    }
+                });
+            }
+
+        }
+
+        public void SynchronizeParallel<TKey, TValue>(ConcurrentDictionary<TKey, TValue> source, ConcurrentDictionary<TKey, TValue> itemsToSync, bool removeNonExists, Action<string> logAction)
+        {
+
+            ConcurrentBag<TKey> itemsToRemove = new ConcurrentBag<TKey>();
+
+            //stor all the keys that should be removed
+            if (removeNonExists)
+            {
+                Parallel.ForEach(source, entry =>
+                {
+                    var searchKey = entry.Key;
+                    if (!itemsToSync.ContainsKey(searchKey))
+                    {
+                        itemsToRemove.Add(searchKey);
+                    }
+                });
+            }
+
+            //synchronize data with the new 
+            Parallel.ForEach(itemsToSync, entry =>
+            {
+                var searchKey = entry.Key;
+                TValue retrievedValue;
+                TValue newValue = entry.Value;
+                retrievedValue = source.AddOrUpdate(searchKey, newValue, (key, oldValue) => newValue);
+
+            });
+
+            //remove all items from data that not exists in the new data
+            if (removeNonExists && itemsToRemove.Count > 0)
+            {
+                Parallel.ForEach(itemsToRemove, searchKey =>
+                {
+                    TValue retrievedValue;
+                    if (!source.TryRemove(searchKey, out retrievedValue))
+                    {
+                        //The data was not updated. Log error, throw exception, etc.
+                        if (logAction != null)
+                            logAction(string.Format("Synchronize.TryRemove Item failed : {0}", searchKey));
+                        //CacheLogger.Logger.LogAction(CacheAction.SyncItem, CacheActionState.Failed, "Synchronize.TryRemove Item failed : {0}", searchKey);
+                    }
+                });
+            }
+
+            //synchronize data with the new
+            //foreach (var entry in items)
+            //{
+            //    string searchKey = entry.Key;
+            //    EntityStream retrievedValue;
+            //    EntityStream newValue = entry.Value;
+
+            //    if (_Items.TryGetValue(searchKey, out retrievedValue))
+            //    {
+            //        if (!_Items.TryUpdate(searchKey, retrievedValue, newValue))
+            //        {
+            //            //The data was not updated. Log error, throw exception, etc.
+            //            CacheLogger.Logger.LogAction(CacheAction.SyncItem, CacheActionState.Failed, "Synchronize.TryUpdate Item failed : {0}", searchKey);
+            //        }
+            //    }
+            //    else
+            //    {
+            //        if (!_Items.TryAdd(searchKey, newValue))
+            //        {
+            //            CacheLogger.Logger.LogAction(CacheAction.SyncItem, CacheActionState.Failed, "Synchronize.TryAdd Unable to add data for : {0}", searchKey);
+            //        }
+            //    }
+            //}
+
+            //if (removeNonExists)
+            //{
+            //    //remove all items from data that not exists in the new data
+            //    foreach (var entry in _Items)
+            //    {
+            //        string searchKey = entry.Key;
+            //        EntityStream retrievedValue;
+            //        if (!items.TryGetValue(searchKey, out retrievedValue))
+            //        {
+            //            if (!_Items.TryRemove(searchKey, out retrievedValue))
+            //            {
+            //                //The data was not updated. Log error, throw exception, etc.
+            //                CacheLogger.Logger.LogAction(CacheAction.SyncItem, CacheActionState.Failed, "Synchronize.TryRemove Item failed : {0}", searchKey);
+            //            }
+            //        }
+            //    }
+            //}
         }
     }
 }

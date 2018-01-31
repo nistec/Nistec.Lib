@@ -25,6 +25,7 @@ using System.Text;
 using System.ComponentModel;
 using System.Collections;
 using System.Reflection;
+using Nistec.Runtime;
 
 namespace Nistec
 {
@@ -91,7 +92,7 @@ namespace Nistec
         /// <returns></returns>
         public static T Default<T>()
         {
-            return IsNullable(typeof(T)) ? default(T) : Activator.CreateInstance<T>();
+            return IsNullable(typeof(T)) ? default(T) : ActivatorUtil.CreateInstance<T>();
         }
 
         /// <summary>
@@ -101,8 +102,8 @@ namespace Nistec
         /// <returns></returns>
         public static object Default(Type type)
         {
-            //return type.IsNullableType() ? null : Activator.CreateInstance(type);
-            return IsNullable(type) ? null:Activator.CreateInstance(type);
+            //return type.IsNullableType() ? null : ActivatorUtil.CreateInstance(type);
+            return IsNullable(type) ? null:ActivatorUtil.CreateInstance(type);
         }
 
         public static bool IsNullable(Type type)
@@ -472,7 +473,7 @@ namespace Nistec
         /// <typeparam name="T"></typeparam>
         /// <param name="o"></param>
         /// <returns></returns>
-        public static T Cast<T>(object o)
+        public static T Cast<T>(object o, bool enableException =false)
         {
             if (o is T)
             {
@@ -484,14 +485,52 @@ namespace Nistec
                 {
                     return (T)System.Convert.ChangeType(o, typeof(T));
                 }
-                catch (InvalidCastException)
+                catch (InvalidCastException cex)
                 {
+                    if (enableException)
+                        throw cex;
                     return default(T);
                 }
             }
 
         }
-   
+
+        public static bool TryConvert<T>(object obj, out T result)
+        {
+            result = default(T);
+            if (obj is T)
+            {
+                result = (T)obj;
+                return true;
+            }
+
+            if (obj != null)
+            {
+                var converter = TypeDescriptor.GetConverter(typeof(T));
+                if (converter.CanConvertFrom(obj.GetType()))
+                    result = (T)converter.ConvertFrom(obj);
+                else
+                    return false;
+
+                return true;
+            }
+
+            //Be permissive if the object was null and the target is a ref-type
+            return !typeof(T).IsValueType;
+        }
+
+        public static T OfType<T>(object o)
+        {
+            return OfType<T>(new object[] { o }).FirstOrDefault();
+        }
+
+        public static IEnumerable<T> OfType<T>(this IEnumerable source)
+        {
+            foreach (object o in source)
+                if (o is T)
+                    yield return (T)o;
+        }
+
         public static T ConvertEnum<T>(string value, T defaultValue)
         {
             try

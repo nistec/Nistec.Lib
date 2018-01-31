@@ -29,6 +29,7 @@ using System.Collections;
 using System.ComponentModel;
 using System.Xml.Schema;
 using System.Text.RegularExpressions;
+using Nistec.Runtime;
 
 namespace Nistec.Xml
 {
@@ -583,7 +584,7 @@ namespace Nistec.Xml
         /// <returns></returns>
         public static T XmlToProperties<T>(string xmlString, string nameSpase)
         {
-            T obj = System.Activator.CreateInstance<T>();
+            T obj = ActivatorUtil.CreateInstance<T>();
 
            
             if (string.IsNullOrEmpty(nameSpase))

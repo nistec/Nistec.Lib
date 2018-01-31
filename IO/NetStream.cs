@@ -81,8 +81,9 @@ namespace Nistec.IO
         /// Copy stream to a new instance of <see cref="NetStream"/>.
         /// </summary>
         /// <param name="stream"></param>
+        /// <param name="BufferSize"></param>
         /// <returns></returns>
-        public static NetStream CopyStream(Stream stream)
+        public static NetStream CopyStream(Stream stream, int BufferSize = 8192)
         {
             if (stream is MemoryStream)
             {
@@ -94,44 +95,49 @@ namespace Nistec.IO
             }
             if (stream is PipeStream)
             {
-                return CopyStream((PipeStream)stream, 0);
+                //return CopyStream((PipeStream)stream, 0);
+                var ntStream = new NetStream();
+                ntStream.CopyFrom((PipeStream)stream, BufferSize);
+                return ntStream;
             }
             if (stream is NetworkStream)
             {
                 var ntStream = new NetStream();
-                ntStream.CopyWithTerminateCount((NetworkStream)stream,5000);
+                //ntStream.CopyWithTerminateCount((NetworkStream)stream, 5000);
+                ntStream.CopyFrom((NetworkStream)stream,0, BufferSize);
                 return ntStream;
             }
             var netStream = new NetStream();
             stream.CopyTo(netStream);
             return netStream;
         }
-        /// <summary>
-        /// Copy <see cref="PipeStream"/> stream to a new instance of <see cref="NetStream"/>.
-        /// </summary>
-        /// <param name="stream"></param>
-        /// <param name="InBufferSize"></param>
-        /// <returns></returns>
-        public static NetStream CopyStream(PipeStream stream, int InBufferSize = 8192)
-        {
-            if (InBufferSize <= 0)
-                InBufferSize = 8192;
-            NetStream ms = new NetStream();
-            do
-            {
-                byte[] bytes = new byte[InBufferSize];
-                int bytesLength = bytes.Length;
-                int cbRead = stream.Read(bytes, 0, bytesLength);
-                ms.Write(bytes, 0, cbRead);
-            }
-            while (!stream.IsMessageComplete);
 
-            if (ms.Length > 0)
-            {
-                ms.Position = 0;
-            }
-            return ms;
-        }
+        ///// <summary>
+        ///// Copy <see cref="PipeStream"/> stream to a new instance of <see cref="NetStream"/>.
+        ///// </summary>
+        ///// <param name="stream"></param>
+        ///// <param name="BufferSize"></param>
+        ///// <returns></returns>
+        //public static NetStream CopyStream(PipeStream stream, int BufferSize = 8192)
+        //{
+        //    if (BufferSize <= 0)
+        //        BufferSize = 8192;
+        //    NetStream ms = new NetStream();
+        //    do
+        //    {
+        //        byte[] bytes = new byte[BufferSize];
+        //        int bytesLength = bytes.Length;
+        //        int cbRead = stream.Read(bytes, 0, bytesLength);
+        //        ms.Write(bytes, 0, cbRead);
+        //    }
+        //    while (!stream.IsMessageComplete);
+
+        //    if (ms.Length > 0)
+        //    {
+        //        ms.Position = 0;
+        //    }
+        //    return ms;
+        //}
 
         #endregion
 
@@ -140,13 +146,40 @@ namespace Nistec.IO
         /// Clear the current stream and Copy the given <see cref="PipeStream"/> to the current <see cref="NetStream"/>.
         /// </summary>
         /// <param name="stream"></param>
-        /// <param name="InBufferSize"></param>
-        public void CopyFrom(PipeStream stream, int InBufferSize = 8192)
+        /// <param name="BufferSize"></param>
+        public void CopyFrom(PipeStream stream, int BufferSize = 8192)
         {
+            if (BufferSize <= 0)
+                BufferSize = 8192;
             Array.Clear(this.m_buffer, 0, this.m_length);
             do
             {
-                byte[] bytes = new byte[InBufferSize];
+                byte[] bytes = new byte[BufferSize];
+                int bytesLength = bytes.Length;
+                int cbRead = stream.Read(bytes, 0, bytesLength);
+                Write(bytes, 0, cbRead);
+            }
+            while (!stream.IsMessageComplete);
+
+            if (this.Length > 0)
+            {
+                this.Position = 0;
+            }
+        }
+
+        /// <summary>
+        /// Clear the current stream and Copy the given <see cref="PipeStream"/> to the current <see cref="NetStream"/>.
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="BufferSize"></param>
+        public void CopyBlock(PipeStream stream, int BufferSize = 8192)
+        {
+            if (BufferSize <= 0)
+                BufferSize = 8192;
+            //Array.Clear(this.m_buffer, 0, this.m_length);
+            do
+            {
+                byte[] bytes = new byte[BufferSize];
                 int bytesLength = bytes.Length;
                 int cbRead = stream.Read(bytes, 0, bytesLength);
                 Write(bytes, 0, cbRead);
@@ -165,31 +198,49 @@ namespace Nistec.IO
         /// </summary>
         /// <param name="stream"></param>
         /// <param name="readTimeout">specifies the amount of time, in milliseconds, that will elapse before a read operation fails.</param>
-        /// <param name="InBufferSize"></param>
-        public void CopyWithTerminateCount(NetworkStream stream, int readTimeout, int InBufferSize = 8192)
+        /// <param name="BufferSize"></param>
+        public int CopyWithTerminateCount(NetworkStream stream, int readTimeout, int BufferSize = 8192)
         {
-            if (InBufferSize <= 0)
-                InBufferSize = 8192;
+            if (BufferSize <= 0)
+                BufferSize = 8192;
            
             Array.Clear(this.m_buffer, 0, this.m_length);
-
+            int totalWrite = 0;
             if (stream.CanRead)
             {
                 int count = 0;
                 stream.ReadTimeout = readTimeout;
-                byte[] buffer = new byte[InBufferSize];
-                int totalRead = 0;
+
+                byte[] intbytes = new byte[4];
+                stream.Read(intbytes, 0, 4);
+                count = (((intbytes[0] | (intbytes[1] << 8)) | (intbytes[2] << 0x10)) | (intbytes[3] << 0x18));
+
+                byte[] buffer = new byte[BufferSize];
+                
+                int bytesRead = 0;
                 do
                 {
-                    int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                    bytesRead = stream.Read(buffer, 0, buffer.Length);
                     this.Write(buffer, 0, bytesRead);
-                    totalRead += bytesRead;
-                    if (count == 0)
-                    {
-                        count = PeekInt32(1);
-                    }
+                    totalWrite += bytesRead;
                 }
-                while (totalRead < count);//(bytesRead > 0);
+                while (totalWrite < count && bytesRead > 0);
+
+
+                //byte[] buffer = new byte[BufferSize];
+                //int totalRead = 0;
+                //int bytesRead = 0;
+                //do
+                //{
+                //    bytesRead = stream.Read(buffer, 0, buffer.Length);
+                //    this.Write(buffer, 0, bytesRead);
+                //    totalRead += bytesRead;
+                //    if (count == 0)
+                //    {
+                //        count = PeekInt32(1);
+                //    }
+                //}
+                //while (totalRead < count && bytesRead > 0);
 
                 //do
                 //{
@@ -210,25 +261,78 @@ namespace Nistec.IO
             {
                 this.Position = 0;
             }
+            return totalWrite;
         }
-       
 
-        ///// <summary>
-        ///// Clear the current stream and Copy the given <see cref="NetworkStream"/> to the current <see cref="NetStream"/>.
-        ///// </summary>
-        ///// <param name="stream"></param>
-        ///// <param name="InBufferSize"></param>
-        //public void CopyFrom(NetworkStream stream, int InBufferSize = 8192)
-        //{
-        //    Array.Clear(this.m_buffer, 0, this.m_length);
 
-        //    stream.CopyTo(this, InBufferSize);
+        /// <summary>
+        /// Clear the current stream and Copy the given <see cref="NetworkStream"/> to the current <see cref="NetStream"/>.
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="readTimeout">specifies the amount of time, in milliseconds, that will elapse before a read operation fails.</param>
+        /// <param name="BufferSize"></param>
+        public int CopyFrom(NetworkStream stream, int readTimeout, int BufferSize = 8192, int offset=0)
+        {
+            if (BufferSize <= 0)
+                BufferSize = 8192;
+            if (readTimeout <= 0)
+                readTimeout = 5000;
+            Array.Clear(this.m_buffer, 0, this.m_length);
+            int totalWrite = 0;
 
-        //    if (this.Length > 0)
-        //    {
-        //        this.Position = 0;
-        //    }
-        //}
+            if (stream.CanRead)
+            {
+                stream.ReadTimeout = readTimeout;
+                int BytesRead = 0;
+                byte[] ReadBuffer = new byte[BufferSize];
+
+                do
+                {
+                    BytesRead = stream.Read(ReadBuffer, 0, ReadBuffer.Length);
+                    this.Write(ReadBuffer, 0, BytesRead);
+                    totalWrite += BytesRead;
+                }
+                while (stream.DataAvailable);// BytesRead > 0);
+            }
+
+            if (this.Length > 0)
+            {
+                this.Position = 0;
+            }
+            return totalWrite;
+        }
+
+        public int CopyBlock(NetworkStream stream, int readTimeout, int BufferSize = 8192)
+        {
+            if (BufferSize <= 0)
+                BufferSize = 8192;
+            if (readTimeout <= 0)
+                readTimeout = 5000;
+            //Array.Clear(this.m_buffer, 0, this.m_length);
+            int totalWrite = 0;
+
+            if (stream.CanRead)
+            {
+                stream.ReadTimeout = readTimeout;
+                int BytesRead = 0;
+                byte[] ReadBuffer = new byte[BufferSize];
+
+                do
+                {
+                    BytesRead = stream.Read(ReadBuffer, 0, ReadBuffer.Length);
+                    this.Write(ReadBuffer, 0, BytesRead);
+                    totalWrite += BytesRead;
+                }
+                while (stream.DataAvailable);// BytesRead > 0);
+            }
+
+            if (this.Length > 0)
+            {
+                this.Position = 0;
+            }
+            return totalWrite;
+        }
+
         /// <summary>
         /// Get a copy of current stream.
         /// </summary>
@@ -237,6 +341,53 @@ namespace Nistec.IO
         {
             Position = 0;
             return new NetStream(ToArray());
+        }
+
+        /// <summary>
+        /// Get a copy of current stream.
+        /// </summary>
+        /// <returns></returns>
+        public NetStream Copy(int index)
+        {
+            Position = 0;
+            int length = this.iLength;
+            if (index > length || index < 0)
+            {
+                throw new ArgumentException("index is out of current range");
+            }
+            return new NetStream(ToArray(), index, length - index);
+        }
+
+        /// <summary>
+        /// Get a copy of current stream.
+        /// </summary>
+        /// <returns></returns>
+        public NetStream Copy(int index, int count)
+        {
+            Position = 0;
+            int length = this.iLength;
+            if (index > length || index < 0 || count < 0)
+            {
+                throw new ArgumentException("index or count is out of current range");
+            }
+            if ((count + index) > length)
+            {
+                throw new ArgumentException("index+count is out of current range");
+            }
+            return new NetStream(ToArray(), index, count);
+        }
+
+        /// <summary>
+        /// Get the current stream ready to seek in position 0.
+        /// </summary>
+        /// <returns></returns>
+        public NetStream Ready()
+        {
+            if (CanSeek && (this.m_position - this.m_origin) > 0)
+            {
+                Position = 0;
+            }
+            return this;
         }
 
         /// <summary>
@@ -269,7 +420,7 @@ namespace Nistec.IO
             }
         }
 
-        protected void Clear()
+        public void Clear()
         {
             Array.Clear(this.m_buffer, 0, this.m_length);
         }
@@ -863,7 +1014,18 @@ namespace Nistec.IO
             
         }
 
- 
+        /// <summary>
+        /// Read a bytes from given offset and return a <see cref="Int32"/> value.
+        /// </summary>
+        /// <param name="offset"></param>
+        /// <returns></returns>
+        public int ReadInt32(int offset)
+        {
+            byte[] buffer = new byte[4];
+            int readed = Read(buffer, offset, 4);
+            return (((buffer[offset + 0] | (buffer[offset + 1] << 8)) | (buffer[offset + 2] << 0x10)) | (buffer[offset + 3] << 0x18));
+        }
+
         /// <summary>
         /// Reads a byte from the stream and advances the position within the stream
         ///     by one byte, or returns -1 if at the end of the stream.
@@ -1102,6 +1264,30 @@ namespace Nistec.IO
             stream.Write(this.m_buffer, this.m_origin, this.m_length - this.m_origin);
         }
 
+        /// <summary>
+        /// Write the current stream to a given stream.
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="offset"></param>
+        /// <param name="limitCount"></param>
+        public virtual void Write(NetStream stream, int offset=0, int limitCount = 0)
+        {
+            if (stream == null)
+            {
+                throw new ArgumentNullException("stream", "Argument Null Stream");
+            }
+            if (!this.m_isOpen)
+            {
+                IoErrors.StreamIsClosed();
+            }
+            int length = stream.iLength;
+
+            if (limitCount > 0)
+            {
+                length = limitCount;
+            }
+            Write(stream.ToArray(), offset, length);
+        }
         #endregion
 
         #region properties

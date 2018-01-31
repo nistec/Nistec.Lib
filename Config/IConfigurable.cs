@@ -18,18 +18,24 @@
 // 10/01/2006  Nissim   Created the code
 //===============================================================================================================
 //licHeader|
+using Nistec.Generic;
+using Nistec.Runtime;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Xml;
 
-namespace Nistec.Serialization
+namespace Nistec.Config
 {
-    public enum Formatters
+
+    public interface IConfigurable
     {
-        BinaryFormatter,
-        BinarySerializer,
-        Xml,
-        Json
+        void LoadConfig(XmlTable xt);
+        bool IsEqual(object item);
     }
+
 }

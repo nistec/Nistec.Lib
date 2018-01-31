@@ -22,19 +22,27 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.IO;
+using Nistec.IO;
+using System.Collections;
+using Nistec.Generic;
+using Nistec.Serialization;
 
-namespace Nistec.Serialization
+
+namespace Nistec.Data
 {
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Property, Inherited = false)]
-    public class EntitySerializeAttribute : Attribute
+    public interface IDataTableAdaptor 
     {
-        public EntitySerializeAttribute() { }
+        void Prepare(System.Data.DataTable dt);
     }
-
-
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Class, Inherited = false)]
-    public class NoSerializeAttribute : Attribute
+    public interface IDataRowAdaptor
     {
-        public NoSerializeAttribute() { }
+        void Prepare(System.Data.DataRow dr);
     }
+   
+}
+
+namespace Nistec
+{
+
 }

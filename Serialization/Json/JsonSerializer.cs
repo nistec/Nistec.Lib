@@ -57,7 +57,6 @@ namespace Nistec.Serialization
 
             if (settings == null)
                 settings = JsonSerializer.DefaultOption;
-
         }
 
         void EnsureWrtie()
@@ -102,6 +101,25 @@ namespace Nistec.Serialization
             return writer.ConvertToJson(obj, null);
         }
 
+        public void WriteToken(string name,object obj, Type baseType)
+        {
+            writer.WriteToken(name, obj, baseType);
+        }
+        public void WriteToken(string name, object obj)
+        {
+            writer.WriteToken(name, obj, null);
+        }
+
+        public string WriteOutput(bool pretty = false)
+        {
+            if (pretty)
+            {
+                var json = writer.WriteOutput(true);
+                return JsonConverter.PrintJson(json);
+            }
+            return writer.WriteOutput(true);
+        }
+
         /// <summary>
         /// Create a typed generic object from the json with parameter override on this call
         /// </summary>
@@ -119,6 +137,25 @@ namespace Nistec.Serialization
             EnsureRead();
             return reader.ToObject(json, type);
         }
+
+        public void ParseTo(Dictionary<string, object> d, string json)
+        {
+            JsonParser.ParseTo(d, json, false);
+        }
+        public void ParseTo(Dictionary<string, string> d,string json)
+        {
+            JsonParser.ParseTo(d,json, false);
+        }
+
+        //public IDictionary<string,object> ParseToDictionary(string json)
+        //{
+        //    return JsonParser.ParseToDictionary(json, false);
+        //}
+        //public IDictionary<string, string> ParseToDictionaryString(string json)
+        //{
+        //    return JsonParser.ParseToDictionaryString(json, false);
+        //}
+
         #endregion
 
         #region static
@@ -141,11 +178,11 @@ namespace Nistec.Serialization
         /// Create a json from object using <see cref="JsonSettings"/> and format(optional) with Indented format.
         /// </summary>
         /// <param name="obj"></param>
-        /// <param name="format"></param>
+        /// <param name="pretty"></param>
         /// <returns></returns>
-        public static string Serialize(object obj, bool preety)
+        public static string Serialize(object obj, bool pretty)
         {
-            return Serialize(obj, null, JsonSerializer.DefaultOption, preety ? JsonFormat.Indented : JsonFormat.None);
+            return Serialize(obj, null, JsonSerializer.DefaultOption, pretty ? JsonFormat.Indented : JsonFormat.None);
         }
 
         /// <summary>
@@ -220,10 +257,11 @@ namespace Nistec.Serialization
         /// Parse json tring and convert it to object.
         /// </summary>
         /// <param name="json"></param>
+        /// <param name="returnType"></param>
         /// <returns></returns>
-        public static object Parse(string json)
+        public static object Parse(string json, Type returnType)
         {
-            return JsonParser.Parse(json, JsonSerializer.DefaultOption.IgnoreCaseOnDeserialize);
+            return JsonParser.Parse(json, returnType, JsonSerializer.DefaultOption.IgnoreCaseOnDeserialize);
         }
 
         /// <summary>
@@ -243,7 +281,7 @@ namespace Nistec.Serialization
         /// <returns></returns>
         public static IDictionary<string, object> ToDictionary(string json)
         {
-            var parse = JsonSerializer.Parse(json);
+            var parse = JsonSerializer.Deserialize(json,typeof(Dictionary<string, object>));
             if (parse == null)
                 return new Dictionary<string, object>();
             return (IDictionary<string, object>)parse;
@@ -270,24 +308,25 @@ namespace Nistec.Serialization
         {
             return JsonReader.Get(settings).ToObject<T>(json);
         }
-        /// <summary>
-        /// Create an object from the json
-        /// </summary>
-        /// <param name="json"></param>
-        /// <returns></returns>
-        public static object Deserialize(string json)
-        {
-            return JsonReader.Get(DefaultOption).ToObject(json, null);
-        }
+        ///// <summary>
+        ///// Create an object from the json
+        ///// </summary>
+        ///// <param name="json"></param>
+        ///// <returns></returns>
+        //public static object Deserialize(string json)
+        //{
+        //    return JsonReader.Get(DefaultOption).ToObject(json, null);
+        //}
         /// <summary>
         /// Create an object from the json with settings parameter.
         /// </summary>
         /// <param name="json"></param>
+        /// <param name="type"></param>
         /// <param name="settings"></param>
         /// <returns></returns>
-        public static object Deserialize(string json, JsonSettings settings)
+        public static object Deserialize(string json, Type type, JsonSettings settings)
         {
-            return JsonReader.Get(settings).ToObject(json, null);
+            return JsonReader.Get(settings).ToObject(json, type);
         }
         /// <summary>
         /// Create an object of type from the json
@@ -299,16 +338,17 @@ namespace Nistec.Serialization
         {
             return JsonReader.Get(DefaultOption).ToObject(json, type);
         }
-        
-     
+
+
         /// <summary>
         /// Parse and clone to a new object.
         /// </summary>
         /// <param name="obj"></param>
+        /// <param name="type"></param>
         /// <returns></returns>
-        public static object ParseAndCopy(object obj)
+        public static object ParseAndCopy(object obj, Type type)
         {
-            return JsonReader.Get(DefaultOption).ToObject(Serialize(obj));
+            return JsonReader.Get(DefaultOption).ToObject(Serialize(obj), type);
         }
         /// <summary>
         /// Parse and clone to a new object.

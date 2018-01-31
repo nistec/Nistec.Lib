@@ -52,22 +52,265 @@ namespace Nistec.Serialization
         Token nextToken = Token.None;
         int index;
         bool ignorecase = false;
+        bool isGenericType;
+        bool isStringType;
+        Type returnType;
+        Type elementType;
 
-        public static object Parse(string json, bool ignorecase)
+        public static object Parse(string json, Type returnType, bool ignorecase)
         {
             if (json == null)
                 return null;
-            JsonParser parser = new JsonParser(json, ignorecase);
+            if (returnType == null)
+                returnType = SerializeTools.GetMethodReturnType("Nistec.Serialization.JsonParser", "Parse");
+
+            JsonParser parser = new JsonParser(json, ignorecase, returnType);
             return parser.ParseValue();
         }
+        public static void ParseTo(Dictionary<string, object> d,string json, bool ignorecase = false)
+        {
+            if (json == null)
+                return;
+            JsonParser parser = new JsonParser(json, ignorecase, typeof(Dictionary<string, object>));
+            parser.ParseTo(d);
+        }
+        public static void ParseTo(Dictionary<string, string> d,string json, bool ignorecase = false)
+        {
+            if (json == null)
+                return;
+            JsonParser parser = new JsonParser(json, ignorecase, typeof(Dictionary<string, string>));
+            parser.ParseObjectString();
+        }
 
-        internal JsonParser(string json, bool ignorecase)
+        //public static Dictionary<string,object> ParseToDictionary(string json, bool ignorecase=false)
+        //{
+        //    if (json == null)
+        //        return null;
+        //    JsonParser parser = new JsonParser(json, ignorecase,typeof(Dictionary<string, object>));
+        //    return parser.ParseObject();
+        //}
+        //public static Dictionary<string, string> ParseToDictionaryString(string json, bool ignorecase = false)
+        //{
+        //    if (json == null)
+        //        return null;
+        //    JsonParser parser = new JsonParser(json, ignorecase, typeof(Dictionary<string, string>));
+        //    return parser.ParseObjectString();
+        //}
+        private JsonParser(string json, bool ignorecase, Type returnType)
         {
             this.json = json;//.ToCharArray();
             this.ignorecase = ignorecase;
+            if (returnType == null)
+            {
+                throw new ArgumentNullException("JsonParser.returnType");
+            }
+            this.returnType = returnType;
+            this.elementType = SerializeTools.GetElementType(returnType);
+            this.isGenericType = returnType.IsGenericType;
+            this.isStringType = elementType == typeof(string);
         }
 
-       
+        //public KeyValuePair<string, object> ParseToken()
+        //{
+        //    string name = null;
+        //    object value = null;
+
+        //    ConsumeToken();
+
+        //    while (true)
+        //    {
+        //        var token = FindNext();
+        //        switch (token)
+        //        {
+
+        //            case Token.Comma:
+        //                ConsumeToken();
+        //                break;
+
+        //            case Token.TagClose:
+        //                ConsumeToken();
+        //                return new KeyValuePair<string, object>(name, value);
+
+        //            default:
+        //                {
+        //                    // name
+        //                    name = ParseString();
+        //                    if (ignorecase)
+        //                        name = name.ToLower();
+
+        //                    // :
+        //                    if (NextToken() != Token.Colon)
+        //                    {
+        //                        throw new Exception("JsonParser error: Expected colon at index " + index);
+        //                    }
+        //                    // value
+        //                    value = ParseValue();
+        //                    break;
+        //                }
+        //        }
+        //    }
+        //}
+
+        private void ParseTo<T>(Dictionary<string, T> d)
+        {
+
+            ConsumeToken(); // {
+
+            while (true)
+            {
+                var token = FindNext();
+                switch (token)
+                {
+
+                    case Token.Comma:
+                        ConsumeToken();
+                        break;
+
+                    case Token.TagClose:
+                        ConsumeToken();
+                        return;
+
+                    default:
+                        {
+                            // name
+                            string name = ParseString();
+                            if (ignorecase)
+                                name = name.ToLower();
+                            // :
+                            if (NextToken() != Token.Colon)
+                            {
+                                throw new Exception("JsonParser error: Expected colon at index " + index);
+                            }
+                            // value
+                            object value = ParseValue();
+
+                            d[name] = GenericTypes.Convert<T>(value);
+                        }
+                        break;
+                }
+            }
+        }
+        private void ParseTo(Dictionary<string, string> d)
+        {
+
+            ConsumeToken(); // {
+
+            while (true)
+            {
+                var token = FindNext();
+                switch (token)
+                {
+
+                    case Token.Comma:
+                        ConsumeToken();
+                        break;
+
+                    case Token.TagClose:
+                        ConsumeToken();
+                        return;
+
+                    default:
+                        {
+                            // name
+                            string name = ParseString();
+                            if (ignorecase)
+                                name = name.ToLower();
+                            // :
+                            if (NextToken() != Token.Colon)
+                            {
+                                throw new Exception("JsonParser error: Expected colon at index " + index);
+                            }
+                            // value
+                            object value = ParseValue();
+
+                            d[name] = value == null ? null : value.ToString();
+                        }
+                        break;
+                }
+            }
+        }
+        private void ParseTo(Dictionary<string, object> d)
+        {
+
+            ConsumeToken(); // {
+
+            while (true)
+            {
+                var token = FindNext();
+                switch (token)
+                {
+
+                    case Token.Comma:
+                        ConsumeToken();
+                        break;
+
+                    case Token.TagClose:
+                        ConsumeToken();
+                        return;
+
+                    default:
+                        {
+                            // name
+                            string name = ParseString();
+                            if (ignorecase)
+                                name = name.ToLower();
+                            // :
+                            if (NextToken() != Token.Colon)
+                            {
+                                throw new Exception("JsonParser error: Expected colon at index " + index);
+                            }
+                            // value
+                            object value = ParseValue();
+
+                            d[name] = value;
+                        }
+                        break;
+                }
+            }
+        }
+        private Dictionary<string, string> ParseObjectString()
+        {
+            Dictionary<string, string> table = new Dictionary<string, string>();
+
+            ConsumeToken(); // {
+
+            while (true)
+            {
+                var token = FindNext();
+                switch (token)
+                {
+
+                    case Token.Comma:
+                        ConsumeToken();
+                        break;
+
+                    case Token.TagClose:
+                        ConsumeToken();
+                        return table;
+
+                    default:
+                        {
+                            // name
+                            string name = ParseString();
+                            if (ignorecase)
+                                name = name.ToLower();
+
+                            // :
+                            if (NextToken() != Token.Colon)
+                            {
+                                throw new Exception("JsonParser error: Expected colon at index " + index);
+                            }
+
+                            // value
+                            object value = ParseValue();
+
+                            table[name] = value == null ? null : value.ToString();
+                        }
+                        break;
+                }
+            }
+        }
+
         private Dictionary<string, object> ParseObject()
         {
             Dictionary<string, object> table = new Dictionary<string, object>();
@@ -111,6 +354,31 @@ namespace Nistec.Serialization
             }
         }
 
+        private List<string> ParseArrayString()
+        {
+            List<string> array = new List<string>();
+            ConsumeToken(); // [
+
+            while (true)
+            {
+                var token = FindNext();
+                switch (token)
+                {
+                    case Token.Comma:
+                        ConsumeToken();
+                        break;
+
+                    case Token.TagArrayClose:
+                        ConsumeToken();
+                        return array;
+
+                    default:
+                        var val = ParseValue();
+                        array.Add(val == null ? null : val.ToString());
+                        break;
+                }
+            }
+        }
         private List<object> ParseArray()
         {
             List<object> array = new List<object>();
@@ -151,8 +419,22 @@ namespace Nistec.Serialization
                     return ParseObject();
 
                 case Token.TagArrayOpen:
-                    return ParseArray();
-
+                    if (isStringType)
+                    {
+                        return ParseArrayString();
+                        //var list= ParseArrayString();
+                        //if (isGenericType)
+                        //    return list.ToArray();
+                        //return list;
+                    }
+                    else
+                    {
+                        return ParseArray();
+                        //var list = ParseArray();
+                        //if (isGenericType)
+                        //    return list.ToArray();
+                        //return list;
+                    }
                 case Token.True:
                     ConsumeToken();
                     return true;

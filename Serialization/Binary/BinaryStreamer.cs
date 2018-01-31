@@ -35,6 +35,7 @@ using System.Reflection;
 using Nistec.IO;
 using Nistec.Generic;
 using System.Collections.Specialized;
+using Nistec.Runtime;
 
 namespace Nistec.Serialization
 {
@@ -42,7 +43,7 @@ namespace Nistec.Serialization
     /// <summary>
     /// Represent a binary streamer such as binary write and reader.
     /// </summary>
-    public class BinaryStreamer : ISerializerContext, IBinaryStreamer, IDisposable
+    public class BinaryStreamer : ISerializerContext, IBinaryStreamer//, IDisposable
     {
 
         #region members
@@ -87,6 +88,8 @@ namespace Nistec.Serialization
         private int _maxChars;
         private const int LargeByteBufferSize = 0x100;
         private bool m_isOwnerStream;
+        private int _bytesWriten;
+
         #endregion
 
         #region properties
@@ -129,6 +132,14 @@ namespace Nistec.Serialization
             return (T)Convert.ChangeType(type, typeof(T));
         }
 
+        public int BytesWriten
+        {
+            get
+            {
+                return this._bytesWriten;
+            }
+        }
+
         #endregion
 
         #region ctor
@@ -149,6 +160,16 @@ namespace Nistec.Serialization
             {
                 throw new ArgumentNullException("encoding");
             }
+
+            if(stream is NetStream)
+            {
+                stream.Position = 0;
+            }
+            else if (stream.CanSeek)
+            {
+                stream.Seek(0, SeekOrigin.Begin);
+            }
+
             //TODO:CHECK THIS
             //if (!stream.CanWrite)
             //{
@@ -207,7 +228,14 @@ namespace Nistec.Serialization
             this.m_buffer = new byte[maxByteCount];
             this.m_charBuffer = null;
             this.m_charBytes = null;
-            this.m_isNetStream = this.m_stream.GetType() == typeof(NetStream);
+
+            if (stream is NetStream)
+            {
+                this.m_isNetStream = true;
+                stream.Position = 0;
+            }
+            else
+                this.m_isNetStream = false;
         }
 
         #endregion
@@ -400,19 +428,28 @@ namespace Nistec.Serialization
                         WriteSerialContext(value);
                         break;
                     case SerialType.dictionaryGenericType:
-                        WriteDynamicDictionary((IDictionary)value);
+                        WriteGenericDictionary((IDictionary)value);
+                        break;
+                    case SerialType.dictionaryEntityType:
+                        WriteDictionaryAsEntity((Dictionary<string,object>)value,false, true);
                         break;
                     case SerialType.listGenericType:
-                        WriteDynamicList((IList)value);
+                        WriteGenericList((IList)value);
                         break;
-                    case SerialType.dictionaryType:
+                    case SerialType.hashtableType:
                         WriteHashtable((IDictionary)value);
+                        break;
+                    case SerialType.dictionaryAssignType:
+                        WriteAssignFromDictionary(value);
                         break;
                     case SerialType.dataTableType:
                         WriteDataTable((DataTable)value);
                         break;
                     case SerialType.dataSetType:
                         WriteDataSet((DataSet)value);
+                        break;
+                    case SerialType.netStreamType:
+                        WriteNetStream((NetStream)value);
                         break;
                     case SerialType.streamType:
                         WriteStream((Stream)value);
@@ -439,7 +476,7 @@ namespace Nistec.Serialization
                         Write(((Type)value).AssemblyQualifiedName);
                         break;
                     case SerialType.anyClassType:
-                        WriteAnyClassInternal(value);
+                        WriteAnyClass(value);
                         break;
                     default:
                         InternalFormatter.Serialize(BaseStream, value);
@@ -476,6 +513,14 @@ namespace Nistec.Serialization
         {
            return ReadAny();
         }
+        public T Decode<T>(bool enableExeption)
+        {
+            return GenericTypes.Cast<T>(ReadAny(), enableExeption);
+        }
+        internal T ReadAny<T>()
+        {
+            return GenericTypes.Cast<T>(ReadAny(), true);
+        }
 
         /// <summary> Reads an object which was added to the buffer by WriteObject. </summary>
         internal object ReadAny()
@@ -498,6 +543,7 @@ namespace Nistec.Serialization
                 case SerialType.doubleType: return ReadDouble();
                 case SerialType.decimalType: return ReadDecimal();
                 case SerialType.dateTimeType: return ReadDateTime();
+                case SerialType.timeSpanType: return ReadTimeSpan();
                 case SerialType.byteArrayType: return ReadByteArray();
                 case SerialType.charArrayType: return ReadCharArray();
                 case SerialType.guidType: return ReadGuid();
@@ -508,25 +554,36 @@ namespace Nistec.Serialization
                 case SerialType.int64ArrayType: return ReadPrimitiveArray<Int64>(SerialType.int64ArrayType);
                 case SerialType.stringArrayType: return ReadArray<string>();
                 case SerialType.objectArrayType: return ReadArray<object>();
-                case SerialType.listGenericType: return ReadDynamicList();
-                case SerialType.dictionaryType: return ReadHashtable();
-                case SerialType.dictionaryGenericType: return ReadDynamicDictionary();
+                case SerialType.dictionaryEntityType:return ReadEntityAsDictionary(false,true);
+                case SerialType.listGenericType: return ReadGenericList();
+                case SerialType.hashtableType: return ReadHashtable();
+                case SerialType.dictionaryGenericType: return ReadGenericDictionary();
                 case SerialType.dataTableType: return ReadDataTable();
                 case SerialType.dataSetType: return ReadDataSet();
+                case SerialType.netStreamType: return ReadNetStream();
                 case SerialType.streamType: return ReadStream();
                 case SerialType.xmlDocumentType: return ReadXmlDocument();
                 case SerialType.xmlNodeType: return ReadXmlNode();
-                case SerialType.anyClassType: return ReadAnyClassInternal();
+                case SerialType.anyClassType: return ReadAnyClass();
                 case SerialType.serialEntityType: return ReadSerialEntityInternal();
                 case SerialType.serialContextType: return ReadSerialContext();
-                case SerialType.genericKeyValueType: return ReadKeyValue<string,object>();
+                case SerialType.genericKeyValueType: return ReadKeyValue<string, object>();
                 case SerialType.stringDictionary: return ReadStringDictionary();
                 case SerialType.nameValueCollection: return ReadNameValueCollection();
-                case SerialType.iEntityDictionaryType: return ReadGenericEntityAsDictionary();
+                case SerialType.dictionaryAssignType: return ReadAssignFromDictionary();
+                case SerialType.iEntityDictionaryType: return ReadGenericEntityAsIDictionary();
                 case SerialType.otherType: return InternalFormatter.Deserialize(ReaderStream);
 
-                case SerialType.genericEntityAsIEntityType: return ReadGenericEntityAsEntity<string>();
-                case SerialType.genericEntityAsIDictionaryType: return InternalFormatter.Deserialize(ReaderStream);
+                case SerialType.genericEntityAsIEntityType:
+                    {
+                        throw new ArgumentException("This type not supported here, try use directly from BinaryStreamer.ReadAnyEntity()<T>()");
+                        //return ReadGenericEntityAsEntity();//<string>();
+                    }
+                case SerialType.genericEntityAsIDictionaryType:
+                    {
+                        throw new ArgumentException("This type not supported here, try use directly from BinaryStreamer.ReadGenericEntityAsDictionary<T>()");
+                        //return ReadGenericEntityAsDictionary();//<string>();
+                    }
 
                 default: return null;
             }
@@ -536,9 +593,9 @@ namespace Nistec.Serialization
         T ReadItem<T>(SerialType t, bool isKnownType)
         {
             if (isKnownType)
-                return GenericTypes.Cast<T>(ReadItem(t));
+                return GenericTypes.Cast<T>(ReadItem(t), true);
             else
-                return GenericTypes.Cast<T>(ReadAny());
+                return GenericTypes.Cast<T>(ReadAny(), true);
         }
 
         object ReadItem(SerialType t, bool isKnownType)
@@ -551,7 +608,7 @@ namespace Nistec.Serialization
 
         internal T ReadItem<T>(SerialType t)
         {
-            return GenericTypes.Cast<T>(ReadItem(t));
+            return GenericTypes.Cast<T>(ReadItem(t), true);
         }
 
         /// <summary> Reads an object which was added to the buffer by WriteObject. </summary>
@@ -585,21 +642,24 @@ namespace Nistec.Serialization
                 case SerialType.int64ArrayType: return ReadPrimitiveArray<Int64>(SerialType.int64ArrayType);
                 case SerialType.stringArrayType: return ReadArray<string>();
                 case SerialType.objectArrayType: return ReadArray<object>();
-                case SerialType.listGenericType: return ReadDynamicList();
-                case SerialType.dictionaryType: return ReadHashtable();
-                case SerialType.dictionaryGenericType: return ReadDynamicDictionary();
+                case SerialType.listGenericType: return ReadGenericList();
+                case SerialType.hashtableType: return ReadHashtable();
+                case SerialType.dictionaryGenericType: return ReadGenericDictionary();
+                case SerialType.dictionaryEntityType:return ReadEntityAsDictionary(false,true);
                 case SerialType.dataTableType: return ReadDataTable();
                 case SerialType.dataSetType: return ReadDataSet();
+                case SerialType.netStreamType: return ReadNetStream();
                 case SerialType.streamType: return ReadStream();
                 case SerialType.xmlDocumentType: return ReadXmlDocument();
                 case SerialType.xmlNodeType: return ReadXmlNode();
-                case SerialType.anyClassType: return ReadAnyClassInternal();
+                case SerialType.anyClassType: return ReadAnyClass();
                 case SerialType.serialEntityType: return ReadSerialEntityInternal();
                 case SerialType.serialContextType: return ReadSerialContext();
                 case SerialType.genericKeyValueType: return ReadKeyValue<string,object>();
                 case SerialType.stringDictionary: return ReadStringDictionary();
                 case SerialType.nameValueCollection: return ReadNameValueCollection();
-                case SerialType.iEntityDictionaryType: return ReadGenericEntityAsDictionary();
+                case SerialType.dictionaryAssignType: return ReadAssignFromDictionary();
+                case SerialType.iEntityDictionaryType: return ReadGenericEntityAsIDictionary();
                 case SerialType.otherType: return InternalFormatter.Deserialize(ReaderStream);
                 default: return null;
             }
@@ -627,7 +687,7 @@ namespace Nistec.Serialization
             {
                 throw new NotSupportedException("The value is not a Primitive type");
             }
-            return GenericTypes.Cast<T>(ReadAny());
+            return GenericTypes.Cast<T>(ReadAny(), true);
         }
 
 
@@ -668,7 +728,7 @@ namespace Nistec.Serialization
         public T ReadMapValue<T>()
         {
             _Mapper.Add((int)m_stream.Position);
-            return GenericTypes.Cast<T>(ReadAny());
+            return GenericTypes.Cast<T>(ReadAny(), true);
         }
         public string ReadMapString()
         {
@@ -677,7 +737,7 @@ namespace Nistec.Serialization
         }
         public T ReadValue<T>()
         {
-            return GenericTypes.Cast<T>(ReadAny());
+            return GenericTypes.Cast<T>(ReadAny(), true);
         }
 
         /// <summary> Writes a string to the buffer.  Overrides the base implementation so it can cope with nulls </summary>
@@ -734,16 +794,16 @@ namespace Nistec.Serialization
                 case SerialContextType.GenericEntityAsIDictionaryType:
                     return ReadGenericEntityAsDictionary<T>();
                 case SerialContextType.GenericEntityAsIEntityType:
-                    return ReadGenericEntityAsEntity<T>();
+                    return ReadAnyEntity<T>();// ReadGenericEntityAsEntity<T>();
             }
-            object o= ReadAny();
-            return GenericTypes.Cast<T>(o);
+            object o = ReadAny();
+            return GenericTypes.Cast<T>(o, true);
         }
-                
+
         public void WriteValueEntity(object value)
         {
             Write((byte)SerialType.anyClassType);
-            WriteAnyClassInternal(value);
+            WriteAnyClass(value);
         }
 
         public object ReadValueEntity()
@@ -753,7 +813,7 @@ namespace Nistec.Serialization
             {
                 throw new ArgumentException("Stream has incorrect contextType");
             }
-            return ReadAnyClassInternal();
+            return ReadAnyClass();
         }
 
         #endregion
@@ -907,11 +967,10 @@ namespace Nistec.Serialization
                 if (type == null)
                     return default(T);
             }
-            T entity = Activator.CreateInstance<T>();
+            T entity = ActivatorUtil.CreateInstance<T>();
             ((ISerialEntity)entity).EntityRead(ReaderStream, this);
             return entity;
         }
-
 
         void WriteSerialEntityInternal(object value, bool writeType = true)
         {
@@ -927,25 +986,116 @@ namespace Nistec.Serialization
             Type type = ReadType();
             if (type == null)
                 return null;
-            object entity = Activator.CreateInstance(type);
+            object entity = ActivatorUtil.CreateInstance(type);
             ((ISerialEntity)entity).EntityRead(ReaderStream,this);
             return entity;
         }
 
-        IDictionary ReadGenericEntityAsDictionary()
+        IDictionary ReadGenericEntityAsIDictionary()
         {
-            string strtype = ReadString(false);
-            if (strtype == null)
-                return null;
-            byte b = ReadByte();
-            
-            IDictionary val = ReadDynamicDictionary();
+            return (IDictionary)ReadEntityAsDictionary(false, true);
 
-            return val;
-           
+            //string strtype = ReadString(false);
+            //if (strtype == null)
+            //    return null;
+
+
+            ////int count = ReadInt32();
+            ////if (count < 0) return null;
+
+            ////IDictionary instance = new Hashtable();
+            ////for (int i = 0; i < count; i++)
+            ////{
+            ////    string name = ReadString(false);
+            ////    object value = ReadValue();
+            ////    instance.Add(name, value);
+            ////}
+            ////return instance;
+
+            //byte b = ReadByte();
+
+            //IDictionary val = ReadGenericDictionary();
+
+            //return val;
+
         }
 
-        T ReadGenericEntityAsDictionary<T>()
+        public IDictionary<string, object> ReadGenericEntityAsDictionary(bool validateSerialContextType)
+        {
+            SerialContextType t = (SerialContextType)ReadByte();
+
+            if (validateSerialContextType)
+            {
+                if (t != SerialContextType.SerialEntityType && t != SerialContextType.dictionaryEntityType && t != SerialContextType.GenericEntityAsIDictionaryType)
+                {
+                    return null;
+                }
+            }
+
+            //read GenericEntity type 
+            var entityType = ReadType();
+
+            int count = ReadInt32();
+            if (count < 0) return null;
+
+            IDictionary<string, object> instance = new Dictionary<string, object>();
+            for (int i = 0; i < count; i++)
+            {
+                string name = ReadString(false);
+                object value = ReadValue();
+                instance.Add(name,value);
+            }
+
+            return instance;
+
+            ////read GenericEntity type 
+            //var entityType = ReadType();
+            //if (entityType == null)
+            //    return null;
+
+            //return ReadDictionaryObject();
+        }
+
+        public IDictionary<string, TValue> ReadGenericEntityAsDictionary<TValue>(bool validateSerialContextType) 
+        {
+            SerialContextType t = (SerialContextType)ReadByte();
+
+            if (validateSerialContextType)
+            {
+                if (t != SerialContextType.SerialEntityType && t != SerialContextType.dictionaryEntityType && t != SerialContextType.GenericEntityAsIDictionaryType)
+                {
+                    return null;
+                }
+            }
+
+            //read GenericEntity type 
+            var entityType = ReadType();
+
+            int count = ReadInt32();
+            if (count < 0) return null;
+
+            IDictionary<string, TValue> instance = new Dictionary<string, TValue>();
+            for (int i = 0; i < count; i++)
+            {
+                string name = ReadString(false);
+                TValue value = ReadValue<TValue>();
+                instance.Add(name, value);
+            }
+
+            return instance;
+
+
+            //read GenericEntity type 
+            //var entityType = ReadType();
+            //if (entityType == null)
+            //    return default(T);
+
+            //IDictionary val = ReadHashtable();// ReadGenericDictionary();
+
+            //return GenericTypes.Cast<T>(val, true);
+        }
+
+        public T ReadGenericEntityAsDictionary<T>()
         {
             SerialContextType t = (SerialContextType)ReadByte();
 
@@ -953,56 +1103,80 @@ namespace Nistec.Serialization
             {
                 return default(T);
             }
+
             //read GenericEntity type 
             var entityType = ReadType();
-            if (entityType == null)
-                return default(T);
-            byte b = ReadByte();
-
-            IDictionary val = ReadDynamicDictionary();
-
-            return GenericTypes.Cast<T>(val);
-        }
-
-        T ReadGenericEntityAsEntity<T>()
-        {
-            //read IEntityFromDictionaryType
-            SerialContextType t = (SerialContextType)ReadByte();
-           
-            if (t != SerialContextType.SerialEntityType && t != SerialContextType.GenericEntityAsIEntityType)
-            {
-                return default(T);
-            }
-
-            //read GenericEntity type 
-            var entityType= ReadType();
-
-            //read SerialEntityType
-            byte b=ReadByte();
 
             int count = ReadInt32();
             if (count < 0) return default(T);
-            Type keyType = ReadType();
-            Type valueType = ReadType();
 
-            T instance = Activator.CreateInstance<T>();
-            PropertyInfo[] pi =SerializeTools.GetValidProperties(typeof(T),true);
-
+            IDictionary instance = new Hashtable();
             for (int i = 0; i < count; i++)
             {
-                string name = ReadAny().ToString();
-                object value=ReadAny();
-                PropertyInfo p = pi.Where(pa => pa.Name == name).FirstOrDefault();
-                if (p != null)
-                {
-                    p.SetValue(instance, value, null);
-                }
+                string name = ReadString(false);
+                object value = ReadValue();
+                instance.Add(name, value);
             }
 
-            return instance;
 
+            return GenericTypes.Cast<T>(instance, true);
         }
 
+
+        //public T ReadGenericEntityAsEntity<T>()
+        //{
+        //    //read IEntityFromDictionaryType
+        //    SerialContextType t = (SerialContextType)ReadByte();
+
+        //    if (t != SerialContextType.SerialEntityType && t != SerialContextType.GenericEntityAsIEntityType)
+        //    {
+        //        return default(T);
+        //    }
+
+        //    //read GenericEntity type 
+        //    var entityType= ReadType();
+
+        //    //read SerialEntityType
+        //    byte b=ReadByte();
+
+        //    int count = ReadInt32();
+        //    if (count < 0) return default(T);
+        //    Type keyType = ReadType();
+        //    Type valueType = ReadType();
+
+        //    T instance = ActivatorUtil.CreateInstance<T>();
+        //    PropertyInfo[] pi = typeof(T).GetProperties(true);
+
+        //    for (int i = 0; i < count; i++)
+        //    {
+        //        string name = ReadAny().ToString();
+        //        object value=ReadAny();
+        //        PropertyInfo p = pi.Where(pa => pa.Name == name).FirstOrDefault();
+        //        if (p != null)
+        //        {
+        //            p.SetValue(instance, value, null);
+        //        }
+        //    }
+
+        //    return instance;
+
+        //}
+
+        public object ReadAnyEntity(Type type)
+        {
+            ReadByte();
+            if (SerializeTools.IsAssignableFromDictionary(type))
+               return ReadEntityAsDictionary(type,false, true);
+            return ReadAnyClass(type);
+        }
+
+        public T ReadAnyEntity<T>()
+        {
+            ReadByte();
+            if (SerializeTools.IsAssignableFromDictionary(typeof(T), true))
+                return GenericTypes.Cast<T>(ReadEntityAsDictionary(typeof(T), false, true));
+            return ReadAnyClass<T>();
+        }
 
         #endregion
 
@@ -1056,7 +1230,7 @@ namespace Nistec.Serialization
         {
             Type type = ReadType();
             //SerializeInfo info = ReadSerializeInfo();
-            object entity = Activator.CreateInstance(type);
+            object entity = ActivatorUtil.CreateInstance(type);
             ((ISerialContext)entity).ReadContext(this);
             return entity;
         }
@@ -1064,7 +1238,7 @@ namespace Nistec.Serialization
 
         #region Write/Read AnyClass
 
-        internal void WriteAnyClassInternal(object value)
+        internal void WriteAnyClass(object value)
         {
             if (value == null)
             {
@@ -1073,7 +1247,7 @@ namespace Nistec.Serialization
 
             Write((string)value.GetType().FullName);
 
-            PropertyInfo[] p = SerializeTools.GetValidProperties(value.GetType(), true);
+            PropertyInfo[] p = value.GetType().GetProperties(true);
             if (p == null)
             {
                 Write(-1);
@@ -1093,17 +1267,65 @@ namespace Nistec.Serialization
             }
         }
 
-        internal object ReadAnyClassInternal()
+        dynamic ReadAnyClassAsDynamicEntity(bool readType=false)
         {
-            Type type = ReadType();
+            if (readType)
+            {
+                string typeName = ReadString(false);
+                Type type = SerializeTools.GetQualifiedType(typeName);
+            }
+
+            int count = ReadInt32();
+            if (count < 0) return null;
+            DynamicEntity entity = ActivatorUtil.CreateInstance<DynamicEntity>();
+            for (int i = 0; i < count; i++)
+            {
+                string name = ReadString(false);
+                object value = ReadAny();
+                entity[name]=value;
+           }
+            return entity;
+        }
+        T ReadAnyClassAsDynamicEntity<T>(bool readType = false)
+        {
+            if (readType)
+            {
+                string typeName = ReadString(false);
+                Type type = SerializeTools.GetQualifiedType(typeName);
+            }
+
+            int count = ReadInt32();
+            if (count < 0) return default(T);
+            DynamicEntity entity = ActivatorUtil.CreateInstance<DynamicEntity>();
+            for (int i = 0; i < count; i++)
+            {
+                string name = ReadString(false);
+                object value = ReadAny();
+                entity[name] = value;
+            }
+            return entity.Cast<T>();
+        }
+
+
+        internal object ReadAnyClass()
+        {
+            string typeName = ReadString(false);
+            Type type = SerializeTools.GetQualifiedType(typeName);
+
+            //Type type = ReadType();
             if (type == null)
             {
+                if(!string.IsNullOrWhiteSpace(typeName))
+                {
+                    //is outside assembly ,none QualifiedType
+                    return ReadAnyClassAsDynamicEntity();
+                }
                 throw new ArgumentNullException("ReadAnyClassInternal.type");
             }
             int count = ReadInt32();
             if (count < 0) return null;
-            object entity = Activator.CreateInstance(type);
-            PropertyInfo[] p = SerializeTools.GetValidProperties(entity.GetType(), true);
+            object entity = ActivatorUtil.CreateInstance(type);
+            PropertyInfo[] p = entity.GetType().GetProperties(true);
 
             if (entity == null)
             {
@@ -1131,14 +1353,28 @@ namespace Nistec.Serialization
             }
         }
 
-        internal T ReadAnyClassInternal<T>()
+        internal T ReadAnyClass<T>()
         {
-            Type type = ReadType();
+            string typeName = ReadString(false);
+            Type type = SerializeTools.GetQualifiedType(typeName);
+
+            //Type type = ReadType();
+            if (type == null)
+            {
+                if (!string.IsNullOrWhiteSpace(typeName))
+                {
+                    //is outside assembly ,none QualifiedType
+                    return ReadAnyClassAsDynamicEntity<T>();
+                }
+                throw new ArgumentNullException("ReadAnyClassInternal.type");
+            }
+
+            //Type type = ReadType();
             int count = ReadInt32();
             if (count < 0) return default(T);
 
-            T entity = Activator.CreateInstance<T>();
-            PropertyInfo[] p = SerializeTools.GetValidProperties(entity.GetType(), true);
+            T entity = ActivatorUtil.CreateInstance<T>();
+            PropertyInfo[] p = entity.GetType().GetProperties(true);
 
             if (entity == null)
             {
@@ -1163,6 +1399,86 @@ namespace Nistec.Serialization
                 }
 
                 return entity;
+            }
+        }
+
+        internal object ReadAnyClass(Type type)
+        {
+            string typeName = ReadString(false);
+
+            if (type == null)
+            {
+                throw new ArgumentNullException("ReadAnyClassInternal.type");
+            }
+
+            int count = ReadInt32();
+            if (count < 0) return null;
+            object entity = ActivatorUtil.CreateInstance(type);
+            PropertyInfo[] p = entity.GetType().GetProperties(true);
+
+            if (entity == null)
+            {
+                return null;
+            }
+            if (p == null)
+            {
+                return null;
+            }
+            else
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    string name = ReadString(false);
+                    object value = ReadAny();
+                    PropertyInfo pi = p.Where(pr => pr.Name == name).FirstOrDefault();
+                    if (pi != null && pi.CanWrite)
+                    {
+                        pi.SetValue(entity, value, null);
+                    }
+
+                }
+
+                return entity;
+            }
+        }
+
+        public bool TryReadToAnyClass(object entity, bool readSerialType)
+        {
+
+            if (entity == null)
+            {
+                throw new ArgumentNullException("TryReadToAnyClass.entity");
+            }
+            if (readSerialType)
+            {
+                SerialType t = (SerialType)ReadByte();
+            }
+            string typeName = ReadString(false);
+
+            int count = ReadInt32();
+            if (count < 0) return false;
+            //object entity = ActivatorUtil.CreateInstance(type);
+            PropertyInfo[] p = entity.GetType().GetProperties(true);
+
+            if (p == null)
+            {
+                return false;
+            }
+            else
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    string name = ReadString(false);
+                    object value = ReadAny();
+                    PropertyInfo pi = p.Where(pr => pr.Name == name).FirstOrDefault();
+                    if (pi != null && pi.CanWrite)
+                    {
+                        pi.SetValue(entity, value, null);
+                    }
+
+                }
+
+                return true;
             }
         }
 
@@ -1175,7 +1491,7 @@ namespace Nistec.Serialization
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="c"></param>
-        public void WriteList<T>(IList<T> c)
+        internal void WriteList<T>(IList<T> c)
         {
             if (c == null)
             {
@@ -1189,7 +1505,7 @@ namespace Nistec.Serialization
         }
 
         /// <summary> Reads a generic list from the buffer. </summary>
-        public IList<T> ReadList<T>() 
+        internal IList<T> ReadList<T>() 
         {
             int count = ReadInt32();
             if (count < 0) return null;
@@ -1211,7 +1527,7 @@ namespace Nistec.Serialization
             }
         }
 
-        public ICollection ReadCollection()
+        internal ICollection ReadCollection()
         {
             int count = ReadInt32();
             if (count < 0) return null;
@@ -1220,7 +1536,7 @@ namespace Nistec.Serialization
             return d;
         }
 
-        public void WriteArray<T>(IList<T> c) 
+        internal void WriteArray<T>(IList<T> c) 
         {
             if (c == null)
             {
@@ -1233,7 +1549,7 @@ namespace Nistec.Serialization
             }
         }
 
-        public T[] ReadArray<T>() 
+        internal T[] ReadArray<T>() 
         {
             int count = ReadInt32();
             if (count < 0) return null;
@@ -1273,9 +1589,9 @@ namespace Nistec.Serialization
 
         #endregion
 
-        #region string Dictionary
+        #region NameValueCollection/string Dictionary
 
-        public void WriteStringDictionary(StringDictionary d)
+        internal void WriteStringDictionary(StringDictionary d)
         {
             if (d == null)
             {
@@ -1292,7 +1608,7 @@ namespace Nistec.Serialization
             }
         }
 
-        public StringDictionary ReadStringDictionary()
+        internal StringDictionary ReadStringDictionary()
         {
             int count = ReadInt32();
             if (count < 0) return null;
@@ -1306,7 +1622,7 @@ namespace Nistec.Serialization
             return d;
         }
 
-        public void WriteNameValueCollection(NameValueCollection d)
+        internal void WriteNameValueCollection(NameValueCollection d)
         {
             if (d == null)
             {
@@ -1323,7 +1639,7 @@ namespace Nistec.Serialization
             }
         }
 
-        public NameValueCollection ReadNameValueCollection()
+        internal NameValueCollection ReadNameValueCollection()
         {
             int count = ReadInt32();
             if (count < 0) return null;
@@ -1339,11 +1655,15 @@ namespace Nistec.Serialization
 
         #endregion
 
-        #region Dictionary
+        #region public write\read direct Dictionary
 
-
-        public void WriteDictionary<TKey, TValue>(IDictionary<TKey, TValue> d)
+        public void WriteDirectDictionary<TKey, TValue>(IDictionary<TKey, TValue> d, bool writeSerialType = false)
         {
+            if (writeSerialType)
+            {
+                Write((byte)SerialType.dictionaryGenericType);
+            }
+
             if (d == null)
             {
                 Write(-1);
@@ -1356,14 +1676,22 @@ namespace Nistec.Serialization
                 Write(d.Count);
                 foreach (KeyValuePair<TKey, TValue> kvp in d)
                 {
-                    WriteItem(oKey, kvp.Key,false);
-                    WriteItem(oValue, kvp.Value,false);
+                    WriteItem(oKey, kvp.Key, false);
+                    WriteItem(oValue, kvp.Value, false);
                 }
             }
         }
 
-        public IDictionary<TKey, TValue> ReadDictionary<TKey, TValue>()
+        public IDictionary<TKey, TValue> ReadDirectDictionary<TKey, TValue>(bool readSerialType = false)
         {
+            if (readSerialType)
+            {
+                SerialType t = (SerialType)ReadByte();
+                if (t != SerialType.dictionaryGenericType)
+                {
+                    throw new ArgumentException("SerialType is incorrect: " + t.ToString());
+                }
+            }
             int count = ReadInt32();
             if (count < 0) return null;
             IDictionary<TKey, TValue> d = new Dictionary<TKey, TValue>();
@@ -1377,7 +1705,37 @@ namespace Nistec.Serialization
             return d;
         }
 
-        public void WriteHashtable(IDictionary d)
+        public bool TryReadDirectToDictionary<TKey, TValue>(IDictionary<TKey, TValue> d, bool readSerialType = false)
+        {
+            if (readSerialType)
+            {
+                SerialType t = (SerialType)ReadByte();
+                if (t != SerialType.dictionaryGenericType)
+                {
+                    throw new ArgumentException("SerialType is incorrect: " + t.ToString());
+                }
+            }
+            int count = ReadInt32();
+            if (count < 0) return false;
+
+            if (d == null)
+                d = new Dictionary<TKey, TValue>();
+
+            SerialType oKey = SerializeTools.GetSerialType<TKey>(null);
+            SerialType oValue = SerializeTools.GetSerialType<TValue>(null);
+            for (int i = 0; i < count; i++)
+            {
+                d.Add(new KeyValuePair<TKey, TValue>(ReadItem<TKey>(oKey), ReadItem<TValue>(oValue)));
+            }
+            return true;
+        }
+
+
+        #endregion
+
+        #region hashtable
+
+        internal void WriteHashtable(IDictionary d)
         {
             if (d == null)
             {
@@ -1393,21 +1751,281 @@ namespace Nistec.Serialization
                 }
             }
         }
-        
 
-        public IDictionary ReadHashtable()
+        internal IDictionary ReadHashtable()
         {
             int count = ReadInt32();
             if (count < 0) return null;
             IDictionary d = new Hashtable();
-            for (int i = 0; i < count; i++) d[ReadAny()] = ReadAny();
+            for (int i = 0; i < count; i++)
+                d.Add(ReadAny(), ReadAny());
             return d;
         }
+
+        #endregion
+
+        #region public DictionaryEntity
+
+        public void WriteDictionaryAsEntity(IDictionary<string, object> d, bool writeSerialType, bool writeType)
+        {
+            if (writeSerialType)
+            {
+                Write((byte)SerialType.dictionaryGenericType);
+            }
+
+            if (d == null)
+            {
+                Write(-1);
+            }
+            else
+            {
+                if (writeType)
+                    WriteType(d.GetType());
+                Write(d.Count);
+
+                foreach (var entry in d)
+                {
+                    Write(entry.Key);
+                    WriteAny(entry.Value);
+                }
+            }
+        }
+
+        public IDictionary<string,object> ReadEntityAsDictionary(bool readSerialType, bool readType)
+        {
+            if (readSerialType)
+            {
+                SerialType t = (SerialType)ReadByte();
+            }
+            
+            string type= (readType)?ReadString(false):"";
+
+            int count = ReadInt32();
+            if (count < 0) return null;
+            Dictionary<string, object> d = new Dictionary<string, object>();
+            for (int i = 0; i < count; i++)
+            {
+                string key = ReadString(false);
+                object value = ReadAny();
+                d.Add(key, value);
+            }
+            return d;
+        }
+
+        public IDictionary ReadEntityAsDictionary(Type type, bool readSerialType, bool readType)
+        {
+            if (readSerialType)
+            {
+                SerialType t = (SerialType)ReadByte();
+            }
+
+            string typename = (readType) ? ReadString(false) : "";
+
+            int count = ReadInt32();
+            if (count < 0) return null;
+
+            IDictionary d = (IDictionary)ActivatorUtil.CreateInstance(type);
+
+            for (int i = 0; i < count; i++)
+            {
+                string key = ReadString(false);
+                object value = ReadAny();
+                d.Add(key, value);
+            }
+            return d;
+        }
+
+        public bool TryReadEntityToDictionary(Dictionary<string, object> d, bool readSerialType, bool readType)
+        {
+            if (readSerialType)
+            {
+                SerialType t = (SerialType)ReadByte();
+            }
+            string type = (readType) ? ReadString(false) : "";
+
+            int count = ReadInt32();
+            if (count < 0) return false;
+            if(d==null)
+                d = new Dictionary<string, object>();
+            for (int i = 0; i < count; i++)
+            {
+                string key = ReadString(false);
+                object value = ReadAny();
+                d.Add(key, value);
+            }
+            return true;
+        }
+
+        #endregion
+
+        #region Dictionary
+
+        internal void WriteAssignFromDictionary(object value)
+        {
+            if (value == null)
+            {
+                Write(-1);
+            }
+            else
+            {
+                WriteType(value.GetType());
+
+                IDictionary d = (IDictionary)value;
+                Write(d.Count);
+                foreach (System.Collections.DictionaryEntry kvp in d)
+                {
+                    WriteAny(kvp.Key);
+                    WriteAny(kvp.Value);
+                }
+            }
+        }
+
+        internal IDictionary ReadAssignFromDictionary()
+        {
+            var type=ReadType();
+            var instance= ActivatorUtil.CreateInstance(type);
+            IDictionary d =(IDictionary) instance;
+            int count = ReadInt32();
+            if (count < 0) return null;
+            //IDictionary d = new Hashtable();
+            for (int i = 0; i < count; i++) //d[ReadAny()] = ReadAny();
+                d.Add(ReadAny(), ReadAny());
+            return d;
+        }
+
+        public void ReadToAssignDictionary(IDictionary d, bool readSerialType = true)
+        {
+            if (d == null)
+            {
+                throw new ArgumentNullException("ReadToHashtable.d");
+            }
+            if (readSerialType)
+            {
+                SerialType t = (SerialType)ReadByte();
+                //if (t != SerialType.dictionaryAssignType)
+                //{
+                //    throw new ArgumentException("SerialType is incorrect: " + t.ToString());
+                //}
+            }
+            int count = ReadInt32();
+            if (count < 0) return;
+            for (int i = 0; i < count; i++)
+                d.Add(ReadAny(), ReadAny());
+        }
+
+        #endregion
+
+        #region generic dictionary
+
+        internal void WriteGenericDictionary(IDictionary d)
+        {
+            if (d == null)
+            {
+                Write(-1);
+            }
+            else
+            {
+
+                Type dicType = SerializeTools.GetGenericBaseType(d.GetType());
+                Type keyType = dicType.GetGenericArguments()[0];
+                Type valueType = dicType.GetGenericArguments()[1];
+
+                Write(d.Count);
+                Write(keyType.FullName);
+                Write(valueType.FullName);
+
+
+                foreach (DictionaryEntry kvp in d)
+                {
+                    WriteAny(kvp.Key);
+                    WriteAny(kvp.Value);
+                }
+            }
+        }
+
+        internal IDictionary ReadGenericDictionary()
+        {
+
+            int count = ReadInt32();
+            if (count < 0) return null;
+            Type keyType = ReadType();
+            Type valueType = ReadType();
+
+            IDictionary d = SerializeTools.CreateGenericDictionary(keyType, valueType);
+
+            for (int i = 0; i < count; i++)
+            {
+                d.Add(ReadAny(), ReadAny());
+            }
+            return d;
+
+        }
+
+        public bool TryReadToGenericDictionary(IDictionary d, bool readSerialType = true)
+        {
+            if (d == null)
+            {
+                throw new ArgumentNullException("ReadToGenericDictionary.d");
+            }
+            if (readSerialType)
+            {
+                SerialType t = (SerialType)ReadByte();
+                if (t != SerialType.dictionaryGenericType)
+                {
+                    throw new ArgumentException("SerialType is incorrect: " + t.ToString());
+                }
+            }
+            int count = ReadInt32();
+            if (count < 0) return false;
+            Type keyType = ReadType();
+            Type valueType = ReadType();
+
+            for (int i = 0; i < count; i++)
+            {
+                d.Add(ReadAny(), ReadAny());
+            }
+            return true;
+        }
+
+        public bool TryReadToGenericDictionary<TKey, TValue>(IDictionary<TKey, TValue> d, bool readSerialType = true)
+        {
+            if (d == null)
+            {
+                throw new ArgumentNullException("ReadToGenericDictionary.d");
+            }
+            if (readSerialType)
+            {
+                SerialType t = (SerialType)ReadByte();
+                if (t != SerialType.dictionaryGenericType)
+                {
+                    throw new ArgumentException("SerialType is incorrect: " + t.ToString());
+                }
+            }
+            int count = ReadInt32();
+            if (count < 0) return false;
+            Type keyType = ReadType();
+            Type valueType = ReadType();
+
+            //for (int i = 0; i < count; i++)
+            //{
+            //    d.Add(ReadAny(), ReadAny());
+            //}
+            //SerialType oKey = SerializeTools.GetSerialType<TKey>(null);
+            //SerialType oValue = SerializeTools.GetSerialType<TValue>(null);
+
+            for (int i = 0; i < count; i++)
+            {
+                d.Add(new KeyValuePair<TKey, TValue>(ReadAny<TKey>(), ReadAny<TValue>()));
+            }
+            return true;
+        }
+
+
         #endregion
 
         #region KeyValue
 
-  
+
         public void WriteKeyValue<TKey, TValue>(List<KeyValuePair<TKey, TValue>> d)
         {
             if (d == null)
@@ -1502,51 +2120,7 @@ namespace Nistec.Serialization
 
         #region Dynamic Collection Generic
 
-        internal void WriteDynamicDictionary(IDictionary d)
-        {
-            if (d == null)
-            {
-                Write(-1);
-            }
-            else
-            {
-                Type dicType = SerializeTools.GetGenericBaseType(d.GetType());
- 
-                Type keyType = dicType.GetGenericArguments()[0];
-                Type valueType = dicType.GetGenericArguments()[1];
-
-                Write(d.Count);
-                Write(keyType.FullName);
-                Write(valueType.FullName);
-
-  
-                foreach (DictionaryEntry kvp in d)
-                {
-                    WriteAny(kvp.Key);
-                    WriteAny(kvp.Value);
-                }
-            }
-        }
-
-        public IDictionary ReadDynamicDictionary()
-        {
-
-            int count = ReadInt32();
-            if (count < 0) return null;
-            Type keyType = ReadType();
-            Type valueType = ReadType();
-
-             IDictionary d = SerializeTools.CreateGenericDictionary(keyType, valueType);
-
-            for (int i = 0; i < count; i++)
-            {
-                d.Add(ReadAny(), ReadAny());
-            }
-            return d;
-
-        }
-
-        internal void WriteDynamicList(IList value)
+         internal void WriteGenericList(IList value)
         {
 
             if (value == null)
@@ -1568,7 +2142,7 @@ namespace Nistec.Serialization
             }
         }
 
-        internal IList ReadDynamicList()
+        internal IList ReadGenericList()
         {
             int count = ReadInt32();
             if (count < 0) return null;
@@ -1830,6 +2404,41 @@ namespace Nistec.Serialization
             ReStreamer(stream);
             return ReadAny();
         }
+        public object StreamToAnyEntity(NetStream stream, Type type)
+        {
+            ReStreamer(stream);
+            return ReadAnyEntity(type);
+        }
+        public T StreamToAnyEntity<T>(NetStream stream)
+        {
+            ReStreamer(stream);
+            return ReadAnyEntity<T>();
+        }
+        public void WriteNetStream(NetStream stream)
+        {
+            if (stream == null)
+            {
+                Write(-1);
+            }
+            else
+            {
+                byte[] b = stream.ToArray();
+                Int64 length = b.Length;
+                Write(length);
+                //WriteType(stream.GetType());
+                if (length > 0) this.Write(b);
+            }
+        }
+
+
+        public NetStream ReadNetStream()
+        {
+            Int64 count = ReadInt64();
+            //Type type = ReadType();
+            if (count <= 0) return null;
+            byte[] bytes = ReadBytes((int)count);
+            return new NetStream(bytes);
+        }
 
         public void WriteStream(Stream stream)
         {
@@ -1898,29 +2507,29 @@ namespace Nistec.Serialization
             return Enum.ToObject(type, value);
         }
 
-        public void WriteNetStream(NetStream stream)
-        {
-            if (stream == null)
-            {
-                Write(-1);
-            }
-            else
-            {
-                byte[] b = SerializeTools.StreamToBytes(stream);
-                Int64 length = b.Length;
-                Write(length);
-                if (length > 0) this.Write(b);
-                //stream.CopyTo(BaseStream, length);
-            }
-        }
+        //public void WriteNetStream(NetStream stream)
+        //{
+        //    if (stream == null)
+        //    {
+        //        Write(-1);
+        //    }
+        //    else
+        //    {
+        //        byte[] b = SerializeTools.StreamToBytes(stream);
+        //        Int64 length = b.Length;
+        //        Write(length);
+        //        if (length > 0) this.Write(b);
+        //        //stream.CopyTo(BaseStream, length);
+        //    }
+        //}
 
-        public NetStream ReadNetStream()
-        {
-            Int64 count = ReadInt64();
-            if (count < 0) return null;
-            byte[] bytes = ReadBytes((int)count);
-            return new NetStream(bytes);
-        }
+        //public NetStream ReadNetStream()
+        //{
+        //    Int64 count = ReadInt64();
+        //    if (count < 0) return null;
+        //    byte[] bytes = ReadBytes((int)count);
+        //    return new NetStream(bytes);
+        //}
 
        
         /// <summary>
@@ -1931,7 +2540,7 @@ namespace Nistec.Serialization
         {
             if (type == null)
             {
-                throw new ArgumentNullException("WriteEnum.value");
+                throw new ArgumentNullException("WriteType.value");
             }
             Write((string)type.FullName);
         }
@@ -1939,7 +2548,8 @@ namespace Nistec.Serialization
         /// <summary> Reads a Type from the buffer. </summary>
         public virtual Type ReadType()
         {
-            return SerializeTools.GetQualifiedType(ReadString(false));
+            string type=ReadString(false);
+            return SerializeTools.GetQualifiedType(type);
         }
 
         /// <summary>
@@ -1988,12 +2598,14 @@ namespace Nistec.Serialization
         {
             this.m_buffer[0] = value ? ((byte)1) : ((byte)0);
             this.m_stream.Write(this.m_buffer, 0, 1);
+            _bytesWriten += 1;
         }
 
         
         public virtual void Write(byte value)
         {
             this.m_stream.WriteByte(value);
+            _bytesWriten += 1;
         }
 
         
@@ -2010,6 +2622,7 @@ namespace Nistec.Serialization
                 count = this.m_encoder.GetBytes(&ch, 1, numRef, 0x10, true);
             }
             this.m_stream.Write(this.m_buffer, 0, count);
+            _bytesWriten += count;
         }
 
         protected virtual void Write(byte[] buffer)
@@ -2020,6 +2633,7 @@ namespace Nistec.Serialization
                 throw new ArgumentNullException("buffer");
             }
             this.m_stream.Write(buffer, 0, buffer.Length);
+            _bytesWriten += buffer.Length;
         }
 
         public virtual void Write(decimal value)
@@ -2050,6 +2664,7 @@ namespace Nistec.Serialization
             //decimal.GetBytes(value, this._buffer);
             //GetBytes(value, this.m_buffer);
             this.m_stream.Write(this.m_buffer, 0, 0x10);
+            _bytesWriten += 16;
         }
 
         [SecuritySafeCritical]
@@ -2065,6 +2680,7 @@ namespace Nistec.Serialization
             this.m_buffer[6] = (byte)(num >> 0x30);
             this.m_buffer[7] = (byte)(num >> 0x38);
             this.m_stream.Write(this.m_buffer, 0, 8);
+            _bytesWriten += 8;
         }
 
         protected virtual void Write(char[] chars)
@@ -2076,6 +2692,7 @@ namespace Nistec.Serialization
             }
             byte[] buffer = this.m_encoding.GetBytes(chars, 0, chars.Length);
             this.m_stream.Write(buffer, 0, buffer.Length);
+            _bytesWriten += buffer.Length;
         }
 
         public virtual void Write(short value)
@@ -2083,6 +2700,7 @@ namespace Nistec.Serialization
             this.m_buffer[0] = (byte)value;
             this.m_buffer[1] = (byte)(value >> 8);
             this.m_stream.Write(this.m_buffer, 0, 2);
+            _bytesWriten += 2;
         }
 
         public virtual void Write(int value)
@@ -2092,6 +2710,7 @@ namespace Nistec.Serialization
             this.m_buffer[2] = (byte)(value >> 0x10);
             this.m_buffer[3] = (byte)(value >> 0x18);
             this.m_stream.Write(this.m_buffer, 0, 4);
+            _bytesWriten += 4;
         }
 
         public virtual void Write(long value)
@@ -2105,11 +2724,13 @@ namespace Nistec.Serialization
             this.m_buffer[6] = (byte)(value >> 0x30);
             this.m_buffer[7] = (byte)(value >> 0x38);
             this.m_stream.Write(this.m_buffer, 0, 8);
+            _bytesWriten += 8;
         }
 
         public virtual void Write(sbyte value)
         {
             this.m_stream.WriteByte((byte)value);
+            _bytesWriten += 1;
         }
 
         [SecuritySafeCritical]
@@ -2121,6 +2742,7 @@ namespace Nistec.Serialization
             this.m_buffer[2] = (byte)(num >> 0x10);
             this.m_buffer[3] = (byte)(num >> 0x18);
             this.m_stream.Write(this.m_buffer, 0, 4);
+            _bytesWriten += 4;
         }
 
 
@@ -2143,29 +2765,31 @@ namespace Nistec.Serialization
             {
                 this.m_encoding.GetBytes(value, 0, value.Length, this._largeByteBuffer, 0);
                 this.m_stream.Write(this._largeByteBuffer, 0, byteCount);
+                _bytesWriten += byteCount;
             }
             else
             {
-                int num4;
+                int charCount;
                 int num2 = 0;
-                for (int i = value.Length; i > 0; i -= num4)
+                for (int i = value.Length; i > 0; i -= charCount)
                 {
-                    num4 = (i > this._maxChars) ? this._maxChars : i;
+                    charCount = (i > this._maxChars) ? this._maxChars : i;
                     //unsafe
                     //{
                     //    char* str = value;
 
                         fixed (char* str = value)//((char*)value))
                         {
-                            int num5;
+                            int len;
                             char* chPtr = str;
                             fixed (byte* numRef = this._largeByteBuffer)
                             {
-                                num5 = this.m_encoder.GetBytes(chPtr + num2, num4, numRef, 0x100, num4 == i);
+                            len = this.m_encoder.GetBytes(chPtr + num2, charCount, numRef, 0x100, charCount == i);
                                 //str = null;
                             }
-                            this.m_stream.Write(this._largeByteBuffer, 0, num5);
-                            num2 += num4;
+                            this.m_stream.Write(this._largeByteBuffer, 0, len);
+                            _bytesWriten += len;
+                            num2 += charCount;
                         }
                     //}
                 }
@@ -2178,6 +2802,7 @@ namespace Nistec.Serialization
             this.m_buffer[0] = (byte)value;
             this.m_buffer[1] = (byte)(value >> 8);
             this.m_stream.Write(this.m_buffer, 0, 2);
+            _bytesWriten += 2;
         }
 
         public virtual void Write(uint value)
@@ -2187,6 +2812,7 @@ namespace Nistec.Serialization
             this.m_buffer[2] = (byte)(value >> 0x10);
             this.m_buffer[3] = (byte)(value >> 0x18);
             this.m_stream.Write(this.m_buffer, 0, 4);
+            _bytesWriten += 4;
         }
 
         public virtual void Write(ulong value)
@@ -2200,17 +2826,20 @@ namespace Nistec.Serialization
             this.m_buffer[6] = (byte)(value >> 0x30);
             this.m_buffer[7] = (byte)(value >> 0x38);
             this.m_stream.Write(this.m_buffer, 0, 8);
+            _bytesWriten += 8;
         }
 
         public virtual void Write(byte[] buffer, int index, int count)
         {
             this.m_stream.Write(buffer, index, count);
+            _bytesWriten += count;
         }
 
         public virtual void Write(char[] chars, int index, int count)
         {
             byte[] buffer = this.m_encoding.GetBytes(chars, index, count);
             this.m_stream.Write(buffer, 0, buffer.Length);
+            _bytesWriten += buffer.Length;
         }
 
         protected void Write7BitEncodedInt(int value)

@@ -62,25 +62,42 @@ namespace Nistec.Serialization
         public void Add(string key, object value, Type typeBase = null)
         {
             var data = Data;
-            if (data.Contains(key))
-                data.RemoveItem(key);
+            //if (data.Contains(key))
+            //    data.RemoveItem(key);
             var valueType = new ValueTypeInfo() { ItemValue = value, ItemType = typeBase };
-            data.Add(new KeyValuePair<string, ValueTypeInfo>(key, valueType));
+            //data.Add(new KeyValuePair<string, ValueTypeInfo>(key, valueType));
+            data[key] = valueType;
         }
 
         public object GetValue(string key)
         {
-            return Data.GetItem(key).Value.ItemType;
+            ValueTypeInfo value;
+            if (Data.TryGetValue(key,out value))
+            {
+                return value.ItemValue;
+            }
+            return null;
+
+            //return Data.GetItem(key).Value.ItemType;
         }
 
         public T GetValue<T>(string key)
         {
-            return GenericTypes.Convert<T>(Data.GetItem(key).Value.ItemValue);
+            ValueTypeInfo value;
+            if (Data.TryGetValue(key, out value))
+            {
+                return GenericTypes.Convert <T>(value.ItemValue);
+            }
+            return default(T);
+            //return GenericTypes.Convert<T>(Data.GetItem(key).Value.ItemValue);
         }
 
         public ValueTypeInfo GetItem(string key)
         {
-            return Data.GetItem(key).Value;
+            ValueTypeInfo value;
+            Data.TryGetValue(key, out value);
+            return value;
+            //return Data.GetItem(key).Value;
         }
 
         #endregion
@@ -88,14 +105,14 @@ namespace Nistec.Serialization
         #region properties
 
 
-        GenericKeyValue<ValueTypeInfo> m_Data;
-        public GenericKeyValue<ValueTypeInfo> Data
+        Dictionary<string,ValueTypeInfo> m_Data;
+        public Dictionary<string, ValueTypeInfo> Data
         {
             get
             {
                 if (m_Data == null)
                 {
-                    m_Data = new GenericKeyValue<ValueTypeInfo>();
+                    m_Data = new Dictionary<string, ValueTypeInfo>();
                 }
                 return m_Data;
             }
@@ -164,7 +181,7 @@ namespace Nistec.Serialization
         public void Decode(NetStream stream)
         {
             BinaryStreamer streamer = new BinaryStreamer(stream);
-            m_Data = new GenericKeyValue<ValueTypeInfo>();
+            m_Data = new Dictionary<string,ValueTypeInfo>();
             EntityType = streamer.ReadType();
             Formatter = (Formatters)streamer.ReadInt32();
             int count = streamer.ReadInt32();

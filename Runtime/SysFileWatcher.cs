@@ -37,11 +37,11 @@ namespace Nistec.Runtime
         /// <summary>
         /// Default file name.
         /// </summary>
-        public const string DefaultFileName = "mcSysWatcher.xsync";
+        public const string DefaultFileName = "mcSysWatcher.xml";
         /// <summary>
         /// Default file filter
         /// </summary>
-        public const string DefaultFileFilter = "*.xsync";
+        public const string DefaultFileFilter = "*.xml";
         /// <summary>
         /// Get the system file path.
         /// </summary>

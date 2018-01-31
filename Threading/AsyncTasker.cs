@@ -28,6 +28,7 @@ using System.Collections;
 using Nistec.Collections;
 using Nistec.Generic;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace Nistec.Threading
 {
@@ -52,7 +53,7 @@ namespace Nistec.Threading
             {
                 if (_Pool == null)
                 {
-                    _Pool = new AsyncTasker(true, 10);
+                    _Pool = new AsyncTasker(true, true);
                 }
                 return _Pool;
             }
@@ -79,16 +80,20 @@ namespace Nistec.Threading
             return Pool.Add(fanction, args, timeout, execTime); 
         }
 
-        public static TaskItem Peek(Guid key)
-        {
-            return Pool.Peek(key); 
-        }
+        //public static TaskItem Peek(Guid key)
+        //{
+        //    return Pool.Peek(key); 
+        //}
 
-        public static bool Remove(Guid key)
-        {
-            return Pool.Remove(key); 
-        }
+        //public static bool Remove(Guid key)
+        //{
+        //    return Pool.Remove(key); 
+        //}
 
+        public static bool RemoveProcess(Guid key)
+        {
+            return Pool.RemoveProcess(key);
+        }
 
         public static int Count
         {
@@ -164,7 +169,12 @@ namespace Nistec.Threading
             Args = null;
             StartExecTime = ExecTime.AddSeconds(10);
         }
-
+        public TaskItem(Action fanction, object args, int timeoutSecond, Action<GenericEventArgs<TaskItem>> onCompleted)
+            : this(fanction, timeoutSecond)
+        {
+            FunctionCompleted = onCompleted;
+            Args = args;
+        }
         public TaskItem(Action<object> fanction, object args, Action<GenericEventArgs<TaskItem>> onCompleted)
             : this(fanction, args)
         {
@@ -231,12 +241,12 @@ namespace Nistec.Threading
 
         }
 
-        public event EventHandler<GenericEventArgs<Guid,Exception>> TaskError;
+        public event EventHandler<GenericEventArgs<string,Exception>> TaskError;
         /// <summary>
         /// OnTaskCompleted
         /// </summary>
         /// <param name="e"></param>
-        protected void OnError(GenericEventArgs<Guid, Exception> e)
+        protected void OnError(GenericEventArgs<string, Exception> e)
         {
 
             if (TaskError != null)
@@ -270,7 +280,7 @@ namespace Nistec.Threading
             }
             catch (Exception ex)
             {
-                OnError(new GenericEventArgs<Guid,Exception>(Key,ex));
+                OnError(new GenericEventArgs<string,Exception>(Key.ToString(),ex));
             }
         }
 
@@ -311,7 +321,7 @@ namespace Nistec.Threading
                         if (_WorkItem != null)
                             ThreadPoolEx.Cancel(_WorkItem, true);
 
-                        OnError(new GenericEventArgs<Guid, Exception>(Key, new TimeoutException("Execute task operation has timed out")));
+                        OnError(new GenericEventArgs<string, Exception>(Key.ToString(), new TimeoutException("Execute task operation has timed out")));
                     }
                 }
             }
@@ -345,7 +355,7 @@ namespace Nistec.Threading
                         if (_WorkItem != null)
                             ThreadPoolEx.Cancel(_WorkItem, true);
 
-                        OnError(new GenericEventArgs<Guid, Exception>(Key, new TimeoutException("Execute task operation has timed out")));
+                        OnError(new GenericEventArgs<string, Exception>(Key.ToString(), new TimeoutException("Execute task operation has timed out")));
                     }
                 }
             }
@@ -378,7 +388,7 @@ namespace Nistec.Threading
                 {
                     threadToKill.Abort();
                     
-                    OnError(new GenericEventArgs<Guid, Exception>(Key, new TimeoutException("Execute task operation has timed out")));
+                    OnError(new GenericEventArgs<string, Exception>(Key.ToString(), new TimeoutException("Execute task operation has timed out")));
 
                 }
             }
@@ -401,7 +411,7 @@ namespace Nistec.Threading
                 {
                     threadToKill.Abort();
                     
-                    OnError(new GenericEventArgs<Guid, Exception>(Key, new TimeoutException("Execute task operation has timed out")));
+                    OnError(new GenericEventArgs<string, Exception>(Key.ToString(), new TimeoutException("Execute task operation has timed out")));
 
                 }
             }
@@ -419,7 +429,7 @@ namespace Nistec.Threading
             }
             catch (Exception ex)
             {
-                OnError(new GenericEventArgs<Guid,Exception>(Key,ex));
+                OnError(new GenericEventArgs<string, Exception>(Key.ToString(), ex));
 
             }
         }
@@ -532,15 +542,14 @@ namespace Nistec.Threading
         {
             if (Owner != null && State != TaskState.Quit)
             {
-                bool removed = Owner.RemoveTaskProcces(this);//.TasksProcess.Remove(this);
+               bool removed = Owner.RemoveTaskProcces(this);//.TasksProcess.Remove(this);
                if (removed)
                {
                    State = TaskState.Quit;
                }
             }
         }
-
-        
+      
 
         #endregion
     }
@@ -550,10 +559,511 @@ namespace Nistec.Threading
 
         event EventHandler<GenericEventArgs<TaskItem>> TaskCompleted;
 
-        event EventHandler<GenericEventArgs<Guid, Exception>> TaskError;
+        event EventHandler<GenericEventArgs<string, Exception>> TaskError;
 
     }
 
+    public interface IAsyncTasker : ITaskerEvents
+    {
+
+        void Add(TaskItem item);
+
+
+        Guid Add(Action<object> fanction, object args);
+
+
+        Guid Add(Action<object> fanction, object args, TimeSpan timeout, DateTime execTime);
+
+        int Count { get; }
+
+        int InProcess { get; }
+
+        void OnTaskItemCompleted(GenericEventArgs<TaskItem> e);
+
+        void OnTaskError(GenericEventArgs<string, Exception> e);
+
+        bool RemoveTaskProcces(TaskItem item);
+    }
+
+    public class AsyncTasker : IAsyncTasker
+    {
+        /// <summary>
+        /// Default Instance
+        /// </summary>
+        public static readonly AsyncTasker Instance = new AsyncTasker(true,true);
+
+       
+        #region ctor
+
+        public AsyncTasker()
+        {
+            Init(false,true,100,3000);
+        }
+
+        public AsyncTasker(bool start, bool enableTaskInProcess)
+        {
+            Init(start, enableTaskInProcess, 100, 3000);
+        }
+
+        public AsyncTasker(bool start, bool enableTaskInProcess, int minDelay, int maxDelay)
+        {
+            Init(start, enableTaskInProcess, minDelay, maxDelay);
+        }
+
+        void Init(bool start, bool enableTaskInProcess,int minDelay, int maxDelay)
+        {
+            Tasks = new BlockingCollection<TaskItem>();
+            TasksProcess = new ConcurrentDictionary<Guid, TaskItem>();
+            EnableTaskInProcess = enableTaskInProcess;
+            listenerDelay = new  ListenerDelay(minDelay, maxDelay);
+            //if (enableTaskInProcess)
+            //{
+            //    TasksProcess = new ConcurrentDictionary<Guid, TaskItem>();
+            //}
+            if (start)
+            {
+                Start();
+            }
+        }
+
+        #endregion
+
+        #region events
+
+        public event EventHandler<GenericEventArgs<TaskItem>> TaskCompleted;
+        /// <summary>
+        /// OnTaskCompleted
+        /// </summary>
+        /// <param name="e"></param>
+        protected void OnTaskCompleted(GenericEventArgs<TaskItem> e)
+        {
+
+            if (TaskCompleted != null)
+                TaskCompleted(this, e);
+        }
+
+        public void OnTaskItemCompleted(GenericEventArgs<TaskItem> e)
+        {
+            //RemoveTaskProcces(e.Args);
+            OnTaskCompleted(e);
+        }
+
+
+        public event EventHandler<GenericEventArgs<string, Exception>> TaskError;
+        /// <summary>
+        /// OnTaskCompleted
+        /// </summary>
+        /// <param name="e"></param>
+        protected void OnError(GenericEventArgs<string, Exception> e)
+        {
+            if (TaskError != null)
+                TaskError(this, e);
+        }
+
+        void OnError(Guid key, Exception ex)
+        {
+            OnError(new GenericEventArgs<string, Exception>(key.ToString(), ex));
+        }
+        void OnError(string message, Exception ex)
+        {
+            OnError(new GenericEventArgs<string, Exception>(message, ex));
+        }
+        public void OnTaskError(GenericEventArgs<string, Exception> e)
+        {
+            OnError(e);
+        }
+
+        public bool RemoveTaskProcces(TaskItem item)
+        {
+            TaskItem task;
+            return TasksProcess.TryRemove(item.Key, out task);
+            //if (removed && task != null)
+            //{
+            //    task.Dispose();
+            //}
+            //return removed;
+        }
+
+        #endregion
+
+        #region Task queue
+
+        BlockingCollection<TaskItem> Tasks;
+
+        ConcurrentDictionary<Guid, TaskItem> TasksProcess;
+        public bool EnableTaskInProcess { get; private set; }
+
+        public void Add(TaskItem item)
+        {
+            item.Owner = this;
+            Tasks.Add(item);
+        }
+
+        public Guid Add(Action<object> fanction, object args)
+        {
+            TaskItem item = new TaskItem(fanction, args);
+            Add(item);
+            return item.Key;
+        }
+
+        public Guid Add(Action<object> fanction, object args, TimeSpan timeout, DateTime execTime)
+        {
+            TaskItem item = new TaskItem(fanction, args, timeout, execTime);
+            Add(item);
+            return item.Key;
+        }
+        public bool RemoveProcess(TaskItem item)
+        {
+            TaskItem task = null;
+
+            return TasksProcess.TryRemove(item.Key, out task);
+        }
+
+        public bool RemoveProcess(Guid key)
+        {
+            TaskItem task = null;
+
+            return TasksProcess.TryRemove(key, out task);
+        }
+
+        internal void ClearProcessTimedout()
+        {
+            if (TasksProcess.Count > 0)
+            {
+                var tasks = TasksProcess.Values.Where(item => item.IsExecuteTimedout);
+                if (tasks != null)
+                {
+                    foreach (var t in tasks)
+                    {
+                        if (t.Retry < 3)
+                        {
+                            Add(t);
+                        }
+                        TaskItem tsk;
+                        TasksProcess.TryRemove(t.Key, out tsk);
+                    }
+                }
+            }
+        }
+
+        public int Count
+        {
+            get
+            {
+                return Tasks.Count;
+            }
+        }
+
+        public int InProcess
+        {
+            get
+            {
+                return TasksProcess.Count;
+            }
+        }
+
+
+        #endregion
+
+        #region Timer Sync
+
+        int synchronized;
+        Thread tt;
+        private volatile bool alive;
+        ListenerDelay listenerDelay;
+
+        public bool Initialized
+        {
+            get { return alive; }
+            //private set;
+        }
+       
+        public void Start()
+        {
+
+            if (!this.Initialized)
+            {
+                alive = true;
+                tt = new Thread(new ThreadStart(DequeueWorker));
+                tt.IsBackground = true;
+                tt.Start();
+            }
+        }
+
+        public void Stop(int timeout = 0)
+        {
+            if (this.Initialized)
+            {
+                //this.Initialized = false;
+
+                try
+                {
+                    alive = false;
+                    // stop the thread
+                    tt.Interrupt();
+
+                    // Optionally block the caller
+                    // by wait until the thread exits.
+                    // If they leave the default timeout, 
+                    // then they will not wait at all
+                    tt.Join(timeout);
+                }
+                catch (ThreadInterruptedException tiex)
+                {
+                    /* Clean up. */
+                    OnError("Stop ThreadInterruptedException error ", tiex);
+                }
+                catch (Exception ex)
+                {
+                    OnError("Stop error ", ex);
+                }
+            }
+        }
+
+     
+        private void DequeueWorker()
+        {
+            Console.WriteLine("Debuger-AsyncTasker.DequeueWorker...");
+
+            while (alive)
+            {
+                TaskItem item = null;
+                try
+                {
+                    if (0 == Interlocked.Exchange(ref synchronized, 1))
+                    {
+                        //while (!Tasks.IsCompleted)
+                        //{
+                            if (Tasks.TryTake(out item))
+                            {
+                                if (item != null && !item.IsEmpty)
+                                {
+                                    if (EnableTaskInProcess)
+                                    {
+                                        TasksProcess[item.Key] = item;
+                                    }
+                                    item.ExecuteWorkItem();
+                                }
+                                listenerDelay.Delay(true);
+                                //Thread.Sleep(500);
+                            }
+                            else
+                            listenerDelay.Delay(false);
+                            //Thread.Sleep(6000);
+                        //}
+                    }
+                }
+                catch (ThreadInterruptedException tiex)
+                {
+                    OnError(item == null ? Guid.Empty : item.Key, tiex);
+                }
+                catch (Exception ex)
+                {
+                    OnError(item == null ? Guid.Empty : item.Key, ex);
+                }
+                finally
+                {
+                    Interlocked.Exchange(ref synchronized, 0);
+                }
+            }
+
+        }
+        #endregion
+
+        #region Delay Performance
+#if(false)
+
+        DelayPerformance delayProcess;// = new DelayPerformance(10, 10000, 50.0f);
+        //delayProcess.Delay(true); or delayProcess.Delay(false);
+        class DelayPerformance
+        {
+            const int MIN_DELAY = 10;
+            const int MAX_DELAY = 60000;
+            const float MAX_CPU = 50.0f;
+
+            private PerformanceCounter CPUCounter;
+            public DelayPerformance(int minDelay, int maxDelay, float maxCpu= MAX_CPU)
+            {
+                if (minDelay < MIN_DELAY)
+                {
+                    throw new ArgumentOutOfRangeException("minDelay should be more them 10 ms");
+                }
+                if (maxDelay > MAX_DELAY)
+                {
+                    throw new ArgumentOutOfRangeException("maxDelay should be maximum 60000 ms");
+                }
+                if (maxDelay <= minDelay)
+                {
+                    throw new ArgumentException("maxDelay should be greater then minDelay");
+                }
+                if (maxCpu <= 0 || maxCpu > MAX_CPU)
+                {
+                    maxCpu = MAX_CPU;
+                }
+
+                this.maxCpu = maxCpu;
+                this.minDelay = minDelay;
+                this.maxDelay = maxDelay;
+                this.current = maxDelay / 2;
+
+                this.highStPower = minDelay;
+                this.midStPower = Math.Min(minDelay * 10, 100);
+                this.lowStPower = Math.Max(midStPower * 2, Math.Min(maxDelay / 10, 1000));
+
+                this.CPUCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+
+                Console.WriteLine("DelayPerformance start - Thread:{0}, minDelay:{1}, maxDelay:{2}, highStPower:{3}, midStPower:{4},lowStPower:{5}", Thread.CurrentThread.ManagedThreadId, minDelay, maxDelay, highStPower, midStPower, lowStPower);
+
+            }
+
+            const int maxSycle = 10;
+            const int cpuStep = 100;
+
+            int highStPower;// = 10;
+            int midStPower;// = 100;
+            int lowStPower;// = 1000;
+
+            int maxDelay;// = 60000;
+            int minDelay;// = 10;
+            float maxCpu;// = MAX_CPU;
+
+            const float lowFactor = 0.2f;
+            const float midFactor = 0.5f;
+            const float highFactor = 0.8f;
+
+            long counter = 0;
+            long activeCounter = 0;
+            long collector = 0;
+            long current = 0;
+            long cpuCollector;
+
+            public void Delay(bool isActive)
+            {
+
+                long icounter = Interlocked.Read(ref counter);
+                float cpuCounter = CPUCounter.NextValue();
+                long icurrent = Interlocked.Read(ref current);
+
+                if (icounter >= maxSycle)
+                {
+                    long iactiveCounter = Interlocked.Read(ref activeCounter);
+                    long icpuCollector = Interlocked.Read(ref cpuCollector);
+                    long icollector = Interlocked.Read(ref collector);
+                    long sumDelay = icurrent * maxSycle;
+
+                    int avgDelay = iactiveCounter > 0 ? ((int)(icollector / iactiveCounter)) : 0;
+
+                    float fcpuCollector = (float)(icpuCollector / (float)100);
+                    float cpuAvg = icounter > 0 ? fcpuCollector / icounter : 0;
+
+                    //long midHighFactor = (maxDelay - minDelay) / 2;
+                    //long midLowFactor = (maxDelay - minDelay) / 3;
+
+                    int step = lowStPower;
+
+                    if (icurrent > ((maxDelay - minDelay) / 2))
+                        step = lowStPower;
+                    else if (icurrent <= midStPower * 2)
+                        step = highStPower;
+                    else
+                        step = midStPower;
+
+                    Console.WriteLine("sum- Thread:{0}, current:{1}, power:{2}, cpuAvg:{3}, step:{4}, avgDelay:{5} ", Thread.CurrentThread.ManagedThreadId, icurrent, (float)(icollector/sumDelay), cpuAvg, step, avgDelay);
+
+                    if (cpuAvg > MAX_CPU)//need more power
+                    {
+                        if (icurrent + step < maxDelay)
+                        {
+                            Interlocked.Add(ref current, step); // realease power by cpu
+                            //Console.WriteLine("realease power by cpu");
+                        }
+                    }
+                    else if (icollector >= (sumDelay * highFactor))//need more power
+                    {
+                        if (avgDelay > minDelay)//allow get more power
+                        {
+                            if (avgDelay <= cpuStep)//high step will take more power
+                            {
+                                if (cpuAvg < maxCpu && icurrent - step >= minDelay)//if current avg cpu is allow more power
+                                {
+                                    Interlocked.Add(ref current, step * -1);// add power
+                                    //Console.WriteLine("add power cpuStep");
+                                }
+                            }
+                            else if (icurrent - step >= minDelay)
+                            {
+                                Interlocked.Add(ref current, step * -1); // add power
+                                //Console.WriteLine("add power no cpuStep");
+                            }
+                        }
+                    }
+                    else if (icollector < sumDelay)//release power or stay same using
+                    {
+                        if ((icurrent + step) >= maxDelay)//can release power
+                        {
+                            Interlocked.Exchange(ref current, maxDelay); //release max power
+                            //Console.WriteLine("release max power");
+                        }
+                        //else if (icollector > (sumDelay * highFactor))//if using more then mid power
+                        //{
+                        //    if (avgDelay <= cpuStep)//fast step will take more power
+                        //    {
+                        //        if (cpuAvg < maxCpu && icurrent - step >= minDelay)//if current avg cpu is allow more power
+                        //        {
+                        //            Interlocked.Add(ref current, step * -1);// add power
+                        //            Console.WriteLine("add power cpuStep highFactor");
+                        //        }
+                        //    }
+                        //    else if (icurrent - step >= minDelay)
+                        //    {
+                        //        Interlocked.Add(ref current, step * -1); // add power
+                        //        Console.WriteLine("add power no cpuStep highFactor");
+                        //    }
+                        //}
+                        else if (icollector > (sumDelay * midFactor))//if using more then mid power
+                        {
+                            //stay current
+                            //Console.WriteLine("stay current");
+                        }
+                        else if ((icurrent + step) < maxDelay)//can release power
+                        {
+                            Interlocked.Add(ref current, step); //release power
+                            //Console.WriteLine("release power");
+                        }
+                    }
+
+                    Interlocked.Exchange(ref activeCounter, 0);
+                    Interlocked.Exchange(ref counter, 0);
+                    Interlocked.Exchange(ref collector, 0);
+                    Interlocked.Exchange(ref cpuCollector, 0);
+                }
+                else if (isActive)
+                {
+                    Interlocked.Add(ref collector, icurrent);
+                    Interlocked.Increment(ref counter);
+                    Interlocked.Increment(ref activeCounter);
+                    Interlocked.Add(ref cpuCollector, (long)cpuCounter * 100);
+                }
+                else
+                {
+                    Interlocked.Increment(ref counter);
+                    Interlocked.Add(ref cpuCollector, (long)cpuCounter * 100);
+                }
+
+                int curDelay = (int)Interlocked.Read(ref current);
+
+                Thread.Sleep(curDelay);
+
+                //Console.WriteLine("thread:{0},current:{1}, counter:{2}, delay:{3}, cpuCounter:{4}", Thread.CurrentThread.ManagedThreadId, icurrent, icounter, curDelay, cpuCounter);
+
+            }
+
+        }
+#endif
+        #endregion
+    }
+
+#if (false)
     public interface IAsyncTasker : ITaskerEvents
     {
 
@@ -591,7 +1101,7 @@ namespace Nistec.Threading
         /// </summary>
         public static readonly AsyncTasker Instance = new AsyncTasker(true);
 
-        #region  memebers
+    #region  memebers
                 
         /// <summary>
         /// DefaultMaxTimeout
@@ -618,9 +1128,9 @@ namespace Nistec.Threading
             private set;
         }
 
-        #endregion
+    #endregion
 
-        #region ctor
+    #region ctor
 
         public AsyncTasker(int capacity=10,int interval=1000)
         {
@@ -643,9 +1153,9 @@ namespace Nistec.Threading
             }
         }
 
-        #endregion
+    #endregion
 
-        #region events
+    #region events
 
         public event EventHandler<GenericEventArgs<TaskItem>> TaskCompleted;
         /// <summary>
@@ -692,9 +1202,9 @@ namespace Nistec.Threading
             return TasksProcess.TryRemove(item.Key, out task);
         }
 
-        #endregion
+    #endregion
 
-        #region Task queue
+    #region Task queue
 
         ConcurrentDictionary<Guid, TaskItem> taskItems;
         internal ConcurrentDictionary<Guid,TaskItem> Tasks
@@ -924,9 +1434,11 @@ namespace Nistec.Threading
         }
 
 
-        #endregion
+    #endregion
 
-        #region timer
+    #region timer
+
+       
         /*
         //static object mlock = new object();
         Thread thTask;
@@ -978,15 +1490,15 @@ namespace Nistec.Threading
             }
         }
         */
-        
-        #endregion
 
-        #region Timer Sync
+    #endregion
+
+    #region Timer Sync
 
         int synchronized;
         
-        private ThreadTimer SettingTimer;
-
+        //private ThreadTimer SettingTimer;
+        System.Timers.Timer SettingTimer;
         public bool Initialized
         {
             get;
@@ -1057,6 +1569,7 @@ namespace Nistec.Threading
 
         private void DequeueWorker()
         {
+            Console.WriteLine("Debuger-AsyncTasker.DequeueWorker...");
             if (0 == Interlocked.Exchange(ref synchronized, 1))
             {
                 TaskItem item = null;
@@ -1080,13 +1593,13 @@ namespace Nistec.Threading
             }
             Interlocked.Exchange(ref synchronized, 0);
         }
-        #endregion
+    #endregion
 
     }
 
     public class TaskerQueue : IAsyncTasker
     {
-        #region  memebers
+    #region  memebers
 
         /// <summary>
         /// DefaultMaxTimeout
@@ -1114,9 +1627,9 @@ namespace Nistec.Threading
             private set;
         }
 
-        #endregion
+    #endregion
 
-        #region ctor
+    #region ctor
 
         public TaskerQueue(int capacity = 10, int interval = 100)
         {
@@ -1139,9 +1652,9 @@ namespace Nistec.Threading
             }
         }
 
-        #endregion
+    #endregion
 
-        #region events
+    #region events
 
         public event EventHandler<GenericEventArgs<TaskItem>> TaskCompleted;
         /// <summary>
@@ -1161,23 +1674,23 @@ namespace Nistec.Threading
         }
 
        
-        public event EventHandler<GenericEventArgs<Guid, Exception>> TaskError;
+        public event EventHandler<GenericEventArgs<string, Exception>> TaskError;
         /// <summary>
         /// OnTaskCompleted
         /// </summary>
         /// <param name="e"></param>
-        public void OnError(GenericEventArgs<Guid, Exception> e)
+        public void OnError(GenericEventArgs<string, Exception> e)
         {
             if (TaskError != null)
                 TaskError(this, e);
         }
 
-        void OnError(Guid key, Exception ex)
+        void OnError(string key, Exception ex)
         {
-            OnError(new GenericEventArgs<Guid, Exception>(key, ex));
+            OnError(new GenericEventArgs<string, Exception>(key, ex));
         }
 
-        public void OnTaskError(GenericEventArgs<Guid, Exception> e)
+        public void OnTaskError(GenericEventArgs<string, Exception> e)
         {
             OnError(e);
         }
@@ -1187,9 +1700,9 @@ namespace Nistec.Threading
             return Remove(item.Key);
         }
 
-        #endregion
+    #endregion
 
-        #region Task queue
+    #region Task queue
 
         ConcurrentQueue<TaskItem> taskItems;
 
@@ -1320,9 +1833,9 @@ namespace Nistec.Threading
         }
 
 
-        #endregion
+    #endregion
 
-        #region timer
+    #region timer
 
         static object mlock = new object();
         Thread thTask;
@@ -1375,9 +1888,11 @@ namespace Nistec.Threading
         }
 
 
-        #endregion
+    #endregion
 
     }
+#endif
+
 
 
 }

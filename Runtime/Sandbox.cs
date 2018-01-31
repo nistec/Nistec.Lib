@@ -92,7 +92,7 @@ namespace Nistec.Runtime
             if (type == null)
                 return null;
 
-            var instance = Activator.CreateInstance(type);
+            var instance = ActivatorUtil.CreateInstance(type);
 
             var methodInfo = type.GetMethod(method);
             if (methodInfo == null)

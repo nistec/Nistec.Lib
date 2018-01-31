@@ -283,6 +283,7 @@ namespace Nistec.Config
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
+        [Serialization.NoSerialize]
         public object this[string key]
         {
             get 
@@ -384,7 +385,6 @@ namespace Nistec.Config
         /// <summary>
         /// Init new config file from dictionary
         /// </summary>
-        /// <param name="dict"></param>
         private void Init()
         {
  

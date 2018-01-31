@@ -19,6 +19,7 @@
 //===============================================================================================================
 //licHeader|
 using Nistec.Generic;
+using Nistec.IO;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -60,6 +61,41 @@ namespace Nistec.Serialization
         {
             WriteValue(obj, baseType);
 
+            return WriteOutput(false);
+
+            //string str = "";
+            //if (_Settings.UseTypesExtension && _GlobalTypes != null && _GlobalTypes.Count > 0)
+            //{
+            //    StringBuilder sb = _before;
+            //    if (_isCircular)
+            //        sb.Append("\"$circular\":true,");
+            //    sb.Append("\"$types\":{");
+            //    bool pendingSeparator = false;
+            //    foreach (var kv in _GlobalTypes)
+            //    {
+            //        if (pendingSeparator) sb.Append(',');
+            //        pendingSeparator = true;
+            //        sb.Append('\"');
+            //        sb.Append(kv.Key);
+            //        sb.Append("\":\"");
+            //        sb.Append(kv.Value);
+            //        sb.Append('\"');
+            //    }
+            //    sb.Append("},");
+            //    sb.Append(_output.ToString());
+            //    str = sb.ToString();
+            //}
+            //else
+            //    str = _output.ToString();
+
+            //return str;
+        }
+
+        internal string WriteOutput(bool isTokensOutput = false)
+        {
+            if (isTokensOutput && _output.Length > 0)
+                _output.Remove(_output.Length - 1, 1);
+
             string str = "";
             if (_Settings.UseTypesExtension && _GlobalTypes != null && _GlobalTypes.Count > 0)
             {
@@ -82,12 +118,16 @@ namespace Nistec.Serialization
                 sb.Append(_output.ToString());
                 str = sb.ToString();
             }
+            else if (isTokensOutput)
+            {
+                str = "{" + _output.ToString() + "}";
+            }
             else
+            {
                 str = _output.ToString();
-
+            }
             return str;
         }
-
         private void WriteValue(object obj, Type baseType)
         {
             if (obj == null || obj is DBNull)
@@ -144,7 +184,7 @@ namespace Nistec.Serialization
                         else
                             WriteStringDictionary((IDictionary)obj);
                     }
-                    else if (SerializeTools.IsDictionary(type))
+                    else if (SerializeTools.IsAssignableFromDictionary(type))
                     {
                         if (_Settings.UseExtraKeyValueDictionary)
                             WriteDictionaryKeyValue((IDictionary)obj);
@@ -175,6 +215,8 @@ namespace Nistec.Serialization
 
                     else if (JsonActivator.Get.IsTypeRegistered(type))
                         WriteCustom(obj);
+                    else if (type == typeof(NetStream))
+                        WriteBytes(((NetStream)obj).ToArray());
 
                     else if (SerializeTools.IsISerialJson(type))
                         WriteSerialJson((ISerialJson)obj);
@@ -593,7 +635,7 @@ namespace Nistec.Serialization
             WriteStringValue(value);
         }
 
-        private void WritePair(string name, object value)
+        internal void WritePair(string name, object value)
         {
             if ((value == null || value is DBNull) && _Settings.SerializeNullValues == false)
                 return;
@@ -604,7 +646,7 @@ namespace Nistec.Serialization
             WriteValue(value, null);
         }
 
-        private void WritePair(string name, object value, Type baseType)
+        internal void WritePair(string name, object value, Type baseType)
         {
             if ((value == null || value is DBNull) && _Settings.SerializeNullValues == false)
                 return;
@@ -614,6 +656,20 @@ namespace Nistec.Serialization
 
             WriteValue(value, baseType);
         }
+        internal void WriteToken(string name, object value, Type baseType)
+        {
+            if ((value == null || value is DBNull) && _Settings.SerializeNullValues == false)
+                return;
+            WriteStringValue(name);
+
+            _output.Append(':');
+
+            WriteValue(value, baseType);
+
+            _output.Append(",");
+        }
+
+        
         private void WriteArray(IEnumerable array)
         {
             _output.Append('[');

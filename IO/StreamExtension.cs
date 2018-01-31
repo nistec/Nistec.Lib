@@ -23,11 +23,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Security;
+using Nistec.Runtime;
 
 namespace Nistec.IO
 {
     public static class StreamExtension
     {
+
+        public static string ToBase64(this NetStream stream)
+        {
+            return Convert.ToBase64String(stream.ToArray());
+        }
+
 
         #region peek and replace
         /// <summary>

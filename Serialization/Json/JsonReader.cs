@@ -70,10 +70,23 @@ namespace Nistec.Serialization
                 return (T)o;
         }
 
-        public object ToObject(string json)
-        {
-            return ToObject(json, null);
-        }
+        //public Dictionary<string,object> ToDictionary(string json, Type type)
+        //{
+        //    Type t = null;
+        //    if (type != null && type.IsGenericType)
+        //        t = JsonActivator.Get.GetGenericTypeDefinition(type);
+        //    if (t == typeof(Dictionary<,>) || t == typeof(List<>))
+        //        _Settings.UseTypesExtension = false;
+
+        //    _useGlobalTypes = _Settings.UseTypesExtension;
+
+        //    return JsonParser.ParseToDictionary(json, _Settings.IgnoreCaseOnDeserialize);
+
+        //}
+        //public object ToObject(string json)
+        //{
+        //    return ToObject(json, null);
+        //}
 
         public object ToObject(string json, Type type)
         {
@@ -91,9 +104,15 @@ namespace Nistec.Serialization
                 return ((ISerialJson)instance).EntityRead(json, null);
             }
 
-            object o = JsonParser.Parse(json, _Settings.IgnoreCaseOnDeserialize);
+            object o = JsonParser.Parse(json, type, _Settings.IgnoreCaseOnDeserialize);
             if (o == null)
                 return null;
+
+            var otype = o.GetType();
+
+
+            if (type != null && otype == type)
+                return o;
 
 
             if (type != null && type == typeof(DataSet))
@@ -114,6 +133,21 @@ namespace Nistec.Serialization
                     return ParseDictionary(o as Dictionary<string, object>, null, type, null);
             }
 
+            //added-in case the result is array
+            //if (otype.IsArray)
+            //{
+            //    return o;
+            //}
+
+            //added-in case of list of string
+            if (o is List<string>)
+            {
+                if (type != null && type == typeof(List<string>))
+                    return (o as List<string>);
+                else
+                    return (o as List<string>).ToArray();
+            }
+
             if (o is List<object>)
             {
                 if (type != null && t == typeof(Dictionary<,>)) // kv format
@@ -124,7 +158,7 @@ namespace Nistec.Serialization
 
                 if (type == typeof(Hashtable))
                     return RootHashTable((List<object>)o);
-                else
+                else 
                     return (o as List<object>).ToArray();
             }
 
@@ -209,7 +243,10 @@ namespace Nistec.Serialization
 
         private Type UnderlyingTypeOf(Type t)
         {
-            return t.GetGenericArguments()[0];
+            var arg = t.GetGenericArguments();
+            if (arg == null || arg.Length < 1)
+                return null;
+            return arg[0];
         }
 
         private object RootList(object parse, Type type)

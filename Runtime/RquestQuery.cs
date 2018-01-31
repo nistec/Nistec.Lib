@@ -80,11 +80,12 @@ namespace Nistec.Runtime
                 throw new Exception("Incorrect query string :" + ex.Message);
             }
         }
-
+        [Serialization.NoSerialize]
         public string this[int index]
         {
             get { return Query[index]; }
         }
+        [Serialization.NoSerialize]
         public string this[string name]
         {
             get { return Query[name]; }

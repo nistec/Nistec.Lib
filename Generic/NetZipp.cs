@@ -31,7 +31,59 @@ namespace Nistec.Generic
     public class NetZipp
     {
 
+        public static byte[] Compress(string value)
+        {
+            byte[] bZipped = null;
 
+            //Transform string into byte[]  
+            byte[] byteArray = Encoding.Default.GetBytes(value);
+
+            //Prepare for compress
+            using (System.IO.MemoryStream ms = new System.IO.MemoryStream())
+            {
+                using (GZipStream sw = new System.IO.Compression.GZipStream(ms,
+                       CompressionMode.Compress))
+                {
+
+                    //Compress
+                    sw.Write(byteArray, 0, byteArray.Length);
+                    //Close, DO NOT FLUSH cause bytes will go missing...
+                    sw.Close();
+
+                    //Transform byte[] zip data to string
+                    bZipped = ms.ToArray();
+                }
+            }
+            return bZipped;
+        }
+
+        public static string Decompress(byte[] b)
+        {
+            string strZipped = null;
+
+            //Transform string into byte[]
+            //byte[] byteArray = Encoding.Default.GetBytes(value);
+
+            //Prepare for decompress
+            using (MemoryStream ms = new MemoryStream(b))
+            {
+                using (GZipStream sr = new System.IO.Compression.GZipStream(ms,
+                    CompressionMode.Decompress))
+                {
+
+                    //Reset variable to collect uncompressed result
+
+                    //byteArray = new byte[byteArray.Length * 5];
+
+                    //Decompress
+                    byte[] byteArray = IoHelper.ReadSream(sr, 0);
+                    //int rByte = sr.Read(byteArray, 0, byteArray.Length);
+
+                    strZipped = Encoding.Default.GetString(byteArray);
+                }
+            }
+            return strZipped;
+        }
 
         public static string Zip(string value)
         {

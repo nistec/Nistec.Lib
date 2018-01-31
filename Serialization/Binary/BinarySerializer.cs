@@ -230,10 +230,10 @@ namespace Nistec.Serialization
                 }
                 else if (SerializeTools.IsStream(typeof(T)))
                 {
-                    return GenericTypes.Cast<T>(stream);
+                    return GenericTypes.Cast<T>(stream, true);
                 }
                 BinaryStreamer streamer = new BinaryStreamer(stream);
-                return GenericTypes.Cast<T>(streamer.ReadAny());
+                return GenericTypes.Cast<T>(streamer.ReadAny(), true);
             }
             catch (Exception ex)
             {
@@ -261,7 +261,7 @@ namespace Nistec.Serialization
                 }
                 else if (SerializeTools.IsStream(typeof(T)))
                 {
-                    return GenericTypes.Cast<T>(stream);
+                    return GenericTypes.Cast<T>(stream, true);
                 }
                 BinaryStreamer streamer = new BinaryStreamer(stream);
 
@@ -275,9 +275,9 @@ namespace Nistec.Serialization
             }
         }
 
-      
+
         #endregion
- 
+
         #region Bin xml Deserialize
 
         public static byte[] SerializeXmlToBytes(object body)
@@ -426,7 +426,7 @@ namespace Nistec.Serialization
                 }
                 else if (SerializeTools.IsStream(typeof(T)))
                 {
-                    return GenericTypes.Cast<T>(stream);
+                    return GenericTypes.Cast<T>(stream, true);
                 }
                 BinaryStreamer streamer = new BinaryStreamer(stream);
 
@@ -452,6 +452,18 @@ namespace Nistec.Serialization
         #endregion
 
         #region Formatters Serialization
+
+        public static int SizeOf(object o)
+        {
+            try
+            {
+                return BinarySerializer.ConvertToStream(o).iLength;
+            }
+            catch (Exception ex)
+            {
+                return 0;
+            }
+        }
 
         public static byte[] SerializeToBytes(object o, bool enableException = false)
         {
@@ -528,7 +540,7 @@ namespace Nistec.Serialization
                     ms.Seek(0, 0);
                     BinarySerializer f = new BinarySerializer();
                     object o = f.Deserialize(ms);
-                    return GenericTypes.Cast<T>(o);
+                    return GenericTypes.Cast<T>(o, true);
 
                 }
                 catch (SerializationException e)
