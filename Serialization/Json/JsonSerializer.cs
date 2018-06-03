@@ -237,6 +237,23 @@ namespace Nistec.Serialization
             return json;
         }
 
+        public static string ConvertToJson(object[] keyValueParameters, JsonSettings settings, JsonFormat format= JsonFormat.None)
+        {
+            if (settings == null)
+                settings = JsonSerializer.DefaultOption;
+
+            if (settings.EnableAnonymousTypes)
+            {
+                settings.UseExtensions = false;
+                settings.UseTypesExtension = false;
+            }
+            string json = JsonWriter.Get(settings).ConvertToJson(keyValueParameters);
+            if (format == JsonFormat.Indented)
+                return JsonConverter.PrintJson(json);
+            return json;
+        }
+
+
         public static byte[] ToBinary(string json)
         {
             return ToBinary(json, null);

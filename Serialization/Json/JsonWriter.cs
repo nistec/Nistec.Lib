@@ -57,6 +57,26 @@ namespace Nistec.Serialization
             _useEscapedUnicode = _Settings.UseEscapedUnicode;
         }
 
+        internal string ConvertToJson(object[] keyValueParameters)
+        {
+
+            if (keyValueParameters == null)
+                return null;
+            int count = keyValueParameters.Length;
+            if (count % 2 != 0)
+            {
+                throw new ArgumentException("values parameter not correct, Not match key value arguments");
+            }
+            for (int i = 0; i < count; i++)
+            {
+                WriteString(keyValueParameters[i].ToString());
+                WriteValue(keyValueParameters[++i], null);
+            }
+
+            return WriteOutput(true);
+           
+        }
+
         internal string ConvertToJson(object obj, Type baseType)
         {
             WriteValue(obj, baseType);
@@ -200,6 +220,9 @@ namespace Nistec.Serialization
                  
                     else if (type == typeof(DataRow))
                         this.WriteDataRow((DataRow)obj);
+
+                    else if (type == typeof(DataRow[]))
+                        this.WriteDataRowArray((DataRow[])obj);
 
                     else if (type == typeof(StringDictionary))
                         WriteStringDictionary((StringDictionary)obj);
@@ -443,6 +466,46 @@ namespace Nistec.Serialization
                 WritePair(column.ColumnName, row[column], column.DataType);
                 pendingSeperator = true;
             }
+        }
+
+        void WriteDataRowArray(DataRow[] rows)
+        {
+            bool rowseparator = false;
+
+            this._output.Append('[');
+
+            for (int i = 0; i < rows.Length; i++)
+            {
+                DataRow r = rows[i];
+                
+                var items = r.ItemArray;
+                if (rowseparator) _output.Append(',');
+
+                if (items.Length > 1)
+                {
+                    WriteArray(items);
+
+                    //this._output.Append('[');
+                    //bool pendingSeperator = false;
+                    //foreach (var o in items)
+                    //{
+                    //    if (pendingSeperator) _output.Append(',');
+                    //    WriteObject(o, null);
+                    //    pendingSeperator = true;
+                    //}
+
+                    //this._output.Append(']');
+                }
+                else
+                {
+                    WriteValue(items[0], null);
+                }
+
+                rowseparator = true;
+            }
+
+            // end array
+            this._output.Append(']');
         }
 
         void WriteDataRow(DataRow row)

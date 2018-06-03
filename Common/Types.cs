@@ -613,6 +613,10 @@ namespace Nistec
                         return GenericTypes.Default(type);
                     else if (underLineType == typeof(bool))
                         return StringToBool(value.ToString(), false);
+                    else if (underLineType == typeof(DateTime))
+                    {
+                            return ParseDateTime(value);
+                    }
                     return Convert.ChangeType(value, underLineType);
                 }
                 if (IsNumericType(type))
@@ -625,7 +629,7 @@ namespace Nistec
                 }
                 if (type == typeof(DateTime))
                 {
-                    return ToDateTime(value);//, MinDate);
+                    return ParseDateTime(value,MinDate);//, MinDate);
                 }
                 if (type == typeof(Guid))
                 {
@@ -678,7 +682,6 @@ namespace Nistec
 				return valueIfNull;
 			}
 		}
-
         
         public static float NZ(object value, float valueIfNull)
         {
@@ -1163,7 +1166,211 @@ namespace Nistec
                 return (DateTime?)val;
             return (DateTime?)null;
         }
-		public static DateTime DateFromString(string Value)
+
+        public static string[] IsoDateFormats
+        {
+            get
+            {
+                string[] isoFormats = { "yyyy-MM-dd hh:mm:ss tt", "yyyy-MM-dd hh:mm:ss", "yyyy-MM-dd hh:mm", "yyyy-MM-dd" };
+                return isoFormats;
+            }
+        }
+        public static string[] StdDateFormats
+        {
+            get
+            {
+                string[] stdFormats = {
+                "d/M/yyyy h:mm:ss tt", "d/M/yyyy h:mm tt",
+                         "dd/MM/yyyy hh:mm:ss", "d/M/yyyy h:mm:ss",
+                         "d/M/yyyy hh:mm tt", "d/M/yyyy hh tt",
+                         "d/M/yyyy h:mm", "d/M/yyyy h:mm",
+                         "dd/MM/yyyy hh:mm", "dd/M/yyyy hh:mm"};
+                return stdFormats;
+            }
+        }
+        public static string[] UsDateFormats
+        {
+            get
+            {
+                string[] usFormats = {"M/d/yyyy h:mm:ss tt", "M/d/yyyy h:mm tt",
+                         "MM/dd/yyyy hh:mm:ss", "M/d/yyyy h:mm:ss",
+                         "M/d/yyyy hh:mm tt", "M/d/yyyy hh tt",
+                         "M/d/yyyy h:mm", "M/d/yyyy h:mm",
+                         "MM/dd/yyyy hh:mm", "M/dd/yyyy hh:mm"};
+                return usFormats;
+            }
+        }
+
+        public static DateTime? DateTimeFormatExact(object value)
+        {
+            if (value == null || value == DBNull.Value || value.ToString() == "")
+                return (DateTime?)null;
+
+            DateTime val;
+            if (DateTime.TryParseExact(value.ToString(), StdDateFormats, Types.GetCultureInfo(), DateTimeStyles.None, out val))
+                return (DateTime?)val;
+            return (DateTime?)null;
+        }
+
+        public static int RemoveLeadingZero(string value)
+        {
+            //string str = Regx.RegexReplace("^0+(?!$)", value, "");
+            int val;
+            int.TryParse(value.TrimStart('0'), out val);
+            return val;
+        }
+        //static int DatePart(string value)
+        //{
+        //    //string str = Regx.RegexReplace("^0+(?!$)", value, "");
+        //    string str = value.TrimStart('0');
+
+        //    int val;
+        //    if (str.Length == 2)
+        //    {
+        //        if (str[0] == '0')
+        //            int.TryParse(str[1].ToString(), out val);
+        //        else
+        //            int.TryParse(str, out val);
+        //    }
+        //    else
+        //    {
+        //        int.TryParse(str, out val);
+        //    }
+        //    return val;
+        //}
+        public static DateTime ParseDateTime(object value, DateTime defaultValue)
+        {
+
+            if (value == null || value == DBNull.Value || value.ToString() == "")
+                return defaultValue;
+            string str = value.ToString();
+
+            try
+            {
+                int arg1 = 0;
+                int arg2 = 0;
+                int arg3 = 0;
+
+                int h = 0;
+                int m = 0;
+                int s = 0;
+
+
+                string[] parts = str.Split(new string[] { " ", "T" }, StringSplitOptions.RemoveEmptyEntries);
+
+                if (parts.Length > 0)
+                {
+                    string[] args = parts[0].Split('/', '-');
+                    arg1 = RemoveLeadingZero(args[0]);
+                    arg2 = RemoveLeadingZero(args[1]);
+                    arg3 = RemoveLeadingZero(args[2]);
+                }
+
+                if (parts.Length > 1)
+                {
+
+                    string[] args = parts[1].Split(':', '.');
+
+                    if (args.Length > 0)
+                        h = RemoveLeadingZero(args[0]);
+                    if (args.Length > 1)
+                        m = RemoveLeadingZero(args[1]);
+                    if (args.Length > 2)
+                        s = RemoveLeadingZero(args[2]);
+                }
+
+                if (parts.Length > 2)
+                {
+
+                    //[AM|PM|am|pm]
+                    switch (parts[2])
+                    {
+                        case "PM":
+                        case "pm":
+                            if (h < 12)
+                                h = h + 12;
+                            break;
+                    }
+                }
+
+                if (str.IndexOf('-') > 0)
+                    return new DateTime(arg1, arg2, arg3, h, m, s);
+                else
+                    return new DateTime(arg3, arg2, arg1, h, m, s);
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+        public static DateTime? ParseDateTime(object value)
+        {
+
+            if (value == null || value == DBNull.Value || value.ToString() == "")
+                return (DateTime?)null;
+            string str = value.ToString();
+
+            try
+            {
+                int arg1 = 0;
+                int arg2 = 0;
+                int arg3 = 0;
+
+                int h = 0;
+                int m = 0;
+                int s = 0;
+
+
+                string[] parts = str.Split(new string[] { " ", "T" }, StringSplitOptions.RemoveEmptyEntries);
+                
+                if (parts.Length > 0)
+                {
+                    string[] args = parts[0].Split('/', '-');
+                    arg1 = RemoveLeadingZero(args[0]);
+                    arg2 = RemoveLeadingZero(args[1]);
+                    arg3 = RemoveLeadingZero(args[2]);
+                }
+
+                if (parts.Length > 1)
+                {
+
+                    string[] args = parts[1].Split(':', '.');
+
+                    if (args.Length > 0)
+                        h = RemoveLeadingZero(args[0]);
+                    if (args.Length > 1)
+                        m = RemoveLeadingZero(args[1]);
+                    if (args.Length > 2)
+                        s = RemoveLeadingZero(args[2]);
+                }
+
+                if (parts.Length > 2)
+                {
+
+                    //[AM|PM|am|pm]
+                    switch (parts[2])
+                    {
+                        case "PM":
+                        case "pm":
+                            if (h < 12)
+                                h = h + 12;
+                            break;
+                    }
+                }
+
+                if (str.IndexOf('-') > 0)
+                    return new DateTime(arg1, arg2, arg3, h, m, s);
+                else
+                    return new DateTime(arg3, arg2, arg1, h, m, s);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+
+        public static DateTime DateFromString(string Value)
 		{
             return ToDateTime(Value, Types.GetCultureInfo());
 		}
