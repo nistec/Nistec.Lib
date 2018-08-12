@@ -1315,7 +1315,7 @@ namespace Nistec.Serialization
             //Type type = ReadType();
             if (type == null)
             {
-                if(!string.IsNullOrWhiteSpace(typeName))
+                if (!string.IsNullOrWhiteSpace(typeName))
                 {
                     //is outside assembly ,none QualifiedType
                     return ReadAnyClassAsDynamicEntity();
@@ -1346,7 +1346,6 @@ namespace Nistec.Serialization
                     {
                         pi.SetValue(entity, value, null);
                     }
-
                 }
 
                 return entity;
@@ -2146,12 +2145,25 @@ namespace Nistec.Serialization
         {
             int count = ReadInt32();
             if (count < 0) return null;
-            Type type = ReadType();
+            Type type = ReadType();  
+            if(type==null)
+            {
+                Console.WriteLine("Error read type: ReadGenericList");
+                return null;
+            }
             IList list = SerializeTools.CreateGenericList(type);
 
-            for (int i = 0; i < count; i++)
+            try
             {
-                list.Add(ReadAny());
+                for (int i = 0; i < count; i++)
+                {
+                    var item = ReadAny();
+                    list.Add(item);
+                }
+            }
+            catch(Exception ex)
+            {
+                string err = ex.Message;
             }
             return list;
         }

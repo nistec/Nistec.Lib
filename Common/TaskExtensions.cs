@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Nistec
@@ -9,6 +10,15 @@ namespace Nistec
     // Helper extension methods on the TPL Task class
     public static class TaskExtensions
     {
+
+        public static bool WaitCancellationRequested(
+           this CancellationToken token,
+           TimeSpan timeout)
+        {
+            return token.WaitHandle.WaitOne(timeout);
+        }
+
+
         // Attempts to dispose of a Task, but will not propagate the exception.  
         // Returns false instead if the Task could not be disposed.
         public static bool TryDispose(this Task source, bool shouldMarkExceptionsHandled = true)

@@ -33,6 +33,8 @@ namespace Nistec.Runtime
 {
     public enum TransformType : byte { None = 0, Object = 100, Stream = 101, Json = 102 }//{Message=0,Stream=1,Json=2 }
 
+    public enum DuplexTypes : byte { None = 0, NoWaite = 1, WaitOne=2}
+
     public interface IMessageStream
     {
         /// <summary>
@@ -62,7 +64,7 @@ namespace Nistec.Runtime
         /// <summary>
         /// Get or Set indicate wether the message is a duplex type.
         /// </summary>
-        bool IsDuplex { get; set; }
+        DuplexTypes DuplexType { get; set; }
         /// <summary>
         ///  Get or Set The message expiration.
         /// </summary>
@@ -133,8 +135,5 @@ namespace Nistec.Runtime
 
     //    bool IsEmpty { get; }
     //}
-
-
-
 
 }

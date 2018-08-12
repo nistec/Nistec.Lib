@@ -35,6 +35,7 @@ using System.Runtime.Serialization.Formatters;
 using System.Collections.Specialized;
 using Nistec.Runtime;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace Nistec.Serialization
 {
@@ -551,7 +552,93 @@ namespace Nistec.Serialization
          {
              return typeof(ISerialJson).IsAssignableFrom(type);
          }
-         public static Type GetQualifiedType(string fullTypeName, bool enableException = false)
+
+        public static void LoadReferencedAssembly(Type type)
+        {
+            LoadReferencedAssembly(type.Assembly);
+        }
+        //public static void LoadReferencedAssembly()
+        //{
+        //    var w = Stopwatch.StartNew();
+        //    try
+        //    {
+        //        var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies().Where(a => a.FullName.StartsWith("System") == false).ToList();
+        //        foreach (Assembly a in loadedAssemblies)
+        //        {
+        //            LoadReferencedAssembly(a);
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        string err = ex.Message;
+        //    }
+        //    w.Stop();
+        //    Console.WriteLine("LoadReferencedAssemblies :{0}", w.ElapsedMilliseconds);
+        //}
+
+        public static void LoadReferencedAssembly(Assembly assembly)
+        {
+           
+            try
+            {
+                foreach (AssemblyName name in assembly.GetReferencedAssemblies().Where(a => a.FullName.StartsWith("System") == false))
+                {
+                    if (!AppDomain.CurrentDomain.GetAssemblies().Any(a => a.FullName == name.FullName && a.FullName.StartsWith("System")))
+                    {
+                        LoadReferencedAssembly(Assembly.Load(name));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                string err = ex.Message;
+            }
+        }
+
+        public static void LoadReferencedAssemblies()
+        {
+            //var w = Stopwatch.StartNew();
+            try
+            {
+                var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies().Where(a => a.FullName.StartsWith("System") == false).ToList();
+
+                loadedAssemblies
+                    .SelectMany(x => x.GetReferencedAssemblies().Where(a => a.FullName.StartsWith("System") == false))
+                    .Distinct()
+                    .Where(y => loadedAssemblies.Any((a) => a.FullName == y.FullName) == false)
+                    .ToList()
+                    .ForEach(x => loadedAssemblies.Add(AppDomain.CurrentDomain.Load(x)));
+            }
+            catch (Exception ex)
+            {
+                string err = ex.Message;
+            }
+            //w.Stop();
+            //Console.WriteLine("LoadReferencedAssemblies :{0}", w.ElapsedMilliseconds);
+        }
+
+        public static void ResolveLoadAssemblies()
+        {
+            //var w= Stopwatch.StartNew();
+            try
+            {
+                //var loadedAssemblies1 = AppDomain.CurrentDomain.GetAssemblies().ToList();
+                var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies().Where(a=> a.FullName.StartsWith("System")==false).ToList();
+                var loadedPaths = loadedAssemblies.Select(a => a.Location).ToArray();
+
+                var referencedPaths = Directory.GetFiles(AppDomain.CurrentDomain.BaseDirectory, "*.dll");
+                var toLoad = referencedPaths.Where(r => !loadedPaths.Contains(r, StringComparer.InvariantCultureIgnoreCase)).ToList();
+                toLoad.ForEach(path => loadedAssemblies.Add(AppDomain.CurrentDomain.Load(AssemblyName.GetAssemblyName(path))));
+            }
+            catch (Exception ex)
+            {
+                string err = ex.Message;
+            }
+            //w.Stop();
+            //Console.WriteLine("ResolveLoadAssemblies :{0}", w.ElapsedMilliseconds);
+        }
+
+        public static Type GetQualifiedType(string fullTypeName, bool enableException = false)
          {
              if (string.IsNullOrEmpty(fullTypeName))
                  return null;
@@ -569,10 +656,24 @@ namespace Nistec.Serialization
                 //                  .Select(a => a.GetType(fullTypeName))
                 //                  .FirstOrDefault();
 
-                return Type.GetType(fullTypeName) ??
+                Type type = Type.GetType(fullTypeName) ??
                         AppDomain.CurrentDomain.GetAssemblies()
                                  .Select(a => a.GetType(fullTypeName))
                                  .FirstOrDefault(t => t != null);
+
+                if(type==null)
+                {
+                    LoadReferencedAssemblies();
+                    type = Type.GetType(fullTypeName) ??
+                        AppDomain.CurrentDomain.GetAssemblies()
+                                 .Select(a => a.GetType(fullTypeName))
+                                 .FirstOrDefault(t => t != null);
+                }
+
+                return type;
+                //System.Web.Compilation.BuildManager.GetReferencedAssemblies();
+
+
              }
              catch
              {

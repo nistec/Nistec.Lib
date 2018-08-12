@@ -177,6 +177,10 @@ namespace Nistec
                 {
                     return input;
                 }
+                if (type == typeof(object))
+                {
+                    return input;
+                }
                 var converter =ConverterUtil.GetConverter(type);
                 if (converter != null)
                 {
