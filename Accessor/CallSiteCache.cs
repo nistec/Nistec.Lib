@@ -5,7 +5,7 @@
     using Microsoft.CSharp.RuntimeBinder;
 
 //https://github.com/mgravell/fast-member
-//Nistec
+
 
 namespace Nistec.FastMember
     {
