@@ -580,7 +580,7 @@ namespace Nistec
         /// <param name="value"></param>
         /// <param name="valueIfNull"></param>
         /// <returns></returns>
-        public static string NZorEmpty(object value, string valueIfNull)
+        public static string NZorEmpty(object value, string valueIfNull=null)
         {
             try
             {

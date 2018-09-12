@@ -146,7 +146,10 @@ namespace Nistec.Serialization
         {
             JsonParser.ParseTo(d,json, false);
         }
-
+        public void ParseTo<T>(List<T> d, string json)
+        {
+            JsonParser.ParseTo<T>(d, json, false);
+        }
         //public IDictionary<string,object> ParseToDictionary(string json)
         //{
         //    return JsonParser.ParseToDictionary(json, false);

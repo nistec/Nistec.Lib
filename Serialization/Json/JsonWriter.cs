@@ -175,6 +175,7 @@ namespace Nistec.Serialization
                     _output.Append(((IConvertible)obj).ToString(NumberFormatInfo.InvariantInfo)); break;
                 case "Char":
                 case "String":
+
                     WriteString(obj.ToString()); break;
                 case "DateTime":
                     WriteDateTime((DateTime)obj); break;
@@ -230,6 +231,10 @@ namespace Nistec.Serialization
                     else if (type == typeof(NameValueCollection))
                         WriteNameValue((NameValueCollection)obj);
 
+                    else if (SerializeTools.IsKeyValuePair(type))
+                        WriteKeyValuePair(obj);
+                    else if (SerializeTools.IsISerialJson(type))
+                        WriteSerialJson((ISerialJson)obj);
                     else if (SerializeTools.IsEnumerable(type))
                         WriteArray((IEnumerable)obj);
 
@@ -241,8 +246,8 @@ namespace Nistec.Serialization
                     else if (type == typeof(NetStream))
                         WriteBytes(((NetStream)obj).ToArray());
 
-                    else if (SerializeTools.IsISerialJson(type))
-                        WriteSerialJson((ISerialJson)obj);
+                    //else if (SerializeTools.IsISerialJson(type))
+                    //    WriteSerialJson((ISerialJson)obj);
                     else
                         WriteObject(obj, baseType);
 
@@ -666,8 +671,10 @@ namespace Nistec.Serialization
                 {
                     if (append)
                         _output.Append(',');
-
-                    WritePair(p.Name, o);
+                    if (p.IsRawJson)
+                        WritePairRawJson(p.Name, o);
+                    else
+                        WritePair(p.Name, o);
                     if (o != null && _Settings.UseExtensions)
                     {
                         Type tt = o.GetType();
@@ -696,6 +703,16 @@ namespace Nistec.Serialization
             _output.Append(':');
 
             WriteStringValue(value);
+        }
+
+        internal void WritePairRawJson(string name, object value)
+        {
+            if ((value == null || value is DBNull) && _Settings.SerializeNullValues == false)
+                return;
+            WriteStringValue(name);
+            _output.Append(':');
+            _output.Append(value);
+            //WriteStringValue(value, null);
         }
 
         internal void WritePair(string name, object value)
@@ -836,6 +853,25 @@ namespace Nistec.Serialization
             }
             _output.Append('}');
 
+        }
+
+        private void WriteKeyValuePair(object value)
+        {
+            Type valueType = value.GetType();
+            if (valueType.IsGenericType)
+            {
+                Type baseType = valueType.GetGenericTypeDefinition();
+                if (baseType == typeof(KeyValuePair<,>))
+                {
+                    Type[] argTypes = baseType.GetGenericArguments();
+                    object kvpKey = valueType.GetProperty("Key").GetValue(value, null);
+                    object kvpValue = valueType.GetProperty("Value").GetValue(value, null);
+
+                    _output.Append('{');
+                    WritePair((string)kvpKey, kvpValue);
+                    _output.Append('}');
+                }
+            }
         }
 
         private void WriteStringValue(string s)

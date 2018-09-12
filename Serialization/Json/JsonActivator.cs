@@ -41,6 +41,7 @@ namespace Nistec.Serialization
     {
         public string Name;
         public ActivatorUtil.GenericGetterDeligate Field;
+        public bool IsRawJson;
     }
 
     internal struct TypeInfo
@@ -311,10 +312,12 @@ namespace Nistec.Serialization
             List<JsonFields> fieldsGetter = new List<JsonFields>();
             foreach (PropertyInfo p in props)
             {
-                if (!p.CanWrite && showReadOnlyProperties == false) 
+                if (!p.CanWrite && showReadOnlyProperties == false)
                     continue;
-                if(SerializeTools.HasNoSerializeAttribute(p))
+                if (SerializeTools.HasNoSerializeAttribute(p))
                     continue;
+
+
                 if (ignoreAttributes != null)
                 {
                     bool found = false;
@@ -331,7 +334,7 @@ namespace Nistec.Serialization
                 }
                 ActivatorUtil.GenericGetterDeligate g = ActivatorUtil.CreateGetMethod(type, p);
                 if (g != null)
-                    fieldsGetter.Add(new JsonFields { Field = g, Name = p.Name });
+                    fieldsGetter.Add(new JsonFields { Field = g, Name = p.Name, IsRawJson = SerializeTools.HasRawJsonAttribute(p)});
             }
 
             FieldInfo[] fi = type.GetFields(BindingFlags.Instance | BindingFlags.Public);
@@ -356,7 +359,7 @@ namespace Nistec.Serialization
 
                 ActivatorUtil.GenericGetterDeligate g = ActivatorUtil.CreateGetField(type, f);
                 if (g != null)
-                    fieldsGetter.Add(new JsonFields { Field = g, Name = f.Name });
+                    fieldsGetter.Add(new JsonFields { Field = g, Name = f.Name, IsRawJson = SerializeTools.HasRawJsonAttribute(f) });
             }
             val = fieldsGetter.ToArray();
             _jsonFieldsCache.TryAdd(type, val);

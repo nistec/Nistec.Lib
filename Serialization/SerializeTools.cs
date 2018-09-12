@@ -242,9 +242,26 @@ namespace Nistec.Serialization
             }
             return false;
         }
+       
         public static bool HasSerializeAttribute(FieldInfo p)
         {
             if (p.IsDefined(typeof(SerializeAttribute), false))
+            {
+                return true;
+            }
+            return false;
+        }
+        public static bool HasRawJsonAttribute(PropertyInfo p)
+        {
+            if (p.IsDefined(typeof(RawJsonAttribute), false))
+            {
+                return true;
+            }
+            return false;
+        }
+        public static bool HasRawJsonAttribute(FieldInfo p)
+        {
+            if (p.IsDefined(typeof(RawJsonAttribute), false))
             {
                 return true;
             }
@@ -471,7 +488,11 @@ namespace Nistec.Serialization
             }
             return false;
         }
-
+        public static bool IsKeyValuePaire<TKey, TValue>(Type type)
+        {
+            return type == typeof(KeyValuePair<TKey, TValue>);
+        }
+       
 
         /// <summary>
         ///   Is type Is Generic List
@@ -535,12 +556,16 @@ namespace Nistec.Serialization
             return typeof(IKeyValue).IsAssignableFrom(type)
                 || type == typeof(List<KeyValuePair<TKey, TValue>>);
         }
+        
+
+        //System.Collections.Generic.KeyValuePair`2[[System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089],[System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089
+
         //public static bool IsGenericNameValue(Type type)
         //{
         //    return typeof(IKeyValue).IsAssignableFrom(type) 
         //        || type == typeof(List<KeyValuePair<string, string>>);
         //}
-         public static bool IsISerialEntity(Type type)
+        public static bool IsISerialEntity(Type type)
         {
             return typeof(ISerialEntity).IsAssignableFrom(type);
         }

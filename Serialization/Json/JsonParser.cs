@@ -81,6 +81,13 @@ namespace Nistec.Serialization
             JsonParser parser = new JsonParser(json, ignorecase, typeof(Dictionary<string, string>));
             parser.ParseObjectString();
         }
+        public static void ParseTo<T>(List<T> d, string json, bool ignorecase = false)
+        {
+            if (json == null)
+                return;
+            JsonParser parser = new JsonParser(json, ignorecase, typeof(List<T>));
+            parser.ParseTo<T>(d);
+        }
 
         //public static Dictionary<string,object> ParseToDictionary(string json, bool ignorecase=false)
         //{
@@ -150,7 +157,45 @@ namespace Nistec.Serialization
         //        }
         //    }
         //}
+        private void ParseTo<T>(List<T> d)
+        {
 
+            ConsumeToken(); // {
+
+            while (true)
+            {
+                var token = FindNext();
+                switch (token)
+                {
+
+                    case Token.Comma:
+                        ConsumeToken();
+                        break;
+
+                    case Token.TagClose:
+                        ConsumeToken();
+                        return;
+
+                    default:
+                        {
+                            // name
+                            //string name = ParseString();
+                            //if (ignorecase)
+                            //    name = name.ToLower();
+                            //// :
+                            //if (NextToken() != Token.Colon)
+                            //{
+                            //    throw new Exception("JsonParser error: Expected colon at index " + index);
+                            //}
+                            // value
+                            object value = ParseValue();
+
+                            d.Add(GenericTypes.Convert<T>(value));
+                        }
+                        break;
+                }
+            }
+        }
         private void ParseTo<T>(Dictionary<string, T> d)
         {
 

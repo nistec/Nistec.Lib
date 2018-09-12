@@ -43,4 +43,10 @@ namespace Nistec.Serialization
     {
         public SerializeAttribute() { }
     }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Class, Inherited = false)]
+    public class RawJsonAttribute : Attribute
+    {
+        public RawJsonAttribute() { }
+    }
 }

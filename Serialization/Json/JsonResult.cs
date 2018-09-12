@@ -75,8 +75,14 @@ namespace Nistec.Serialization
         public JsonSettings Option { get; set; }
         public string EncodingName { get; set; }
         public string TypeName { get; set; }
+        
+        [RawJson]
         public string Result { get; set; }
-
+        
+        public string ToJson()
+        {
+            return JsonSerializer.Serialize(this);
+        }
         public object Deserialize(Type returnType)
         {
            return JsonSerializer.Deserialize(Result, returnType, Option);
@@ -101,7 +107,7 @@ namespace Nistec.Serialization
 
             streamer.WriteString(TypeName);
             streamer.WriteString(EncodingName);
-            streamer.WriteString(Result.ToString());
+            streamer.WriteString(Result);
             streamer.WriteValue(Option);
             streamer.Flush();
         }
