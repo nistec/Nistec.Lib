@@ -139,7 +139,7 @@ namespace Nistec.Generic
     }
 
     [Serializable]
-    public class GenericNameValue : GenericKeyValue<string>, ISerialEntity, IKeyValue, IDataRowAdaptor, IKeyValue<string>, ISerialJson
+    public class GenericNameValue : GenericKeyValue<string>, ISerialEntity, IKeyValue, IDataRowAdaptor, INameValue, IKeyValue<string>, ISerialJson
     {
 
         #region collection methods

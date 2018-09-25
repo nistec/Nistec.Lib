@@ -66,7 +66,7 @@ namespace Nistec.Generic
     //}
 
     [Serializable]
-    public class NameValueArgs : Dictionary<string, string>, ISerialEntity, IDataRowAdaptor, ISerialJson, IKeyValue<string>
+    public class NameValueArgs : Dictionary<string, string>, ISerialEntity, IDataRowAdaptor, ISerialJson, INameValue, IKeyValue<string>
     {
         #region static
 

@@ -786,7 +786,7 @@ namespace Nistec.Generic
                 instance[colName] = GenericTypes.Convert<T>(dr[colName]);
             }
         }
-        public static void ToNameValue(this IKeyValue<string> instance, DataRow dr)
+        public static void ToNameValue(this INameValue instance, DataRow dr)
         {
             if (dr == null)
                 return;
@@ -800,6 +800,53 @@ namespace Nistec.Generic
                 instance[colName] = GenericTypes.NZ(dr[colName], "");
             }
         }
+
+        public static void ToNameValue(this INameValue instance, DataTable dt, string colKey=null, string colValue = null)
+        {
+            if (dt == null)
+                return;
+            if (dt.Columns.Count < 2)
+                return;
+
+            if (colKey == null)
+                colKey = dt.Columns[0].ColumnName;
+            if (colValue == null)
+                colValue = dt.Columns[1].ColumnName;
+
+
+            instance.Clear();
+
+            foreach (DataRow dr in dt.Rows)
+            {
+                string key = Types.NZ(dr[colKey], null);
+                if(key!=null)
+                instance[key] = GenericTypes.NZ(dr[colValue], "");
+            }
+        }
+
+        public static INameValue ToNameValue(this DataTable dt, string colKey = null, string colValue = null)
+        {
+            if (dt == null)
+                return null;
+            if (dt.Columns.Count < 2)
+                return null;
+
+            if (colKey == null)
+                colKey = dt.Columns[0].ColumnName;
+            if (colValue == null)
+                colValue = dt.Columns[1].ColumnName;
+
+            NameValueArgs instance = new NameValueArgs();
+            
+            foreach (DataRow dr in dt.Rows)
+            {
+                string key = Types.NZ(dr[colKey], null);
+                if (key != null)
+                    instance[key] = GenericTypes.NZ(dr[colValue], "");
+            }
+            return instance;
+        }
+
         public static string[] SplitArg(this IKeyValue kv, string key, string valueIfNull)
         {
             string val = kv.Get<string>(key, valueIfNull);

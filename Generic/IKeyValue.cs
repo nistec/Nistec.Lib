@@ -35,7 +35,10 @@ namespace Nistec.Generic
 
         IDictionary<string, T> ToDictionary();
     }
+    public interface INameValue: IKeyValue<string>
+    {
 
+    }
     public interface IKeyValue : ICollection, IEnumerable, ISerialEntity
     {
         #region collection methods
