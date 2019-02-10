@@ -159,34 +159,34 @@ namespace Nistec.Serialization
     public static class JsonExtension
     {
 
-        public static JsonResults ToJsonResult(this DataTable dt)
+        public static JsonResults ToJsonResult(this DataTable dt, JsonSettings settings = null)
         {
             //if (string.IsNullOrEmpty(dt.TableName))
             //    dt.TableName = "JsonResults";
             JsonResults result = new JsonResults()
             {
                 TypeName = typeof(DataTable).FullName,
-                Result = JsonSerializer.Serialize(dt)
+                Result = JsonSerializer.Serialize(dt, settings)
             };
             return result;
         }
 
-        public static JsonResults ToJsonResult(this DataRow dr)
+        public static JsonResults ToJsonResult(this DataRow dr, JsonSettings settings = null)
         {
             JsonResults result = new JsonResults()
             {
                 TypeName = typeof(DataRow).FullName,
-                Result = JsonSerializer.Serialize(dr)
+                Result = JsonSerializer.Serialize(dr, settings)
             };
             return result;
         }
 
-        public static JsonResults ToJsonResult(this IDictionary dic)
+        public static JsonResults ToJsonResult(this IDictionary dic, JsonSettings settings = null)
         {
             JsonResults result = new JsonResults()
             {
                 TypeName = typeof(IDictionary).FullName,
-                Result = JsonSerializer.Serialize(dic)
+                Result = JsonSerializer.Serialize(dic, settings)
             };
             return result;
         }

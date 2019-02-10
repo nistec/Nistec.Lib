@@ -168,6 +168,14 @@ namespace Nistec.Serialization
         public static JsonSettings DefaultOption = new JsonSettings();
 
         /// <summary>
+        /// Default serializer with date format option.
+        /// </summary>
+        public static JsonSettings DefaultSettingsFormat(JsonDateFormat format)
+        {
+            return new JsonSettings() { JsonDateFormat = format };
+        }
+
+        /// <summary>
         /// Create a json from object using default <see cref="JsonSettings"/>.
         /// </summary>
         /// <param name="obj"></param>

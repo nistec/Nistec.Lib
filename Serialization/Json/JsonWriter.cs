@@ -330,18 +330,75 @@ namespace Nistec.Serialization
             if (_Settings.UseUTCDateTime)
                 dt = dateTime.ToUniversalTime();
 
+            bool enableTime = (_Settings.JsonDateFormat == JsonDateFormat.iso
+                || _Settings.JsonDateFormat == JsonDateFormat.iso_hhmm
+                || _Settings.JsonDateFormat== JsonDateFormat.ddmmyyyy_hhmm 
+                || _Settings.JsonDateFormat == JsonDateFormat.ddmmyyyy_hhmmss 
+                || _Settings.JsonDateFormat == JsonDateFormat.mmddyyyy_hhmm
+                || _Settings.JsonDateFormat == JsonDateFormat.mmddyyyy_hhmmss);
+
+            bool enableSeconds = (_Settings.JsonDateFormat == JsonDateFormat.iso
+                ||_Settings.JsonDateFormat == JsonDateFormat.ddmmyyyy_hhmmss
+                || _Settings.JsonDateFormat == JsonDateFormat.mmddyyyy_hhmmss);
+
             _output.Append('\"');
-            _output.Append(dt.Year.ToString("0000", NumberFormatInfo.InvariantInfo));
-            _output.Append('-');
-            _output.Append(dt.Month.ToString("00", NumberFormatInfo.InvariantInfo));
-            _output.Append('-');
-            _output.Append(dt.Day.ToString("00", NumberFormatInfo.InvariantInfo));
-            _output.Append('T');
-            _output.Append(dt.Hour.ToString("00", NumberFormatInfo.InvariantInfo));
-            _output.Append(':');
-            _output.Append(dt.Minute.ToString("00", NumberFormatInfo.InvariantInfo));
-            _output.Append(':');
-            _output.Append(dt.Second.ToString("00", NumberFormatInfo.InvariantInfo));
+            switch (_Settings.JsonDateFormat)
+            {
+                case JsonDateFormat.ddmmyyyy:
+                case JsonDateFormat.ddmmyyyy_hhmm:
+                case JsonDateFormat.ddmmyyyy_hhmmss:
+                    _output.Append(dt.Day.ToString("00", NumberFormatInfo.InvariantInfo));
+                    _output.Append('/');
+                    _output.Append(dt.Month.ToString("00", NumberFormatInfo.InvariantInfo));
+                    _output.Append('/');
+                    _output.Append(dt.Year.ToString("0000", NumberFormatInfo.InvariantInfo));
+                    if (enableTime)
+                        _output.Append(' ');
+                    break;
+                case JsonDateFormat.mmddyyyy:
+                case JsonDateFormat.mmddyyyy_hhmm:
+                case JsonDateFormat.mmddyyyy_hhmmss:
+                    _output.Append(dt.Month.ToString("00", NumberFormatInfo.InvariantInfo));
+                    _output.Append('/');
+                    _output.Append(dt.Day.ToString("00", NumberFormatInfo.InvariantInfo));
+                    _output.Append('/');
+                    _output.Append(dt.Year.ToString("0000", NumberFormatInfo.InvariantInfo));
+                    if (enableTime)
+                        _output.Append(' ');
+                    break;
+                case JsonDateFormat.longDate:
+                    _output.Append(String.Format("{0:D}", dt));  // "Sunday, March 09, 2008" 
+                    if (enableTime)
+                        _output.Append(' ');
+                    break;
+                default:
+                    _output.Append(dt.Year.ToString("0000", NumberFormatInfo.InvariantInfo));
+                    _output.Append('-');
+                    _output.Append(dt.Month.ToString("00", NumberFormatInfo.InvariantInfo));
+                    _output.Append('-');
+                    _output.Append(dt.Day.ToString("00", NumberFormatInfo.InvariantInfo));
+                    if (enableTime)
+                        _output.Append('T');
+                    //_output.Append(dt.Hour.ToString("00", NumberFormatInfo.InvariantInfo));
+                    //_output.Append(':');
+                    //_output.Append(dt.Minute.ToString("00", NumberFormatInfo.InvariantInfo));
+                    //_output.Append(':');
+                    //_output.Append(dt.Second.ToString("00", NumberFormatInfo.InvariantInfo));
+                    break;
+            }
+
+            if (enableTime)
+            {
+                _output.Append(dt.Hour.ToString("00", NumberFormatInfo.InvariantInfo));
+                _output.Append(':');
+                _output.Append(dt.Minute.ToString("00", NumberFormatInfo.InvariantInfo));
+            }
+            if (enableSeconds)
+            {
+                _output.Append(':');
+                _output.Append(dt.Second.ToString("00", NumberFormatInfo.InvariantInfo));
+            }
+
             if (_Settings.EnableDateTimeMilliseconds)
             {
                 _output.Append('.');
@@ -349,7 +406,6 @@ namespace Nistec.Serialization
             }
             if (_Settings.UseUTCDateTime)
                 _output.Append('Z');
-
             _output.Append('\"');
         }
 

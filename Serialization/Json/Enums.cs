@@ -30,6 +30,31 @@ namespace Nistec.Serialization
         None,
         Indented
     }
+    public enum JsonDateFormat
+    {
+        iso,//yyyy-MM-ddThh:mm:ss
+        iso_hhmm,//yyyy-MM-ddThh:mm:ss
+        iso_short,//yyyy-MM-ddThh:mm:ss
+        ddmmyyyy,
+        ddmmyyyy_hhmm,
+        ddmmyyyy_hhmmss,
+        mmddyyyy,
+        mmddyyyy_hhmm,
+        mmddyyyy_hhmmss,
+        longDate,
+
+        // short date pattern d: "M/d/yyyy",
+        // long date pattern D: "dddd, MMMM dd, yyyy",
+        // short time pattern t: "h:mm tt",
+        // long time pattern T: "h:mm:ss tt",
+        // long date, short time pattern f: "dddd, MMMM dd, yyyy h:mm tt",
+        // long date, long time pattern F: "dddd, MMMM dd, yyyy h:mm:ss tt",
+        // month/day pattern M: "MMMM dd",
+        // month/year pattern Y: "yyyy MMMM",
+        // S is a sortable format that does not vary by culture S: "yyyy\u0027-\u0027MM\u0027-\u0027dd\u0027T\u0027HH\u0027:\u0027mm\u0027:\u0027ss"
+
+    }
+
     public enum JsonSerializerMode
     {
         Write,

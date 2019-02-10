@@ -36,6 +36,8 @@ namespace Nistec.Serialization
         {
             SerializeNullValues = true;
 
+            JsonDateFormat = JsonDateFormat.iso;
+
             UseUTCDateTime = false;//true;
 
             ShowReadOnlyProperties = false;
@@ -69,6 +71,10 @@ namespace Nistec.Serialization
         /// </summary>
         public bool SerializeNullValues {get;set;}
         /// <summary>
+        /// JsonDateFormat (default = iso)
+        /// </summary>
+        public JsonDateFormat JsonDateFormat { get; set; }
+        /// <summary>
         /// Use the UTC date format (default = False)
         /// </summary>
         public bool UseUTCDateTime { get; set; }
@@ -84,10 +90,10 @@ namespace Nistec.Serialization
         /// Ignore case on json and deserialize (default = False).
         /// </summary>
         public bool IgnoreCaseOnDeserialize { get; set; }
+        bool _EnableAnonymousTypes;
         /// <summary>
         /// Anonymous types have read only properties (default = False). 
         /// </summary>
-        bool _EnableAnonymousTypes;
         public bool EnableAnonymousTypes
         {
             get { return _EnableAnonymousTypes; }
@@ -98,10 +104,10 @@ namespace Nistec.Serialization
                     ShowReadOnlyProperties = true;
             }
         }
+        bool _UseExtensions;
         /// <summary>
         /// Enable extensions $types, $type, $map (default = False)
         /// </summary>
-        bool _UseExtensions;
         public bool UseExtensions
         {
             get { return _UseExtensions; }
