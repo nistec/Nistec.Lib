@@ -79,7 +79,7 @@ namespace Nistec.Serialization
             if (json == null)
                 return;
             JsonParser parser = new JsonParser(json, ignorecase, typeof(Dictionary<string, string>));
-            parser.ParseTo(d);
+            parser.ParseObjectString();
         }
         public static void ParseTo<T>(List<T> d, string json, bool ignorecase = false)
         {
@@ -200,7 +200,7 @@ namespace Nistec.Serialization
         {
 
             ConsumeToken(); // {
-            
+
             while (true)
             {
                 var token = FindNext();
@@ -218,9 +218,7 @@ namespace Nistec.Serialization
                     default:
                         {
                             // name
-                            bool readToken = (token != Token.String);
-                            string name = ParseString(readToken);
-                            
+                            string name = ParseString();
                             if (ignorecase)
                                 name = name.ToLower();
                             // :
@@ -259,9 +257,7 @@ namespace Nistec.Serialization
                     default:
                         {
                             // name
-                            bool readToken = (token != Token.String);
-                            string name = ParseString(readToken);
-
+                            string name = ParseString();
                             if (ignorecase)
                                 name = name.ToLower();
                             // :
@@ -282,7 +278,7 @@ namespace Nistec.Serialization
         {
 
             ConsumeToken(); // {
-            
+
             while (true)
             {
                 var token = FindNext();
@@ -300,9 +296,7 @@ namespace Nistec.Serialization
                     default:
                         {
                             // name
-                            bool readToken = (token != Token.String);
-                            string name = ParseString(readToken);
-                            
+                            string name = ParseString();
                             if (ignorecase)
                                 name = name.ToLower();
                             // :
@@ -324,7 +318,7 @@ namespace Nistec.Serialization
             Dictionary<string, string> table = new Dictionary<string, string>();
 
             ConsumeToken(); // {
-            
+
             while (true)
             {
                 var token = FindNext();
@@ -341,10 +335,8 @@ namespace Nistec.Serialization
 
                     default:
                         {
-                            bool readToken = (token != Token.String);
                             // name
-                            string name = ParseString(readToken);
-                            
+                            string name = ParseString();
                             if (ignorecase)
                                 name = name.ToLower();
 
@@ -369,7 +361,7 @@ namespace Nistec.Serialization
             Dictionary<string, object> table = new Dictionary<string, object>();
 
             ConsumeToken(); // {
-            
+
             while (true)
             {
                 var token = FindNext();
@@ -387,9 +379,7 @@ namespace Nistec.Serialization
                     default:
                         {
                             // name
-                            bool readToken = (token != Token.String);
-                            string name = ParseString(readToken);
-                            
+                            string name = ParseString();
                             if (ignorecase)
                                 name = name.ToLower();
 
@@ -468,7 +458,7 @@ namespace Nistec.Serialization
                     return ParseNumber();
 
                 case Token.String:
-                    return ParseString(false);
+                    return ParseString();
 
                 case Token.TagOpen:
                     return ParseObject();
@@ -511,109 +501,7 @@ namespace Nistec.Serialization
             throw new Exception("JsonParser error: Invalid token at index" + index);
         }
 
-        private string ParseString(bool readToken)
-        {
-            ConsumeToken(); // "
-
-            sb.Length = 0;
-
-            int runIndex = -1;
-
-            if (readToken)
-            {
-                //if (json[index] == '"')
-                index++;
-            }
-
-            while (index < json.Length)
-            {
-                var c = json[index++];
-
-                if (c == '"')
-                {
-                    //if (runIndex == -1)
-                    //{
-                    //    runIndex = index;
-                    //    continue;
-                    //}
-                    if (runIndex != -1)
-                    {
-                        if (sb.Length == 0)
-                            return json.Substring(runIndex, index - runIndex - 1);
-
-                        sb.Append(json, runIndex, index - runIndex - 1);
-                    }
-                    return sb.ToString();
-                }
-                if (c != '\\')
-                {
-                    if (runIndex == -1)
-                        runIndex = index - 1;
-
-                    continue;
-                }
-
-                if (index == json.Length) break;
-
-                if (runIndex != -1)
-                {
-                    sb.Append(json, runIndex, index - runIndex - 1);
-                    runIndex = -1;
-                }
-
-                switch (json[index++])
-                {
-                    case '"':
-                        sb.Append('"');
-                        break;
-
-                    case '\\':
-                        sb.Append('\\');
-                        break;
-
-                    case '/':
-                        sb.Append('/');
-                        break;
-
-                    case 'b':
-                        sb.Append('\b');
-                        break;
-
-                    case 'f':
-                        sb.Append('\f');
-                        break;
-
-                    case 'n':
-                        sb.Append('\n');
-                        break;
-
-                    case 'r':
-                        sb.Append('\r');
-                        break;
-
-                    case 't':
-                        sb.Append('\t');
-                        break;
-
-                    case 'u':
-                        {
-                            int remainingLength = json.Length - index;
-                            if (remainingLength < 4) break;
-
-                            // parse the 32 bit hex into an integer codepoint
-                            uint codePoint = ParseUnicode(json[index], json[index + 1], json[index + 2], json[index + 3]);
-                            sb.Append((char)codePoint);
-
-                            // skip 4 chars
-                            index += 4;
-                        }
-                        break;
-                }
-            }
-
-            throw new Exception("JsonParser error: Unexpected reached end of string");
-        }
-        private string __ParseString()
+        private string ParseString()
         {
             ConsumeToken(); // "
 
@@ -636,6 +524,7 @@ namespace Nistec.Serialization
                     }
                     return sb.ToString();
                 }
+
                 if (c != '\\')
                 {
                     if (runIndex == -1)
@@ -801,7 +690,6 @@ namespace Nistec.Serialization
             return result;
         }
 
-     
         private Token InternalNextToken()
         {
             char c;
@@ -824,7 +712,7 @@ namespace Nistec.Serialization
             c = json[index];
 
             index++;
-            
+
             switch (c)
             {
                 case '{':
@@ -898,7 +786,6 @@ namespace Nistec.Serialization
                     break;
             }
             throw new Exception("JsonParser error: Could not find token at index " + --index);
-            
         }
         internal static long ToLong(out long num, string s, int index, int count)
         {
