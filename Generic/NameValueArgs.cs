@@ -213,6 +213,14 @@ namespace Nistec.Generic
             //return this[key];
         }
 
+        public string GetVal(string key, string valueIfNullOrEmpty)
+        {
+            string value;
+            TryGetValue(key, out value);
+            return string.IsNullOrEmpty(value) ? valueIfNullOrEmpty: value;
+            //return this[key];
+        }
+
         public TV Get<TV>(string key)
         {
             return GenericTypes.Convert<TV>(this[key]);
