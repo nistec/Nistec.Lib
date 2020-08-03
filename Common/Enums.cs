@@ -25,7 +25,17 @@ using System.Text;
 
 namespace Nistec
 {
-  
+    [Flags]
+    public enum LogLevel
+    {
+        Debug = 2,
+        Info = 4,
+        Warn = 8,
+        Error = 16,
+        Fatal = 32,
+        Trace = 64
+    }
+
     ///// <summary>
     ///// Message Direction
     ///// </summary>

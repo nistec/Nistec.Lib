@@ -271,11 +271,12 @@ namespace Nistec.IO
         /// <param name="stream"></param>
         /// <param name="readTimeout">specifies the amount of time, in milliseconds, that will elapse before a read operation fails.</param>
         /// <param name="BufferSize"></param>
+        /// <param name="offset"></param>
         public int CopyFrom(NetworkStream stream, int readTimeout, int BufferSize = 8192, int offset=0)
         {
             if (BufferSize <= 0)
                 BufferSize = 8192;
-            if (readTimeout <= 0)
+            if (readTimeout == 0)// Infinite = -1
                 readTimeout = 5000;
             Array.Clear(this.m_buffer, 0, this.m_length);
             int totalWrite = 0;
@@ -306,7 +307,7 @@ namespace Nistec.IO
         {
             if (BufferSize <= 0)
                 BufferSize = 8192;
-            if (readTimeout <= 0)
+            if (readTimeout == 0)// Infinite = -1
                 readTimeout = 5000;
             //Array.Clear(this.m_buffer, 0, this.m_length);
             int totalWrite = 0;

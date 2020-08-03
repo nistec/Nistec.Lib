@@ -177,6 +177,7 @@
     <Compile Include="IO\StreamHelper.cs" />
     <Compile Include="Runtime\SysFileWatcher.cs" />
     <Compile Include="Threading\AsyncTasker.cs" />
+    <Compile Include="Threading\DynamicWorker.cs" />
     <Compile Include="Threading\ListenerDelay.cs" />
     <Compile Include="Threading\ThreadPoolEx.cs">
       <SubType>Code</SubType>
