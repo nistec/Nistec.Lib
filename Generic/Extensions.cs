@@ -960,6 +960,23 @@ namespace Nistec.Generic
             return dic;
         }
 
+        public static NameValueCollection ParseCommaString(string s, char splitterList='|', char spliterKeyValue='=')
+        {
+            NameValueCollection dic = new NameValueCollection();
+            if (string.IsNullOrEmpty(s))
+                return dic;
+
+            string[] args = s.SplitTrim(splitterList);
+            foreach (string arg in args)
+            {
+                string[] kv = arg.SplitTrim(spliterKeyValue);
+                if (kv.Length == 2)
+                    dic.Add(kv[0].Trim(), kv[1].Trim());
+            }
+
+            return dic;
+        }
+
         public static NameValueCollection ParseCommaPipe(string s)
         {
             NameValueCollection dic = new NameValueCollection();
@@ -970,8 +987,8 @@ namespace Nistec.Generic
             foreach (string arg in args)
             {
                 string[] kv = arg.SplitTrim('=');
-                if (kv.Length == 2)
-                    dic.Add(kv[0], kv[1]);
+                    if (kv.Length == 2)
+                    dic.Add(kv[0].Trim(), kv[1].Trim());
             }
 
             return dic;
