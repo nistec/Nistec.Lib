@@ -143,6 +143,59 @@ namespace Nistec.Generic
             }
         }
 
+        public static T ParseOrCast<T>(object value, T defaultValue)
+        {
+            try
+            {
+                if (value == null)
+                    return defaultValue;
+                if (Regx.IsInteger(value.ToString()))
+                {
+                    if (Enum.IsDefined(typeof(T), value))
+                    {
+                        return (T)Enum.ToObject(typeof(T), value);
+                    }
+                    else
+                    {
+                        return defaultValue;
+                    }
+                }
+
+                return (T)Enum.Parse(typeof(T), value.ToString(), true);
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+
+        public static object ParseOrCast(Type type,object value, object defaultValue)
+        {
+            try
+            {
+                if (value == null)
+                    return defaultValue;
+                if (Regx.IsInteger(value.ToString()))
+                {
+                    if (Enum.IsDefined(type, value))
+                    {
+                        return Enum.ToObject(type, value);
+                    }
+                    else
+                    {
+                        return defaultValue;
+                    }
+                }
+
+                return Enum.Parse(type, value.ToString(), true);
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
+              
+
         public static T Parse<T>(string value, T defaultValue)
         {
             try

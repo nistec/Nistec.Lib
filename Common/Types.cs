@@ -26,7 +26,7 @@ using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using System.Collections;
 using System.Linq;
-
+using Nistec.Generic;
 
 namespace Nistec
 {
@@ -635,7 +635,10 @@ namespace Nistec
                 {
                     return ToGuid(value);
                 }
-
+                if (type.IsEnum)
+                {
+                    return EnumExtension.ParseOrCast(type,value, value);
+                }
                 return (value == null || value == DBNull.Value) ? GenericTypes.Default(type) : Convert.ChangeType(value, type);
             }
             catch (Exception ex)
