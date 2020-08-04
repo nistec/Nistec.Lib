@@ -253,10 +253,14 @@ namespace Nistec.Threading
                 ActionLog(LogLevel.Error, Name + " DynamicWorker on Stop throws the error: " + ex.Message);
             }
         }
-        public bool Pause(int seconds = 1)
+        public bool Pause(bool on)
         {
-            _Pause = seconds > 0;
-            _PauseInterval = 1000 * ((seconds < 1) ? 1 : seconds);
+            return Pause(on ? 60 : 0);
+        }
+        public bool Pause(int intervalSeconds = 60)
+        {
+            _Pause = intervalSeconds > 0;
+            _PauseInterval = 1000 * ((intervalSeconds < 1) ? 60 : intervalSeconds);
             return _Pause;
         }
         public int DynamicWaitAck(bool ack)
