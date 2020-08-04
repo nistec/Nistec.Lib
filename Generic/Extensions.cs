@@ -147,10 +147,8 @@ namespace Nistec.Generic
         {
             try
             {
-                if (value == null)
+                if (string.IsNullOrEmpty(value))
                     return defaultValue;
-                //if (!Enum.IsDefined(typeof(T), value))
-                //    return defaultValue;
                 return (T) Enum.Parse(typeof(T), value, true);
             }
             catch
@@ -163,10 +161,8 @@ namespace Nistec.Generic
         {
             try
             {
-                if (value == null)
+                if (string.IsNullOrEmpty(value))
                     return defaultValue;
-                //if (!Enum.IsDefined(type, value))
-                //    return defaultValue;
                 return Enum.Parse(type, value, true);
             }
             catch
@@ -963,6 +959,24 @@ namespace Nistec.Generic
 
             return dic;
         }
+
+        public static NameValueCollection ParseCommaPipe(string s)
+        {
+            NameValueCollection dic = new NameValueCollection();
+            if (string.IsNullOrEmpty(s))
+                return dic;
+
+            string[] args = s.SplitTrim('|');
+            foreach (string arg in args)
+            {
+                string[] kv = arg.SplitTrim('=');
+                if (kv.Length == 2)
+                    dic.Add(kv[0], kv[1]);
+            }
+
+            return dic;
+        }
+
         public static IDictionary<string,object> KeyValueToDictionary(params object[] keyValueParameters)
         {
             IDictionary<string, object> dic = new Dictionary<string, object>();
