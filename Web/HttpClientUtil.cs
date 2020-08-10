@@ -519,7 +519,7 @@ namespace Nistec.Web
     /// <summary>
     /// HttpC lient Request
     /// </summary>
-    public class HttpClientRequest
+    public class HttpRequester
     {
         public static Task<string> DoPostJson(string address, string data, string accessToken, string schema = "Bearer", int TimeoutSeconds = 0)
         {
@@ -657,7 +657,7 @@ namespace Nistec.Web
             }
         }
 
-        public static Task<string> DoPost(string address, string data, HttpMethod method, string contentType, Dictionary<string, IEnumerable<string>> headers, int TimeoutSeconds = 0)
+        public static Task<string> DoRequest(string address, string data, HttpMethod method, string contentType, Dictionary<string, IEnumerable<string>> headers, int TimeoutSeconds = 0)
         {
 
             using (HttpClient client = new HttpClient())
