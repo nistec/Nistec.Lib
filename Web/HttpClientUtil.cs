@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -193,6 +194,9 @@ namespace Nistec.Web
         #endregion
 
         #region http request methods
+
+ 
+
         public static Task<string> DoHttpRequest(string address, HttpMethod method, string contentType, string data, int TimeoutSeconds)
         {
             using (var httpClient = new HttpClient() { Timeout = TimeSpan.FromSeconds(TimeoutSeconds) })
@@ -510,5 +514,170 @@ namespace Nistec.Web
         }
 
         #endregion
+    }
+
+    /// <summary>
+    /// HttpC lient Request
+    /// </summary>
+    public class HttpClientRequest
+    {
+        public static Task<string> DoPostJson(string address, string data, string accessToken, string schema = "Bearer", int TimeoutSeconds = 0)
+        {
+
+            using (HttpClient client = new HttpClient())
+            {
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(schema, accessToken);
+                if (TimeoutSeconds > 0)
+                    client.Timeout = TimeSpan.FromSeconds(TimeoutSeconds);
+                using (var request = new HttpRequestMessage(HttpMethod.Post, address))
+                //request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                using (request.Content = new StringContent(data, Encoding.UTF8, "application/json"))
+                using (var response = client.SendAsync(request))
+                {
+                    return response.Result.Content.ReadAsStringAsync();
+                }
+            }
+        }
+
+        public static Task<string> DoPostJson(string address, string data, Dictionary<string, string> headers, int TimeoutSeconds = 0)
+        {
+
+            using (HttpClient client = new HttpClient())
+            {
+                if (headers != null)
+                {
+                    foreach (var h in headers)
+                        client.DefaultRequestHeaders.Add(h.Key, h.Value);
+                }
+                if (TimeoutSeconds > 0)
+                    client.Timeout = TimeSpan.FromSeconds(TimeoutSeconds);
+                using (var request = new HttpRequestMessage(HttpMethod.Post, address))
+                //request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                using (request.Content = new StringContent(data, Encoding.UTF8, "application/json"))
+                using (var response = client.SendAsync(request))
+                {
+                    return response.Result.Content.ReadAsStringAsync();
+                }
+            }
+        }
+
+        public static Task<string> DoPostJson(string address, string data, Dictionary<string, IEnumerable<string>> headers, int TimeoutSeconds = 0)
+        {
+
+            using (HttpClient client = new HttpClient())
+            {
+                if (headers != null)
+                {
+                    foreach (var h in headers)
+                        client.DefaultRequestHeaders.Add(h.Key, h.Value);
+                }
+
+                if (TimeoutSeconds > 0)
+                    client.Timeout = TimeSpan.FromSeconds(TimeoutSeconds);
+                using (var request = new HttpRequestMessage(HttpMethod.Post, address))
+                //request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                using (request.Content = new StringContent(data, Encoding.UTF8, "application/json"))
+                using (var response = client.SendAsync(request))
+                {
+                    return response.Result.Content.ReadAsStringAsync();
+                }
+            }
+        }
+
+        public static Task<string> DoPostJson(string address, string data, string contentType, Dictionary<string, IEnumerable<string>> headers, int TimeoutSeconds = 0)
+        {
+
+            using (HttpClient client = new HttpClient())
+            {
+                if (headers != null)
+                {
+                    foreach (var h in headers)
+                        client.DefaultRequestHeaders.Add(h.Key, h.Value);
+                }
+
+                if (TimeoutSeconds > 0)
+                    client.Timeout = TimeSpan.FromSeconds(TimeoutSeconds);
+                using (var request = new HttpRequestMessage(HttpMethod.Post, address))
+                //request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                using (request.Content = new StringContent(data, Encoding.UTF8, contentType))
+                using (var response = client.SendAsync(request))
+                {
+                    return response.Result.Content.ReadAsStringAsync();
+                }
+            }
+        }
+
+ 
+
+        public static Task<string> DoPostJson(string address, string data, Dictionary<string, IEnumerable<string>> headers, CancellationToken ctsTocken)
+        {
+
+            using (HttpClient client = new HttpClient())
+            {
+                if (headers != null)
+                {
+                    foreach (var h in headers)
+                        client.DefaultRequestHeaders.Add(h.Key, h.Value);
+                }
+
+                using (var request = new HttpRequestMessage(HttpMethod.Post, address))
+                //request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                using (request.Content = new StringContent(data, Encoding.UTF8, "application/json"))
+                using (var response = client.SendAsync(request, ctsTocken))
+                {
+                    return response.Result.Content.ReadAsStringAsync();
+                }
+            }
+
+        }
+
+        public static Task<string> DoPost(string address, int TimeoutSeconds = 0)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                if (TimeoutSeconds > 0)
+                    client.Timeout = TimeSpan.FromSeconds(TimeoutSeconds);
+                //using (var request = new HttpRequestMessage(HttpMethod.Post, address))
+                using (var response = client.PostAsync(address, null))
+                {
+                    return response.Result.Content.ReadAsStringAsync();
+                }
+            }
+        }
+
+        public static Task<string> DoPost(string address, CancellationToken ctsTocken)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                //using (var request = new HttpRequestMessage(HttpMethod.Post, address))
+                using (var response = client.PostAsync(address, null, ctsTocken))
+                {
+                    return response.Result.Content.ReadAsStringAsync();
+                }
+            }
+        }
+
+        public static Task<string> DoPost(string address, string data, HttpMethod method, string contentType, Dictionary<string, IEnumerable<string>> headers, int TimeoutSeconds = 0)
+        {
+
+            using (HttpClient client = new HttpClient())
+            {
+                if (headers != null)
+                {
+                    foreach (var h in headers)
+                        client.DefaultRequestHeaders.Add(h.Key, h.Value);
+                }
+
+                if (TimeoutSeconds > 0)
+                    client.Timeout = TimeSpan.FromSeconds(TimeoutSeconds);
+                using (var request = new HttpRequestMessage(method, address))
+                //request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                using (request.Content = new StringContent(data, Encoding.UTF8, contentType))
+                using (var response = client.SendAsync(request))
+                {
+                    return response.Result.Content.ReadAsStringAsync();
+                }
+            }
+        }
     }
 }
