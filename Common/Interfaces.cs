@@ -44,5 +44,28 @@ namespace Nistec.Data
 
 namespace Nistec
 {
+    public enum ListenerState
+    {
+        Down=0,
+        Initilaized=1,
+        Started=2,
+        Stoped=3,
+        Paused=4
+    }
+    public enum OnOffState
+    {
+        On = 0,
+        Off = 1,
+        Toggle = 2,
+    }
 
+    public interface IListener
+    {
+        void Start();
+        void Stop();
+        bool Pause(OnOffState onOff);
+        void Shutdown(bool waitForWorkers);
+        //bool Initialized { get; }
+        ListenerState State { get; }
+    }
 }

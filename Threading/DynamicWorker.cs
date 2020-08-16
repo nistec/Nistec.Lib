@@ -151,7 +151,7 @@ namespace Nistec.Threading
     /// <summary>
     /// ThreadWorker
     /// </summary>
-    public class DynamicWorker : IDynamicWait
+    public class DynamicWorker : IDynamicWait,IListener
     {
         public const int MAXTHREAD = 10;
 
@@ -163,6 +163,8 @@ namespace Nistec.Threading
         public DynamicWaitType WaitType { get; private set; }
         public bool EnableDynamicWait { get; private set; }
         public bool EnableResetEvent { get; private set; }
+        public ListenerState State { get; private set; }
+
 
         //bool _EnableResetEvent;
         //public bool EnableResetEvent { get { return _EnableResetEvent; } set{ _EnableResetEvent = (value && EnableDynamicWait)?false: value; } }
@@ -207,6 +209,16 @@ namespace Nistec.Threading
 
         public void Start()
         {
+            if (State == ListenerState.Paused)
+            {
+                _Pause = false;
+                return;
+            }
+            if (thWorker!=null)
+            {
+                return;
+            }
+            State = ListenerState.Initilaized;
 
             //thDequeueWorker = new Thread[MaxThreads];
             thWorker = new Thread[MaxThreads];
@@ -222,6 +234,7 @@ namespace Nistec.Threading
         public void Stop()
         {
             KeepAlive = false;
+            State = ListenerState.Stoped;
         }
         public void Shutdown(bool waitForWorkers)
         {
@@ -241,7 +254,8 @@ namespace Nistec.Threading
                     //    }
                     //}
                 }
-                ActionLog(LogLevel.Error, Name + " DynamicWorker Stoped!");
+                State = ListenerState.Down;
+                ActionLog(LogLevel.Info, Name + " DynamicWorker Stoped!");
             }
             catch (ThreadInterruptedException ex)
             {
@@ -253,16 +267,35 @@ namespace Nistec.Threading
                 ActionLog(LogLevel.Error, Name + " DynamicWorker on Stop throws the error: " + ex.Message);
             }
         }
-        public bool Pause(bool on)
+        public bool Pause(OnOffState onOff)
         {
-            return Pause(on ? 60 : 0);
-        }
-        public bool Pause(int intervalSeconds = 60)
-        {
-            _Pause = intervalSeconds > 0;
-            _PauseInterval = 1000 * ((intervalSeconds < 1) ? 60 : intervalSeconds);
+            if (State != ListenerState.Started)
+                return _Pause;
+
+            if ((onOff== OnOffState.Toggle && State == ListenerState.Paused) || onOff == OnOffState.Off)
+            {
+                _Pause = false;
+                State = ListenerState.Started;
+            }
+            else
+            {
+                _Pause = true;
+                State = ListenerState.Paused;
+                int intervalSeconds = 60;
+                _PauseInterval = 1000 * ((intervalSeconds < 1) ? 60 : intervalSeconds);
+            }
             return _Pause;
         }
+        //public bool Pause(bool on)
+        //{
+        //    return Pause(on ? 60 : 0);
+        //}
+        //public bool Pause(int intervalSeconds = 60)
+        //{
+        //    _Pause = intervalSeconds > 0;
+        //    _PauseInterval = 1000 * ((intervalSeconds < 1) ? 60 : intervalSeconds);
+        //    return _Pause;
+        //}
         public int DynamicWaitAck(bool ack)
         {
             if (EnableResetEvent)
@@ -305,6 +338,7 @@ namespace Nistec.Threading
 
         protected void Worker()
         {
+            State = ListenerState.Started;
             ActionLog( LogLevel.Debug,Name+ " started!");
             KeepAlive = true;
             while (KeepAlive)
@@ -361,6 +395,7 @@ namespace Nistec.Threading
                 else
                     Thread.Sleep(Interval);
             }
+            State = ListenerState.Stoped;
             ActionLog(LogLevel.Debug, Name + " stoped!");
         }
 
