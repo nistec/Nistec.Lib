@@ -157,6 +157,7 @@ namespace Nistec.Threading
 
         public Func<bool> ActionTask { get; set; }
         public Action<LogLevel, string> ActionLog { get; set; }
+        public Action<ListenerState> ActionState { get; set; }
         public int MaxThreads { get; set; }
         public int Interval { get; set; }
         public string Name { get; set; }
@@ -165,6 +166,14 @@ namespace Nistec.Threading
         public bool EnableResetEvent { get; private set; }
         public ListenerState State { get; private set; }
 
+        protected void OnStateChanged(ListenerState state)
+        {
+
+            State = state;
+            if (ActionState != null)
+                ActionState(state);
+            ActionLog(LogLevel.Debug, Name + " " + state.ToString());
+        }
 
         //bool _EnableResetEvent;
         //public bool EnableResetEvent { get { return _EnableResetEvent; } set{ _EnableResetEvent = (value && EnableDynamicWait)?false: value; } }
@@ -218,7 +227,7 @@ namespace Nistec.Threading
             {
                 return;
             }
-            State = ListenerState.Initilaized;
+            OnStateChanged(ListenerState.Initilaized);
 
             //thDequeueWorker = new Thread[MaxThreads];
             thWorker = new Thread[MaxThreads];
@@ -234,7 +243,7 @@ namespace Nistec.Threading
         public void Stop()
         {
             KeepAlive = false;
-            State = ListenerState.Stoped;
+            OnStateChanged(ListenerState.Stoped);
         }
         public void Shutdown(bool waitForWorkers)
         {
@@ -254,8 +263,7 @@ namespace Nistec.Threading
                     //    }
                     //}
                 }
-                State = ListenerState.Down;
-                ActionLog(LogLevel.Info, Name + " DynamicWorker Stoped!");
+                OnStateChanged(ListenerState.Down);
             }
             catch (ThreadInterruptedException ex)
             {
@@ -275,12 +283,12 @@ namespace Nistec.Threading
             if ((onOff== OnOffState.Toggle && State == ListenerState.Paused) || onOff == OnOffState.Off)
             {
                 _Pause = false;
-                State = ListenerState.Started;
+                OnStateChanged(ListenerState.Started);
             }
             else
             {
                 _Pause = true;
-                State = ListenerState.Paused;
+                OnStateChanged(ListenerState.Paused);
                 int intervalSeconds = 60;
                 _PauseInterval = 1000 * ((intervalSeconds < 1) ? 60 : intervalSeconds);
             }
@@ -338,8 +346,7 @@ namespace Nistec.Threading
 
         protected void Worker()
         {
-            State = ListenerState.Started;
-            ActionLog( LogLevel.Debug,Name+ " started!");
+            OnStateChanged(ListenerState.Started);
             KeepAlive = true;
             while (KeepAlive)
             {
@@ -395,8 +402,7 @@ namespace Nistec.Threading
                 else
                     Thread.Sleep(Interval);
             }
-            State = ListenerState.Stoped;
-            ActionLog(LogLevel.Debug, Name + " stoped!");
+            OnStateChanged(ListenerState.Stoped);
         }
 
         #endregion
