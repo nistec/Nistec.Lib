@@ -41,7 +41,7 @@ namespace Nistec.Runtime
         /// <summary>
         /// Default file filter
         /// </summary>
-        public const string DefaultFileFilter = "*.xml";
+        public const string DefaultFileFilter = "*.*";
         /// <summary>
         /// Get the system file path.
         /// </summary>
@@ -60,11 +60,20 @@ namespace Nistec.Runtime
             return Path.Combine(SyncPath, Filename);
         }
         /// <summary>
-        /// File System Event Handler
+        /// File Changed Action (Created, Deleted, Changed)
+        /// </summary>
+        public Action<FileSystemEventArgs> FileChangedAction { get; set; }
+        /// <summary>
+        /// File Renamed Action (Renamed)
+        /// </summary>
+        public Action<RenamedEventArgs> FileRenamedAction { get; set; }
+
+        /// <summary>
+        /// File System Event Handler (Changed only)
         /// </summary>
         public event FileSystemEventHandler FileChanged;
         /// <summary>
-        /// Occured when file has been changed.
+        /// Occured when file has been changed (Created, Deleted, Changed).
         /// </summary>
         /// <param name="e"></param>
         protected virtual void OnFileChanged(FileSystemEventArgs e)
@@ -113,18 +122,18 @@ namespace Nistec.Runtime
             InitSysFileWatcher(fpath, fileFilter);
         }
 
-        private  void InitSysFileWatcher(string fpath, string fileFilter)
+        private  void InitSysFileWatcher(string path, string fileFilter)
         {
             //string fpath = CacheSettings.SyncConfigFile;
-            if (string.IsNullOrEmpty(fpath))
+            if (string.IsNullOrEmpty(path))
             {
                 SyncPath = SysNet.GetExecutingAssemblyPath();
                 Filename = DefaultFileName;
             }
             else
             {
-                Filename = Path.GetFileName(fpath);
-                SyncPath = Path.GetDirectoryName(fpath);
+                Filename = Path.GetFileName(path);
+                SyncPath = Path.GetDirectoryName(path);
             }
 
             if (string.IsNullOrEmpty(fileFilter))
@@ -145,9 +154,9 @@ namespace Nistec.Runtime
             WatchFile.IncludeSubdirectories = false;
             WatchFile.NotifyFilter = NotifyFilters.LastWrite;
 
-            //WatchFile.Created += new FileSystemEventHandler(this.FileCreated);
-            //WatchFile.Renamed += new RenamedEventHandler(this.FileReNamed);
-            //WatchFile.Deleted += new FileSystemEventHandler(this.FileDeleted);
+            WatchFile.Created += new FileSystemEventHandler(WatchFile_CreatedDeleted);
+            WatchFile.Renamed += new RenamedEventHandler(WatchFile_Renamed);
+            WatchFile.Deleted += new FileSystemEventHandler(WatchFile_CreatedDeleted);
             WatchFile.Changed += new FileSystemEventHandler(WatchFile_Changed);
 
             WatchFile.EnableRaisingEvents = true;
@@ -155,6 +164,7 @@ namespace Nistec.Runtime
 
         DateTime lastTimeRead = DateTime.MinValue;
         string lastFileRead = "";
+        WatcherChangeTypes lastChangeType = WatcherChangeTypes.All;
         /// <summary>
         /// Get the last time file was readed.
         /// </summary>
@@ -172,7 +182,7 @@ namespace Nistec.Runtime
 
         internal void WatchFile_Changed(object sender, FileSystemEventArgs e)
         {
-            if (FileChanged != null)
+            if (FileChanged != null || FileChangedAction!=null)
             {
                 if (Filename.ToLower() == e.Name.ToLower())
                 {
@@ -182,7 +192,12 @@ namespace Nistec.Runtime
                     {
                         lastTimeRead = lastWriteTime;
                         lastFileRead = e.FullPath;
-                        FileChanged(this, e);
+
+                        if (FileChanged != null)
+                            FileChanged(this, e);
+                        if (FileChangedAction != null)
+                            FileChangedAction(e);
+
                         Console.WriteLine(e.ToString());
                     }
                 }
@@ -190,28 +205,79 @@ namespace Nistec.Runtime
             OnFileChanged(e);
         }
 
-        internal void FileCreated(object sender, FileSystemEventArgs e)
+        internal void WatchFile_CreatedDeleted(object sender, FileSystemEventArgs e)
         {
-            Console.WriteLine(e.Name); //or anything you wish to display
-            //do the processing of file and print it to
-            //pdf writer port…or to a printer
+            if (FileChangedAction != null)
+            {
+                if (Filename.ToLower() == e.Name.ToLower())
+                {
+                    DateTime lastWriteTime = File.GetLastWriteTime(e.FullPath);
+
+                    if ((lastWriteTime != lastTimeRead || lastFileRead != e.FullPath) && lastChangeType== e.ChangeType)
+                    {
+                        lastTimeRead = lastWriteTime;
+                        lastFileRead = e.FullPath;
+                        lastChangeType = e.ChangeType;
+
+                        FileChangedAction(e);
+
+                        Console.WriteLine(e.ToString());
+                    }
+                }
+            }
+            OnFileChanged(e);
         }
 
-        internal void FileReNamed(object sender, RenamedEventArgs e)
+        internal void WatchFile_Renamed(object sender, RenamedEventArgs e)
         {
-            Console.WriteLine("\nFile Renamed:\n");
+            if (FileRenamedAction != null)
+            {
+                if (Filename.ToLower() == e.Name.ToLower())
+                {
+                    DateTime lastWriteTime = File.GetLastWriteTime(e.FullPath);
 
-            Console.WriteLine("Change Type: {0}", e.ChangeType);
-            Console.WriteLine("Full Path: {0}", e.FullPath);
-            Console.WriteLine("Name: {0}", e.Name);
-            Console.WriteLine("Old Full Path: {0}", e.OldFullPath);
-            Console.WriteLine("Old Name: {0}", e.OldName);
+                    if (lastWriteTime != lastTimeRead || lastFileRead != e.FullPath)
+                    {
+                        lastTimeRead = lastWriteTime;
+                        lastFileRead = e.FullPath;
+
+                        FileRenamedAction(e);
+
+                        Console.WriteLine(e.ToString());
+
+                        //Console.WriteLine("Change Type: {0}", e.ChangeType);
+                        //Console.WriteLine("Full Path: {0}", e.FullPath);
+                        //Console.WriteLine("Name: {0}", e.Name);
+                        //Console.WriteLine("Old Full Path: {0}", e.OldFullPath);
+                        //Console.WriteLine("Old Name: {0}", e.OldName);
+                    }
+                }
+            }
+            OnFileChanged(e);
         }
 
-        internal void FileDeleted(object sender, FileSystemEventArgs e)
-        {
-            Console.WriteLine(e.ToString());
-        }
+        //internal void FileCreated(object sender, FileSystemEventArgs e)
+        //{
+        //    Console.WriteLine(e.Name); //or anything you wish to display
+        //    //do the processing of file and print it to
+        //    //pdf writer port…or to a printer
+        //}
+
+        //internal void FileReNamed(object sender, RenamedEventArgs e)
+        //{
+        //    Console.WriteLine("\nFile Renamed:\n");
+
+        //    Console.WriteLine("Change Type: {0}", e.ChangeType);
+        //    Console.WriteLine("Full Path: {0}", e.FullPath);
+        //    Console.WriteLine("Name: {0}", e.Name);
+        //    Console.WriteLine("Old Full Path: {0}", e.OldFullPath);
+        //    Console.WriteLine("Old Name: {0}", e.OldName);
+        //}
+
+        //internal void FileDeleted(object sender, FileSystemEventArgs e)
+        //{
+        //    Console.WriteLine(e.ToString());
+        //}
   
     }
 }
