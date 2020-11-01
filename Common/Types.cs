@@ -1956,6 +1956,19 @@ namespace Nistec
 
         #region Nullable
 
+        public static string ToNullableDateTimeformat(object value, string culture = "he-IL", string format= "yyyy-MM-dd hh:mm:ss")
+        {
+            if (value == null || value == DBNull.Value || value.ToString() == "")
+                return null;
+            DateTime val;
+            if (DateTime.TryParse(value.ToString(), new CultureInfo(culture, false).DateTimeFormat, DateTimeStyles.AssumeLocal, out val))
+            {
+                if (((DateTime?)val).HasValue)
+                    return ((DateTime?)val).Value.ToString(format);
+            }
+            return null;
+        }
+
         public static DateTime? ToNullableDateIso(object value)
         {
             if (value == null || value == DBNull.Value || value.ToString() == "")
