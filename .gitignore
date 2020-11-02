@@ -155,3 +155,5 @@ $RECYCLE.BIN/
 # Mac desktop service store files
 .DS_Store
 /.vs/Nistec.Lib/v15/Server/sqlite3/db.lock
+/.vs/Nistec.Lib/v15/Server/sqlite3/storage.ide-shm
+/.vs/Nistec.Lib/v15/Server/sqlite3/storage.ide-wal
