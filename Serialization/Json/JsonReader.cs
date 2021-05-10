@@ -217,7 +217,10 @@ namespace Nistec.Serialization
                 return JsonConverter.ToEnum(type, value);
 
             else if (type == typeof(DateTime))
-                return JsonConverter.ToDateTime((string)value, _Settings.UseUTCDateTime);
+                return JsonConverter.ToDateTime((string)value, _Settings.UseUTCDateTime, _Settings.JsonDateFormat);
+
+            else if (type == typeof(DateTime?))
+                return Types.ToNullableDate(value);
 
             else if (JsonActivator.Get.IsTypeRegistered(type))
                 return JsonActivator.Get.CreateCustom((string)value, type);
@@ -403,11 +406,11 @@ namespace Nistec.Serialization
 
                         switch (typeInfo.serialType)
                         {
-                            case SerialJsonType.Int: oset = (int)((long)v); break;
-                            case SerialJsonType.Long: oset = (long)v; break;
+                            case SerialJsonType.Int: oset = JsonConverter.ToInt(v); break;
+                            case SerialJsonType.Long: oset = JsonConverter.ToLong(v); break;
                             case SerialJsonType.String: oset = (string)v; break;
-                            case SerialJsonType.Bool: oset = (bool)v; break;
-                            case SerialJsonType.DateTime: oset = JsonConverter.ToDateTime((string)v, true); break;
+                            case SerialJsonType.Bool: oset = JsonConverter.ToBool(v); break;
+                            case SerialJsonType.DateTime: oset = JsonConverter.ToDateTime((string)v, _Settings.UseUTCDateTime, _Settings.JsonDateFormat); break;
                             case SerialJsonType.Enum: oset = JsonConverter.ToEnum(typeInfo.propertyType, v); break;
                             case SerialJsonType.Guid: oset = JsonConverter.ToGuid((string)v); break;
 
@@ -750,7 +753,7 @@ namespace Nistec.Serialization
                     {
                         string s = (string)v[i];
                         if (s != null)
-                            v[i] = JsonConverter.ToDateTime(s, _Settings.UseUTCDateTime);
+                            v[i] = JsonConverter.ToDateTime(s, _Settings.UseUTCDateTime,_Settings.JsonDateFormat);
                     }
                 }
                 dt.Rows.Add(v);

@@ -591,6 +591,13 @@ namespace Nistec
                 return valueIfNull;
             }
         }
+        public static object NZorDBNull(object value)
+        {
+            if ((value == null || value == DBNull.Value || value.ToString() == String.Empty))
+                return DBNull.Value;
+            return value;
+        }
+
         public static bool IsDbNull(object value)
         {
             return (value == null || value == DBNull.Value);
@@ -2007,8 +2014,30 @@ namespace Nistec
                 return (int?)val;
             return (int?)null;
         }
+        public static bool? ToNullableBool(object value)
+        {
+            try
+            {
+                if (value == null || value == DBNull.Value || value.ToString() == "")
+                    return (bool?)null;
+                bool val;
+                string str = value.ToString();
 
-            internal static Type GetNonNullableType(this Type type)
+                if (str == "0" || str == "off")
+                    return (bool?)false;
+                if (str == "1" || str == "on")
+                    return (bool?)true;
+                if (Boolean.TryParse(str, out val))
+                    return Boolean.Parse(str);
+                return (bool?)null;
+            }
+            catch
+            {
+                return (bool?)null;
+            }
+        }
+
+        internal static Type GetNonNullableType(this Type type)
             {
                 if (IsNullableType(type))
                 {

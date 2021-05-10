@@ -329,6 +329,13 @@ namespace Nistec.Serialization
             DateTime dt = dateTime;
             if (_Settings.UseUTCDateTime)
                 dt = dateTime.ToUniversalTime();
+            //if (_Settings.JsonDateFormat == JsonDateFormat.dynamic)
+            //{
+            //    _output.Append('\"');
+            //    _output.Append(dt.ToString());
+            //    _output.Append('\"');
+            //    return;
+            //}
 
             bool enableTime = (_Settings.JsonDateFormat == JsonDateFormat.iso
                 || _Settings.JsonDateFormat == JsonDateFormat.iso_hhmm

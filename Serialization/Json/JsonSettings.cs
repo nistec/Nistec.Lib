@@ -36,7 +36,7 @@ namespace Nistec.Serialization
         {
             SerializeNullValues = true;
 
-            JsonDateFormat = JsonDateFormat.iso;
+            JsonDateFormat = JsonDateFormat.iso;//.dynamic;//.iso;
 
             UseUTCDateTime = false;//true;
 

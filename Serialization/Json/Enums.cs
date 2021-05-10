@@ -42,7 +42,7 @@ namespace Nistec.Serialization
         mmddyyyy_hhmm,
         mmddyyyy_hhmmss,
         longDate,
-
+        dynamic
         // short date pattern d: "M/d/yyyy",
         // long date pattern D: "dddd, MMMM dd, yyyy",
         // short time pattern t: "h:mm tt",
