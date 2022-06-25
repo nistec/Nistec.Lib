@@ -24,6 +24,7 @@ using System.Linq;
 using System.Text;
 using System.Collections;
 using System.IO;
+using System.Web;
 
 namespace Nistec.Runtime
 {
@@ -490,5 +491,75 @@ namespace Nistec.Runtime
             return text;
         }
         #endregion
+    }
+
+    /// <summary>
+    /// Base64Url
+    /// </summary>
+    public static class Base64Url
+    {
+        public static string Encode(object ostr, bool urlEncode = false, string encode = "utf-8")//"windows-1255")
+        {
+            if (ostr == null)
+                return "";
+            if (urlEncode)
+                return Encode(HttpUtility.UrlEncode(ostr.ToString()), encode);
+            return Encode(ostr.ToString(), encode);
+
+        }
+
+        public static string Encode(string str, string encode = "utf-8")//"windows-1255")
+        {
+            if (string.IsNullOrEmpty(str))
+                return str;
+            return EncodeBytes(Encoding.GetEncoding(encode).GetBytes(str));
+
+        }
+        public static string EncodeBytes(byte[] arg)
+        {
+            if (arg == null)
+            {
+                throw new ArgumentNullException("arg");
+            }
+
+            var s = Convert.ToBase64String(arg);
+            return s
+                .Replace("=", "")
+                .Replace("/", "_")
+                .Replace("+", "-");
+        }
+
+        static string ToBase64(string arg)
+        {
+            if (arg == null)
+            {
+                throw new ArgumentNullException("arg");
+            }
+
+            var s = arg
+                    .PadRight(arg.Length + (4 - arg.Length % 4) % 4, '=')
+                    .Replace("_", "/")
+                    .Replace("-", "+");
+
+            return s;
+        }
+
+        public static byte[] DecodeBytes(string arg)
+        {
+            if (string.IsNullOrEmpty(arg))
+                return null;
+
+            var decrypted = ToBase64(arg);
+
+            return Convert.FromBase64String(decrypted);
+        }
+
+        public static string Decode(string base64String, string encode = "utf-8")//"windows-1255")
+        {
+            if (string.IsNullOrEmpty(base64String))
+                return base64String;
+
+            return Encoding.GetEncoding(encode).GetString(DecodeBytes(base64String));
+        }
     }
 }

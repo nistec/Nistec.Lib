@@ -182,6 +182,8 @@
     <Compile Include="Threading\ThreadPoolEx.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Web\ExportUtil.cs" />
+    <Compile Include="Web\HtmlUtil.cs" />
     <Compile Include="Web\HttpClientUtil.cs" />
     <Compile Include="Web\Mailer.cs" />
     <Compile Include="Generic\GenericEventArgs.cs" />
@@ -210,6 +212,7 @@
     <Compile Include="Threading\GenericThreadPool.cs" />
     <Compile Include="Threading\AsyncResult.cs" />
     <Compile Include="Threading\Scheduler.cs" />
+    <Compile Include="Web\Extensions.cs" />
     <Compile Include="Xml\GenericXmlSerializer.cs" />
     <Compile Include="Xml\XmlExtenseion.cs" />
     <Compile Include="Xml\XmlFileSerializer.cs" />
