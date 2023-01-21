@@ -48,20 +48,79 @@ namespace Nistec
     /// <summary>
     /// Message State
     /// </summary>
+    //public enum MessageState
+    //{
+    //    None = 0,
+    //    Ok = 200,
+    //    ItemNotFound = 400,
+    //    Failed = 401,
+    //    TimeoutError = 501,
+    //    NetworkError = 502,
+    //    MessageError = 503,
+    //    SerializeError = 504,
+    //    SecurityError = 505,
+    //    ArgumentsError = 506,
+    //    NotSupportedError = 507,
+    //    OperationError = 508,
+    //    UnexpectedError=599
+    //}
+
     public enum MessageState
     {
         None = 0,
         Ok = 200,
-        ItemNotFound = 400,
-        Failed = 401,
+        BadRequest = 400,
+        Unauthorized = 401,
+        Failed = 403,
+        ItemNotFound = 404,
+        RequestTimeout = 408,
+        Unsupported = 415,
+        InternalServerError = 500,
         TimeoutError = 501,
         NetworkError = 502,
-        MessageError = 503,
+        ServiceError = 503,
+        //MessageError = 503,
         SerializeError = 504,
         SecurityError = 505,
         ArgumentsError = 506,
-        NotSupportedError = 507,
+        //NotSupportedError = 507,
         OperationError = 508,
-        UnexpectedError=599
+        UnexpectedError = 599
     }
+
+    /*
+    public enum MessageState
+    {
+        None = 0,
+        Ok = 200,
+        BadRequest = 400,
+        Unauthorized = 401,
+        Forbidden = 403,
+        NotFound = 404,
+        MethodNotAllowed = 405,
+        RequestTimeout = 408,
+        UnsupportedMediaType = 415,
+        ExpectationFailed = 417,
+        Unavailable = 451,
+        InternalServerError = 500,
+        NotImplemented = 501,
+        BadGateway = 502,
+        ServiceUnavailable = 503,
+        GatewayTimeout = 504,
+        NetworkAuthenticationRequired = 511,
+        //Unauthorized = 401,
+        //Unauthorized = 401,
+        //Unauthorized = 401,
+        //Unauthorized = 401,
+
+    }
+    */
+
+//598 Network read timeout error
+
+//599 Network connect timeout error
+
+
+
+
 }

@@ -498,6 +498,27 @@ namespace Nistec
             }
 
         }
+        public static T Cast<T>(object o, Action<string> onFault)
+        {
+            if (o is T)
+            {
+                return (T)o;
+            }
+            else
+            {
+                try
+                {
+                    return (T)System.Convert.ChangeType(o, typeof(T));
+                }
+                catch (InvalidCastException cex)
+                {
+                    if (onFault!=null)
+                        onFault(cex.Message);
+                    return default(T);
+                }
+            }
+
+        }
 
         public static bool TryConvert<T>(object obj, out T result)
         {

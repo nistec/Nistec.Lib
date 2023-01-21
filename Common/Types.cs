@@ -508,12 +508,38 @@ namespace Nistec
         }
 
     }
-    
+
     #endregion
 
- 	#region Types
-	
-	public static class Types //Types
+    #region Formatter
+
+    /// <summary>
+    /// Formatter
+    /// </summary>
+    public static class Formatter
+    {
+        public const string ContentTypeForm= "application/x-www-form-urlencoded";
+        public const string ContentTypeJson = "application/json";
+        public const string ContentTypeXml = "text/xml; charset=utf-8";
+
+        public static string ExceptionFormat(string message, Exception ex, bool enableTrace = false, bool enableInner = true)
+        {
+            message += " Message: " + ex.Message;
+            if (enableInner)
+                message += (ex.InnerException != null ? ", Inner: " + ex.InnerException.Message : "");
+            if (enableTrace)
+                message += ", Trace: " + ex.StackTrace;
+            return message;
+        }
+
+ 
+    }
+
+    #endregion
+
+    #region Types
+
+    public static class Types //Types
 	{
         public static DateTime MinDate { get { return new DateTime(1900, 1, 1); } }
 		
@@ -602,8 +628,39 @@ namespace Nistec
         {
             return (value == null || value == DBNull.Value);
         }
-
-		#region NZ
+        public static int NZero(int value, int valueIfZero)
+        {
+            return (value == 0) ? valueIfZero : value;
+        }
+        public static long NZero(long value, long valueIfZero)
+        {
+            return (value == 0) ? valueIfZero : value;
+        }
+        public static double NZero(double value, double valueIfZero)
+        {
+            return (value == 0) ? valueIfZero : value;
+        }
+        public static decimal NZero(decimal value, decimal valueIfZero)
+        {
+            return (value == 0) ? valueIfZero : value;
+        }
+        public static float NZero(float value, float valueIfZero)
+        {
+            return (value == 0) ? valueIfZero : value;
+        }
+        public static int NZequal(int value, int equalTo, int valueIfEqual)
+        {
+            return (value == equalTo) ? valueIfEqual : value;
+        }
+        public static int NZlessThen(int value, int lessThen, int valueIfLessThen, bool lessThenEqual=false)
+        {
+            return lessThenEqual ? (value <= lessThen ? valueIfLessThen : value) : (value < lessThen ? valueIfLessThen : value);
+        }
+        public static int NZgreatThenl(int value, int greatThen, int valueIfGreatThen, bool greatThenEqual=false)
+        {
+            return greatThenEqual ? (value >= greatThen ? valueIfGreatThen : value) : (value > greatThen ? valueIfGreatThen : value);
+        }
+        #region NZ
 
 
         public static object ChangeType(object value, Type type)

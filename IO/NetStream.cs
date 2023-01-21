@@ -596,8 +596,8 @@ namespace Nistec.IO
         public int PeekInt32(int offset)
         {
             ValidatePeak(offset, 4);
-            int val = offset += 4;
-            return (((this.m_buffer[val - 4] | (this.m_buffer[val - 3] << 8)) | (this.m_buffer[val - 2] << 0x10)) | (this.m_buffer[val - 1] << 0x18));
+            offset += 4;
+            return (((this.m_buffer[offset - 4] | (this.m_buffer[offset - 3] << 8)) | (this.m_buffer[offset - 2] << 0x10)) | (this.m_buffer[offset - 1] << 0x18));
         }
         /// <summary>
         /// Peek a byte from given offset and return it as a <see cref="Int32"/> value.
