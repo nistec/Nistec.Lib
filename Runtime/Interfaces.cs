@@ -31,7 +31,7 @@ using Nistec.Serialization;
 
 namespace Nistec.Runtime
 {
-    public enum TransformType : byte { None = 0, Object = 100, Stream = 101, Json = 102, Base64 = 103, Text = 104, State = 106 , Ack = 105  }//{Message=0,Stream=1,Json=2 }
+    public enum TransformType : byte { None = 0, Object = 100, Stream = 101, Json = 102, Base64 = 103, Text = 104, Ack = 105, State = 106, Csv = 107, Xml = 108 }//{Message=0,Stream=1,Json=2 }
 
     public enum DuplexTypes : byte { None = 0, NoWaite = 1, WaitOne=2}
 

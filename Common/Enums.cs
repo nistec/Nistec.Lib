@@ -85,7 +85,8 @@ namespace Nistec
         ArgumentsError = 506,
         //NotSupportedError = 507,
         OperationError = 508,
-        UnexpectedError = 599
+        UnexpectedError = 599,
+        Exception = -1
     }
 
     /*

@@ -42,6 +42,28 @@ namespace Nistec
             Strings.m_InvariantCompareInfo = CultureInfo.InvariantCulture.CompareInfo;
         }
 
+        public static bool IsBase64String(string s)
+        {
+            if (string.IsNullOrEmpty(s))
+                return false;
+            s = s.Trim();
+            return (s.Length % 4 == 0) && Regex.IsMatch(s, @"^[a-zA-Z0-9\+/]*={0,3}$", RegexOptions.None);
+        }
+        public static bool IsJsonString(string s)
+        {
+            if (string.IsNullOrEmpty(s))
+                return false;
+            s = s.Trim();
+            return (s.StartsWith("{") && s.EndsWith("}")) || (s.StartsWith("[") && s.EndsWith("]"));
+        }
+        public static bool IsXmlString(string s)
+        {
+            if (string.IsNullOrEmpty(s))
+                return false;
+            s = s.Trim();
+            return s.StartsWith("<") && s.EndsWith(">");
+        }
+
         public static string StrReverse(string Expression)
         {
             if (Expression == null)
