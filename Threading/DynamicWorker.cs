@@ -83,15 +83,15 @@ namespace Nistec.Threading
             }
         }
     */
-    public class DynamicInterval
+    class b_DynamicInterval
     {
-        public DynamicInterval(int defaultWait = 1000, int minWait=100, int largeWait=5000,int maxThread=1) {
-
+        public b_DynamicInterval(int defaultWait = 1000, int minWait = 100, int largeWait = 5000, int maxThread = 1)
+        {
             IntervalWait = defaultWait;
             MaxThread = (maxThread < 1 || maxThread > DynamicWorker.MAXTHREAD) ? DynamicWorker.MAXTHREAD : maxThread;
 
-            MinWait = (minWait < TinyWait || minWait> largeWait) ? TinyWait : minWait;
-            LargeWait = (largeWait > MaxWait || largeWait< minWait) ? MaxWait : largeWait;
+            MinWait = (minWait < TinyWait || minWait > largeWait) ? TinyWait : minWait;
+            LargeWait = (largeWait > MaxWait || largeWait < minWait) ? MaxWait : largeWait;
             MedWait = (LargeWait - MinWait) / 3;
 
             LargeWaitStep = LargeWait / 10;
@@ -112,6 +112,7 @@ namespace Nistec.Threading
 
         int IntervalWait = 0;
         int _MaxThread = 1;
+
         //public bool EnableDynamicWait { get; set; }
 
         public int MaxThread { get; private set; }
@@ -148,6 +149,64 @@ namespace Nistec.Threading
         }
     }
 
+    public class DynamicInterval
+    {
+        public DynamicInterval(int defaultWait = 1000, int minWait = 100, int maxWait = 10000, int maxThread = 1)
+        {
+            IntervalWait = defaultWait;
+            MaxThread = (maxThread < 1 || maxThread > DynamicWorker.MAXTHREAD) ? DynamicWorker.MAXTHREAD : maxThread;
+            IntervalWait = defaultWait;
+            MinWait = minWait;
+            MaxWait = maxWait;
+            Step = minWait <= 100 ? 10 : minWait / 10;
+        }
+        int Step = 10;
+        int MaxWait = 5000;
+        int MinWait = 100;
+
+        int IntervalWait = 0;
+        int _MaxThread = 1;
+        int IntervalDivWait = 0;
+
+        //public bool EnableDynamicWait { get; set; }
+
+        public int MaxThread { get; private set; }
+
+        public int DynamicWait
+        {
+            get { return (int)(IntervalWait); }
+        }
+
+        public void Sleep()
+        {
+            Thread.Sleep(DynamicWait);
+        }
+        public int DynamicWaitAck(bool ack)
+        {
+            if (ack)
+            {
+                Interlocked.Exchange(ref IntervalDivWait, IntervalWait / 2);
+
+                if (IntervalWait <= MinWait)
+                    return Interlocked.Exchange(ref IntervalWait, MinWait);
+                else if((IntervalWait - Step) < MinWait)
+                    return Interlocked.Exchange(ref IntervalWait, MinWait);
+                else if (IntervalDivWait > MinWait)
+                    return Interlocked.Exchange(ref IntervalWait, IntervalDivWait);
+                else
+                    return Interlocked.Exchange(ref IntervalWait, IntervalWait - Step);
+            }
+            else
+            {
+
+                if (IntervalWait > MaxWait)
+                    return Interlocked.Exchange(ref IntervalWait, MaxWait);
+                else
+                    return Interlocked.Exchange(ref IntervalWait, IntervalWait + Step);
+            }
+        }
+    }
+
     /// <summary>
     /// ThreadWorker
     /// </summary>
@@ -165,6 +224,10 @@ namespace Nistec.Threading
         public bool EnableDynamicWait { get; private set; }
         public bool EnableResetEvent { get; private set; }
         public ListenerState State { get; private set; }
+        public int MaxConnections { get; set; }
+
+        int _ActiveConnections;
+        public int ActiveConnections { get { return _ActiveConnections; } }
 
         protected void OnStateChanged(ListenerState state)
         {
@@ -182,13 +245,16 @@ namespace Nistec.Threading
 
         public DynamicInterval DynamicWait { get; private set; }
 
-        public DynamicWorker(DynamicWaitType waitType = DynamicWaitType.DynamicWait, int maxThread = 1, int interval = 1000)
+        public DynamicWorker(DynamicWaitType waitType = DynamicWaitType.DynamicWait, int maxThread = 1, int interval = 1000, int maxConnections=9999)
         {
             MaxThreads = (maxThread < 1 || maxThread > MAXTHREAD) ? MAXTHREAD : maxThread;
             Interval = (interval < 1) ? 1000 : interval;
+            MaxConnections = maxConnections;
+            _ActiveConnections = 0;
             EnableResetEvent = false;
             Name = "ActionWorker";
             WaitType = waitType;
+            EnableDynamicWait = waitType == DynamicWaitType.DynamicWait;
             if (waitType== DynamicWaitType.DynamicWait)
             {
                 DynamicWait = new DynamicInterval(Interval);
@@ -206,6 +272,7 @@ namespace Nistec.Threading
             EnableResetEvent = false;
             Name = "ActionWorker";
             WaitType = DynamicWaitType.DynamicWait;
+            EnableDynamicWait = WaitType == DynamicWaitType.DynamicWait;
         }
 
         #region background worker
@@ -331,7 +398,7 @@ namespace Nistec.Threading
         static readonly AutoResetEvent ResetEvent = new AutoResetEvent(false);
 
         protected bool WorkerAction() {
-
+            Interlocked.Increment(ref _ActiveConnections);
             bool ack = ActionTask();
 
             //when EnableDynamicWait is true, the ack is for calc DynamicWait()
@@ -340,6 +407,8 @@ namespace Nistec.Threading
             //when EnableResetEvent is true, if ack is true the ResetEvent.Set() should set here, otherwise it is by ActionTask
             else if (EnableResetEvent && ack)
                 ResetEvent.Set();
+
+            Interlocked.Decrement(ref _ActiveConnections);
 
             return ack;
         }
@@ -360,9 +429,17 @@ namespace Nistec.Threading
 
                     if (_Pause)
                         Thread.Sleep(_PauseInterval);
+                    else if (Thread.VolatileRead(ref _ActiveConnections) >= MaxConnections)
+                    {
+                        Console.WriteLine("DynamicWorker MaxConnection exceeded, Connections: {0} of {1}", ActiveConnections, MaxConnections);
+                        Thread.Sleep(100);
+                        //counter++;
+                        //if (counter % 10 == 0)
+                        //Log.WarnFormat("Scheduler MaxConnection exceeded, Connections:{0}, {1}", m_Connections, counter);
+                    }
                     else
                     {
-                        
+
                         Monitor.Enter(_locker);
                         lockWasTaken = true;
 
@@ -396,9 +473,10 @@ namespace Nistec.Threading
                     if (lockWasTaken) Monitor.Exit(_locker);
                     //Interlocked.Exchange(ref synchronized, 0);
                 }
+                //Console.WriteLine("DynamicWait interval: {0}", DynamicWait.DynamicWait);
 
                 if (EnableDynamicWait)
-                    DynamicWait.Sleep();
+                    Thread.Sleep(DynamicWait.DynamicWait);// DynamicWait.Sleep();
                 else
                     Thread.Sleep(Interval);
             }

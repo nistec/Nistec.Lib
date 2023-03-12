@@ -29,7 +29,7 @@ using System.Collections.Concurrent;
 namespace Nistec.Runtime.Advanced
 {
     
-    public class SyncTimerDispatcher<T> : IDisposable where T : ISyncItem
+    public class SyncTimerDispatcher<T> : IDisposable //where T : ISyncItem
     {
         private ThreadTimer SettingTimer;
         private ConcurrentDictionary<T, DateTime> m_Timer;

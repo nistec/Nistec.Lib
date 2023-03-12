@@ -64,7 +64,7 @@ namespace Nistec
     //    OperationError = 508,
     //    UnexpectedError=599
     //}
-
+    /*
     public enum MessageState
     {
         None = 0,
@@ -76,19 +76,22 @@ namespace Nistec
         RequestTimeout = 408,
         Unsupported = 415,
         InternalServerError = 500,
-        TimeoutError = 501,
-        NetworkError = 502,
+        NotImplemented = 501,
+        ConnectionError = 502,
         ServiceError = 503,
         //MessageError = 503,
-        SerializeError = 504,
-        SecurityError = 505,
-        ArgumentsError = 506,
+        TimeoutError = 504,
+        NetworkError = 505,
+
+        //ArgumentsError = 506,
         //NotSupportedError = 507,
         OperationError = 508,
+        SerializeError = 510,
+        SecurityError = 511,
         UnexpectedError = 599,
         Exception = -1
     }
-
+    */
     /*
     public enum MessageState
     {
