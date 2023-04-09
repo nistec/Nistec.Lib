@@ -32,9 +32,11 @@ using Nistec.Data;
 
 namespace Nistec.Generic
 {
-
+    /// <summary>
+    /// GenericKeyValue
+    /// </summary>
     [Serializable]
-    public class GenericKeyValue : GenericKeyValue<object>, ISerialEntity, IKeyValue, IKeyValue<object>,ISerialJson
+    public class GenericKeyValue : GenericKeyValue<object>, IKeyValue//, IKeyValue<object>
     {
       
         #region ctor
@@ -100,7 +102,7 @@ namespace Nistec.Generic
         #endregion
 
         #region ISerialJson
-
+        /*
         public string ToJson(bool pritty = false)
         {
             return EntityWrite(new JsonSerializer(JsonSerializerMode.Write, null), pritty);
@@ -132,14 +134,16 @@ namespace Nistec.Generic
 
             return this;
         }
-
+        */
 
         #endregion
 
     }
-
+    /// <summary>
+    /// GenericNameValue
+    /// </summary>
     [Serializable]
-    public class GenericNameValue : GenericKeyValue<string>, ISerialEntity, IKeyValue, IDataRowAdaptor, INameValue, IKeyValue<string>, ISerialJson
+    public class GenericNameValue : GenericKeyValue<string>, IKeyValue, IDataRowAdaptor, INameValue//, IKeyValue<string>
     {
 
         #region collection methods
@@ -497,19 +501,19 @@ namespace Nistec.Generic
         }
         #endregion
 
-        /// <summary>
-        /// Get this as sorted <see cref="IOrderedEnumerable<KeyValuePair<string, object>>"/>
-        /// </summary>
-        /// <returns></returns>
-        public IOrderedEnumerable<KeyValuePair<string, string>> Sorted()
-        {
-            var sortedDict = from entry in this orderby entry.Key ascending select entry;
-            return sortedDict;
-        }
+        ///// <summary>
+        ///// Get this as sorted as IOrderedEnumerable !KeyValuePair !string, object
+        ///// </summary>
+        ///// <returns></returns>
+        //public IOrderedEnumerable<KeyValuePair<string, string>> Sorted()
+        //{
+        //    var sortedDict = from entry in this orderby entry.Key ascending select entry;
+        //    return sortedDict;
+        //}
 
        
         #region ISerialJson
-
+        /*
         public string ToJson(bool pritty = false)
         {
             return EntityWrite(new JsonSerializer(JsonSerializerMode.Write, null), pritty);
@@ -541,14 +545,18 @@ namespace Nistec.Generic
 
             return this;
         }
-
+        */
 
         #endregion
 
     }
 
+    /// <summary>
+    /// GenericKeyValue
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     [Serializable]
-    public class GenericKeyValue<T> : List<KeyValuePair<string, T>>, ISerialEntity, IKeyValue<T>
+    public class GenericKeyValue<T> : List<KeyValuePair<string, T>>, ISerialEntity, ISerialJson, IKeyValue<T>
     {
         //static object olock = new object();
 
@@ -709,7 +717,7 @@ namespace Nistec.Generic
         }
 
         /// <summary>
-        /// Get this as sorted <see cref="IOrderedEnumerable<KeyValuePair<string, T>>"./>
+        /// Get this as sorted IOrderedEnumerable !KeyValuePair string, T
         /// </summary>
         /// <returns></returns>
         public IOrderedEnumerable<KeyValuePair<string, T>> Sorted()
@@ -789,7 +797,7 @@ namespace Nistec.Generic
 
         #endregion
 
-        #region  IEntityFormatter
+        #region  ISerialEntity
 
         public void EntityWrite(Stream stream, IBinaryStreamer streamer)
         {
@@ -814,6 +822,43 @@ namespace Nistec.Generic
             //BinaryStreamer reader = new BinaryStreamer(stream);
             //var o = reader.ReadKeyValue<T>();
             Load(o);
+        }
+
+
+        #endregion
+
+        #region ISerialJson
+
+        public string ToJson(bool pritty = false)
+        {
+            return EntityWrite(new JsonSerializer(JsonSerializerMode.Write, null), pritty);
+        }
+
+        public string EntityWrite(IJsonSerializer serializer, bool pretty = false)
+        {
+            if (serializer == null)
+                serializer = new JsonSerializer(JsonSerializerMode.Write, null);
+
+            foreach (var entry in this)
+            {
+                serializer.WriteToken(entry.Key, entry.Value);
+            }
+            return serializer.WriteOutput(pretty);
+        }
+
+        public object EntityRead(string json, IJsonSerializer serializer)
+        {
+            if (serializer == null)
+                serializer = new JsonSerializer(JsonSerializerMode.Read, null);
+
+            Dictionary<string, T> d = new Dictionary<string, T>();
+            serializer.ParseTo<T>(d, json);
+
+            //var dic = serializer.ParseToDictionary(json);
+
+            AddRange(d.ToArray());
+
+            return this;
         }
 
 
@@ -864,9 +909,5 @@ namespace Nistec.Generic
         }
 
         #endregion
-
-        
     }
-
-    
 }

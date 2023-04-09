@@ -39,7 +39,7 @@ namespace Nistec.Generic
 
     public static class StringExtension
     {
-
+        
         public static string[] SplitTrim(this string s, params char[] spliter)
         {
             if (s == null || spliter == null)
@@ -679,6 +679,14 @@ namespace Nistec.Generic
     }
     public static class KeyValueExtension
     {
+        public static string Get(this NameValueArgs nv, string key)
+        {
+            return nv.Get(key);
+        }
+        public static string Get<T>(this NameValueArgs<T> nv, string key)
+        {
+            return nv.Get<T>(key);
+        }
 
         public static bool IsMatch(this object[] keyValueArray, string keyToFind, object matchTo)
         {
@@ -849,7 +857,20 @@ namespace Nistec.Generic
                 instance[colName] = GenericTypes.NZ(dr[colName], "");
             }
         }
-
+        public static void ToNameValue<T>(this NameValueArgs<T> instance, DataRow dr)
+        {
+            if (dr == null)
+                return;
+            DataTable dt = dr.Table;
+            if (dt == null)
+                return;
+            instance.Clear();
+            for (int i = 0; i < dt.Columns.Count; i++)
+            {
+                string colName = dt.Columns[i].ColumnName;
+                instance[colName] = GenericTypes.Convert<T>(dr[colName], default(T));
+            }
+        }
         public static void ToNameValue(this INameValue instance, DataTable dt, string colKey=null, string colValue = null)
         {
             if (dt == null)

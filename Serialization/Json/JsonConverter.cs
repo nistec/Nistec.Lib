@@ -217,7 +217,8 @@ namespace Nistec.Serialization
                         day = ToInteger(args[2]);
                         break;
                     case JsonDateFormat.longDate:
-                        return Types.ToDateTime(value, new DateTimeFormatInfo() { LongDatePattern= "dddd d MMMM yyyy" });// DateTime.Parse(value);
+                        return Types.ToDateTime(value, DateFormat.longDate);// DateTime.Parse(value);
+                        //return Types.ToDateTime(value, new DateTimeFormatInfo() { LongDatePattern= "dddd d MMMM yyyy" });// DateTime.Parse(value);
                     case JsonDateFormat.mmddyyyy:
                     case JsonDateFormat.mmddyyyy_hhmm:
                     case JsonDateFormat.mmddyyyy_hhmmss:

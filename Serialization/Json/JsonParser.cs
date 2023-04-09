@@ -81,6 +81,13 @@ namespace Nistec.Serialization
             JsonParser parser = new JsonParser(json, ignorecase, typeof(Dictionary<string, string>));
             parser.ParseTo(d);
         }
+        public static void ParseTo<T>(Dictionary<string, T> d, string json, bool ignorecase = false)
+        {
+            if (json == null)
+                return;
+            JsonParser parser = new JsonParser(json, ignorecase, typeof(Dictionary<string, T>));
+            parser.ParseTo(d);
+        }
         public static void ParseTo<T>(List<T> d, string json, bool ignorecase = false)
         {
             if (json == null)

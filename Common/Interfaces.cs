@@ -69,3 +69,97 @@ namespace Nistec
         ListenerState State { get; }
     }
 }
+
+namespace Nistec.Esb
+{
+    public interface IEsbTopic 
+    {
+        string ConnectionString { get; set; }
+        string DbName { get; set; }
+        string TopicName { get; set; }
+        long MaxSize { get; set; }
+        int MaxDocuments { get; set; }
+        int Ttl { get; set; }
+        bool DeleteOnRead { get; set; }
+        bool Capped { get; set; }
+        string MessageType { get; set; }
+        bool EnableCreate { get; set; }//"EnableCreateCollection"
+        string AbortName { get; }
+
+        //public TimeSeries TimeSeries { get; set; }
+
+        //public TimeSeriesOptions TimeSeriesOptions()
+        //{
+        //    if (TimeSeries == null)
+        //        return null;
+        //    return TimeSeries.ToTimeSeriesOptions();
+        //}
+
+        bool IsValid();
+
+        //public IMongoDatabase GetDatabase()
+        //{
+        //    var client = new MongoClient(ConnectionString);
+        //    return client.GetDatabase(DbName);
+        //}
+
+        //IMongoDatabase _Database;
+        //public IMongoDatabase Database
+        //{
+        //    get
+        //    {
+        //        if (_Database == null)
+        //        {
+        //            _Database = GetDatabase();
+        //        }
+        //        return _Database;
+        //    }
+        //}
+        //public IMongoCollection<EsbMessage<T>> GetAbortCollection<T>() where T : class
+        //{
+        //    return Database.GetCollection<EsbMessage<T>>(AbortName);
+        //}
+        //public IMongoCollection<EsbMessage<T>> GetCollection<T>() where T : class
+        //{
+        //    return Database.GetCollection<EsbMessage<T>>(TopicName);
+        //}
+        //public IMongoCollection<OffsetItem> GetOffsetCollection()
+        //{
+        //    return Database.GetCollection<OffsetItem>(Constants.CURSOR_TRACK);
+        //}
+        //public IMongoCollection<ObjectId> GetCollectionById()
+        //{
+        //    return Database.GetCollection<ObjectId>(TopicName);
+        //}
+        //public void CreateCollection()
+        //{
+        //    //if (!IsCollectionExists(mongoDB, info.TopicName))
+        //    //{
+        //    Database.CreateCollection(TopicName, new CreateCollectionOptions
+        //    {
+        //        Capped = Capped,
+        //        MaxDocuments = MaxDocuments,
+        //        MaxSize = MaxSize
+        //        //TimeSeriesOptions = info.TimeSeriesOptions()// new TimeSeriesOptions("Enqueued","", TimeSeriesGranularity.Seconds)
+        //    });
+        //}
+        //public void CreateAbortCollection()
+        //{
+        //    Database.CreateCollection(AbortName);
+        //}
+
+        //public bool IsCollectionExists()
+        //{
+        //    var filter = new BsonDocument("name", TopicName);
+        //    var options = new ListCollectionNamesOptions { Filter = filter };
+        //    return Database.ListCollectionNames(options).Any();
+        //}
+
+        //public bool IsAbortCollectionExists()
+        //{
+        //    var filter = new BsonDocument("name", AbortName);
+        //    var options = new ListCollectionNamesOptions { Filter = filter };
+        //    return Database.ListCollectionNames(options).Any();
+        //}
+    }
+}

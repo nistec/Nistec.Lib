@@ -27,6 +27,12 @@ using System.Collections.Generic;
 using System.Collections;
 using System.Linq;
 using Nistec.Generic;
+using System.Runtime.Serialization;
+using System.IO;
+using Nistec.Serialization;
+using System.Xml;
+using System.Data;
+using System.Collections.Concurrent;
 
 namespace Nistec
 {
@@ -554,17 +560,388 @@ namespace Nistec
             return message;
         }
 
- 
+        public static void DateTimeMinValue()
+        {
+            typeof(DateTime)
+            .GetField("MinValue")
+            .SetValue(typeof(DateTime), new DateTime(1901, 1, 1));
+        }
+
+        public const string LocalCultureString = "he-IL";
+
+        public static CultureInfo LocalCulture
+        {
+            get { return CultureInfo.GetCultureInfo(LocalCultureString); }
+        }
+        public static DateTimeFormatInfo LocalDateTimeFormatInfo
+        {
+            get { return CultureInfo.GetCultureInfo(LocalCultureString).DateTimeFormat; }
+        }
+
+        public static string ToDateFormat(this DateFormat format)
+        {
+            switch (format)
+            {
+                case DateFormat.sql:
+                    return "yyyy-MM-dd hh:mm:ss";
+                case DateFormat.sqlDate:
+                    return "yyyy-MM-dd";
+                case DateFormat.iso:
+                    return "yyyy-MM-ddThh:mm:ss";
+                case DateFormat.ddmmyyyy:
+                case DateFormat.local:
+                    return "dd/MM/yyyy";
+                case DateFormat.ddmmyyyy_hhmm:
+                case DateFormat.localDatetime:
+                    return "dd/MM/yyyy hh:mm";
+                case DateFormat.ddmmyyyy_hhmmss:
+                    return "dd/MM/yyyy hh:mm:ss";
+                case DateFormat.longDate:
+                    return "dddd, MMMM dd, yyyy";
+                case DateFormat.dynamic:
+                default:
+                    return "yyyy-MM-dd hh:mm:ss";
+            }
+        }
+        public static string ToSqlDateTimeString(this DateTime date)
+        {
+            return date.ToString("yyyy-MM-dd hh:mm:ss");
+        }
+        public static string ToSqlDateTimeString(this DateTime? date)
+        {
+            return (date!=null && date.HasValue) ? date.Value.ToString("yyyy-MM-dd hh:mm:ss"): null;
+        }
+        public static string ToLocalDateString(this DateTime date)
+        {
+            return date.ToString("dd/MM/yyyy");
+        }
+        public static string ToLocalDateString(this DateTime? date)
+        {
+            return (date != null && date.HasValue) ? date.Value.ToString("dd/MM/yyyy") : null;
+        }
+        public static string ToLocalDateTimeString(this DateTime date)
+        {
+            return date.ToString("dd/MM/yyyy hh:mm");
+        }
+        public static string ToDateTimeString(DateTime date, DateFormat format)
+        {
+            return date.ToString(format.ToDateFormat());
+        }
+        public static string ToDateTimeString(DateTime? date, DateFormat format)
+        {
+            return (date != null && date.HasValue) ? date.Value.ToString(format.ToDateFormat()) : null;
+        }
+        public static DateTime ParseDateTime(string value, bool useUTCDateTime, DateFormat format)
+        {
+            if (string.IsNullOrEmpty(value))
+                return Types.MinDate;
+            if (format == DateFormat.dynamic)
+                return ParseDateTime(value, useUTCDateTime);
+
+            //                   0123456789012345678 9012 9/3
+            // datetime format = yyyy-MM-dd HH:mm:ss .nnn  Z
+            // datetime format = dd/MM/yyyy HH:mm:ss .nnn  Z
+            //                   4/21/2015 12:00:00 AM
+
+
+            try
+            {
+
+                bool utc = false;
+                int hour = 0, min = 0, sec = 0, ms = 0;
+                int year = 0, month = 0, day = 0;
+
+                var args = value.Split('/', '-', 'T', ':', '.', ' ');
+                if (args.Length < 3)
+                    return Types.MinDate;
+                value = value.ToLower();
+
+                switch (format)
+                {
+                    case DateFormat.sql:
+                    case DateFormat.iso:
+                    case DateFormat.sqlDate:
+                        year = Types.ToInt(args[0]);
+                        month = Types.ToInt(args[1]);
+                        day = Types.ToInt(args[2]);
+                        break;
+                    case DateFormat.longDate:
+                        return Types.ToDateTime(value, DateFormat.longDate);// DateTime.Parse(value);
+                        //return Types.ToDateTime(value, new DateTimeFormatInfo() { LongDatePattern = "dddd d MMMM yyyy" });// DateTime.Parse(value);
+                    case DateFormat.mmddyyyy:
+                    case DateFormat.mmddyyyy_hhmm:
+                    case DateFormat.mmddyyyy_hhmmss:
+                        year = Types.ToInt(args[2]);
+                        month = Types.ToInt(args[0]);
+                        day = Types.ToInt(args[1]);
+                        break;
+                    case DateFormat.ddmmyyyy:
+                    case DateFormat.ddmmyyyy_hhmm:
+                    case DateFormat.ddmmyyyy_hhmmss:
+                    case DateFormat.local:
+                    case DateFormat.localDatetime:
+                        year = Types.ToInt(args[2]);
+                        month = Types.ToInt(args[1]);
+                        day = Types.ToInt(args[0]);
+                        break;
+                    case DateFormat.dynamic:
+                    default:
+                        if (args[0].Length == 4)//iso
+                        {
+                            year = Types.ToInt(args[0]);
+                            month = Types.ToInt(args[1]);
+                            day = Types.ToInt(args[2]);
+                        }
+                        else if (value.Contains("am") || value.Contains("pm"))//mmddyyyy
+                        {
+                            year = Types.ToInt(args[2]);
+                            month = Types.ToInt(args[0]);
+                            day = Types.ToInt(args[1]);
+                        }
+                        else//ddmmyyyy
+                        {
+                            year = Types.ToInt(args[2]);
+                            month = Types.ToInt(args[1]);
+                            day = Types.ToInt(args[0]);
+                            if (month > 12 && day <= 12)//mmddyyyy
+                            {
+                                int tmp = month;
+                                month = day;
+                                day = tmp;
+                            }
+                        }
+                        break;
+                }
+
+                switch (format)
+                {
+                    case DateFormat.sqlDate:
+                    case DateFormat.mmddyyyy:
+                    case DateFormat.ddmmyyyy:
+                        //do nothing
+                        break;
+                    case DateFormat.mmddyyyy_hhmm:
+                    case DateFormat.ddmmyyyy_hhmm:
+                    case DateFormat.localDatetime:
+                        if (args.Length > 3)
+                            hour = Types.ToInt(args[3]);
+                        if (args.Length > 4)
+                            min = Types.ToInt(args[4]);
+                        break;
+                    case DateFormat.sql:
+                    case DateFormat.iso:
+                    case DateFormat.mmddyyyy_hhmmss:
+                    case DateFormat.ddmmyyyy_hhmmss:
+                    case DateFormat.dynamic:
+                        if (args.Length > 3)
+                            hour = Types.ToInt(args[3]);
+                        if (args.Length > 4)
+                            min = Types.ToInt(args[4]);
+                        if (args.Length > 5)
+                            sec = Types.ToInt(args[5]);
+                        if (args.Length > 6 && value[19] == '.')
+                            ms = Types.ToInt(args[6]);
+
+                        if (value.Contains("pm"))
+                        {
+                            hour = (hour % 12) + 12; //convert 12-hour time to 24-hour
+                        }
+                        //else if (value.Contains("am"))
+                        //{
+                        //    hour = (hour % 12);
+                        //}
+
+                        break;
+                }
+
+                //if (value.EndsWith("Z"))
+                if (value[value.Length - 1] == 'z')
+                    utc = true;
+
+                if (value.Length < 16)
+                {
+                    if (useUTCDateTime == false && utc == false)
+                        return new DateTime(year, month, day);
+                    else
+                        return new DateTime(year, month, day, 0, 0, 0, ms, DateTimeKind.Utc).ToLocalTime();
+                }
+
+                if (useUTCDateTime == false && utc == false)
+                    return new DateTime(year, month, day, hour, min, sec, ms);
+                else
+                    return new DateTime(year, month, day, hour, min, sec, ms, DateTimeKind.Utc).ToLocalTime();
+            }
+            catch (Exception)
+            {
+                throw new Exception("JsonConvert ToDateTime format error- " + value + " ,useUTCDateTime- " + useUTCDateTime.ToString() + " ,format- " + format.ToString());
+                //return Types.MinDate;
+            }
+        }
+
+        public static DateTime ParseDateTime(string value, bool useUTCDateTime = false)
+        {
+            if (string.IsNullOrEmpty(value))
+                return Types.MinDate;
+            //                   0123456789012345678 9012 9/3
+            // datetime format = yyyy-MM-dd HH:mm:ss .nnn  Z
+            // datetime format = dd/MM/yyyy HH:mm:ss .nnn  Z
+            //                   4/21/2015 12:00:00 AM
+
+
+            try
+            {
+                //DateTime val;
+                //if (DateTime.TryParse(value, CultureInfo.CurrentCulture.DateTimeFormat, DateTimeStyles.AssumeLocal, out val))
+                //    return val;
+
+                bool utc = false;
+                int hour = 0, min = 0, sec = 0, ms = 0;
+                int year = 0, month = 0, day = 0;
+
+                var args = value.Split('/', '-', 'T', ':', '.', ' ');
+                if (args.Length < 3)
+                    return Types.MinDate;
+                value = value.ToLower();
+                if (args[0].Length == 4)//iso|sql
+                {
+                    year = Types.ToInt(args[0]);
+                    month = Types.ToInt(args[1]);
+                    day = Types.ToInt(args[2]);
+                }
+                else if (value.Contains("am") || value.Contains("pm"))//mmddyyyy
+                {
+                    year = Types.ToInt(args[2]);
+                    month = Types.ToInt(args[0]);
+                    day = Types.ToInt(args[1]);
+                }
+                else//ddmmyyyy
+                {
+                    year = Types.ToInt(args[2]);
+                    month = Types.ToInt(args[1]);
+                    day = Types.ToInt(args[0]);
+                    if (month > 12 && day <= 12)
+                    {
+                        int tmp = month;
+                        month = day;
+                        day = tmp;
+                    }
+                }
+
+                if (args.Length > 3)
+                    hour = Types.ToInt(args[3]);
+                if (args.Length > 4)
+                    min = Types.ToInt(args[4]);
+                if (args.Length > 5)
+                    sec = Types.ToInt(args[5]);
+                if (args.Length > 6 && value[19] == '.')
+                    ms = Types.ToInt(args[6]);
+
+                if (value.Contains("pm"))
+                {
+                    hour = (hour % 12) + 12; //convert 12-hour time to 24-hour
+                }
+                //else if (value.Contains("am"))
+                //{
+                //    hour = (hour % 12);
+                //}
+
+
+                //if (value.EndsWith("Z"))
+                if (value[value.Length - 1] == 'z')
+                    utc = true;
+
+                //if (value.Length < 16)
+                //{
+                //    if (useUTCDateTime == false && utc == false)
+                //        return new DateTime(year, month, day);
+                //    else
+                //        return new DateTime(year, month, day, 0, 0, 0, ms, DateTimeKind.Utc).ToLocalTime();
+                //}
+
+                if (useUTCDateTime && utc)
+                    return new DateTime(year, month, day, hour, min, sec, ms, DateTimeKind.Utc).ToLocalTime();
+                else
+                    return new DateTime(year, month, day, hour, min, sec, ms);
+
+            }
+            catch (Exception)
+            {
+                throw new Exception("JsonConvert ToDateTime error- " + value + " ,useUTCDateTime- " + useUTCDateTime.ToString());
+                //return Types.MinDate;
+            }
+        }
+
+    }
+
+    public enum DateCharFormat
+    {
+        d,//: 6/15/2008 
+        D,//: Sunday, June 15, 2008 
+        f,//: Sunday, June 15, 2008 9:15 PM
+        F,//: Sunday, June 15, 2008 9:15:07 PM
+        g,//: 6/15/2008 9:15 PM
+        G,//: 6/15/2008 9:15:07 PM
+        m,//: June 15 
+        o,//: 2008-06-15T21:15:07.0000000 
+        R,//: Sun, 15 Jun 2008 21:15:07 GMT
+        s,//: 2008-06-15T21:15:07 
+        t,//: 9:15 PM
+        T,//: 9:15:07 PM
+        u,//: 2008-06-15 21:15:07Z
+        U,//: Monday, June 16, 2008 4:15:07 AM
+        y,//: June, 2008 
+
+        //'h:mm:ss.ff t': 9:15:07.00 P 
+        //'d MMM yyyy': 15 Jun 2008 
+        //'HH:mm:ss.f': 21:15:07.0 
+        //'dd MMM HH:mm:ss': 15 Jun 21:15:07 
+        //'\Mon\t\h\: M': Month: 6 
+        //'HH:mm:ss.ffffzzz': 21:15:07.0000-07:00
+    }
+
+    /// <summary>
+    /// DateFormat
+    /// </summary>
+    public enum DateFormat
+    {
+        sql,//yyyy-MM-dd hh:mm:ss
+        sqlDate,//yyyy-MM-dd
+        iso,//yyyy-MM-ddThh:mm:ss
+        ddmmyyyy,//dd/MM/yyyy
+        ddmmyyyy_hhmm,//dd/MM/yyyy hh:mm
+        ddmmyyyy_hhmmss,//dd/MM/yyyy hh:mm:ss
+        mmddyyyy,
+        mmddyyyy_hhmm,
+        mmddyyyy_hhmmss,
+        longDate,
+        local,
+        localDatetime,
+        dynamic
+        // short date pattern d: "M/d/yyyy",
+        // long date pattern D: "dddd, MMMM dd, yyyy",
+        // short time pattern t: "h:mm tt",
+        // long time pattern T: "h:mm:ss tt",
+        // long date, short time pattern f: "dddd, MMMM dd, yyyy h:mm tt",
+        // long date, long time pattern F: "dddd, MMMM dd, yyyy h:mm:ss tt",
+        // month/day pattern M: "MMMM dd",
+        // month/year pattern Y: "yyyy MMMM",
+        // S is a sortable format that does not vary by culture S: "yyyy\u0027-\u0027MM\u0027-\u0027dd\u0027T\u0027HH\u0027:\u0027mm\u0027:\u0027ss"
+
     }
 
     #endregion
 
     #region Types
 
+    /// <summary>
+    /// Types converter
+    /// </summary>
     public static class Types //Types
-	{
+    {
         public static DateTime MinDate { get { return new DateTime(1900, 1, 1); } }
-		
+
+        #region is null
+
         public static bool IsNull(object value, int minLengrg = 0)
         {
             return (value == null || value == DBNull.Value || value.ToString().Length < minLengrg) ? true : false;
@@ -582,7 +959,6 @@ namespace Nistec
         /// <returns></returns>
         public static bool IsEmpty(object value)
         {
-
             if (value == null || value == DBNull.Value)
                 return true;
             Type type = value.GetType();
@@ -595,7 +971,7 @@ namespace Nistec
                 return Types.ToInt(value) == 0;
             if (type == typeof(long))
                 return Types.ToLong(value) == 0;
-            if (type  == typeof(decimal))
+            if (type == typeof(decimal))
                 return Types.ToDecimal(value, 0) == 0;
             if (type == typeof(float))
                 return Types.ToFloat(value, 0) == 0;
@@ -603,6 +979,229 @@ namespace Nistec
                 return Types.ToDouble(value, 0) == 0;
             return false;
         }
+        #endregion
+
+        #region Generic convert
+
+        /// <summary>
+        /// Generic Converter with default value
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="value"></param>
+        /// <param name="defaultValue"></param>
+        /// <returns></returns>
+        public static T To<T>(object value, T defaultValue= default(T)) where T : IConvertible
+        {
+            if (value == null || value == DBNull.Value)
+                return defaultValue;
+            if (typeof(T) == typeof(Object) || typeof(T) == value.GetType())
+                return (T)value;
+            return Parse<T>(value.ToString(),defaultValue);
+        }
+
+        public static T Parse<T>(string value, T defaultValue = default(T)) where T : IConvertible
+        {
+
+            if (value == null || value == DBNull.Value.ToString())
+                return defaultValue;
+            Type t = typeof(T);
+
+            if (t == typeof(string))
+                return (T)(object)value;
+            if (t == typeof(Guid))
+            {
+                Guid v;
+                return (Guid.TryParse(value, out v)) ? (T)(object)v : defaultValue;
+                //return (T)(object) new Guid(value);
+            }
+            if (t == typeof(int))
+            {
+                int v;
+                return (int.TryParse(value, out v)) ? (T)(object)v : defaultValue;
+            }
+            if (t == typeof(long))
+            {
+                long v;
+                return (long.TryParse(value, out v)) ? (T)(object)v : defaultValue;
+            }
+            if (t == typeof(decimal))
+            {
+                decimal v;
+                return (decimal.TryParse(value, out v)) ? (T)(object)v : defaultValue;
+            }
+            if (t == typeof(float))
+            {
+                float v;
+                return (float.TryParse(value, out v)) ? (T)(object)v : defaultValue;
+            }
+            if (t == typeof(double))
+            {
+                double v;
+                return (double.TryParse(value, out v)) ? (T)(object)v : defaultValue;
+            }
+            if (t == typeof(bool))
+            {
+                bool v;
+                return (bool.TryParse(value, out v)) ? (T)(object)v : defaultValue;
+            }
+            if (t == typeof(DateTime))
+            {
+                DateTime v;
+                return (DateTime.TryParse(value, out v)) ? (T)(object)v : defaultValue;
+            }
+            if (t == typeof(byte))
+            {
+                byte v;
+                return (byte.TryParse(value, out v)) ? (T)(object)v : defaultValue;
+            }
+            if (t == typeof(uint))
+            {
+                uint v;
+                return (uint.TryParse(value, out v)) ? (T)(object)v : defaultValue;
+            }
+            if (t == typeof(ulong))
+            {
+                ulong v;
+                return (ulong.TryParse(value, out v)) ? (T)(object)v : defaultValue;
+            }
+            if (t == typeof(ushort))
+            {
+                ushort v;
+                return (ushort.TryParse(value, out v)) ? (T)(object)v : defaultValue;
+            }
+            if (t == typeof(SByte))
+            {
+                SByte v;
+                return (SByte.TryParse(value, out v)) ? (T)(object)v : defaultValue;
+            }
+            if (t == typeof(short))
+            {
+                short v;
+                return (short.TryParse(value, out v)) ? (T)(object)v : defaultValue;
+            }
+            else
+            {
+                var converter = ConverterUtil.GetConverter(t);
+                if (converter != null)
+                {
+                    try
+                    {
+                        return (T)converter.ConvertFromString(value.ToString());
+                    }
+                    catch { }
+                }
+                return defaultValue;
+            }
+
+        }
+
+        public static T NullableParse<T>(string value, T defaultValue = default(T))
+        {
+
+            if (value == null || value == DBNull.Value.ToString())
+                return defaultValue;
+            Type t = typeof(T);
+
+            if (!t.IsNullableType())
+            {
+                return defaultValue;
+            }
+
+            if (t == typeof(string))
+                return (T)(object)value;
+            if (t == typeof(Guid?))
+            {
+                Guid v;
+                return (Guid.TryParse(value, out v)) ? (T)(object)(Guid?)v : defaultValue;
+                //return (T)(object) new Guid(value);
+            }
+            if (t == typeof(int?))
+            {
+                int v;
+                return (int.TryParse(value, out v)) ? (T)(object)(int?)v : defaultValue;
+            }
+            if (t == typeof(long?))
+            {
+                long v;
+                return (long.TryParse(value, out v)) ? (T)(object)(long?)v : defaultValue;
+            }
+            if (t == typeof(decimal?))
+            {
+                decimal v;
+                return (decimal.TryParse(value, out v)) ? (T)(object)(decimal?)v : defaultValue;
+            }
+            if (t == typeof(float?))
+            {
+                float v;
+                return (float.TryParse(value, out v)) ? (T)(object)(float?)v : defaultValue;
+            }
+            if (t == typeof(double?))
+            {
+                double v;
+                return (double.TryParse(value, out v)) ? (T)(object)(double?)v : defaultValue;
+            }
+            if (t == typeof(bool?))
+            {
+                bool v;
+                return (bool.TryParse(value, out v)) ? (T)(object)(bool?)v : defaultValue;
+            }
+            if (t == typeof(DateTime?))
+            {
+                DateTime v;
+                return (DateTime.TryParse(value, out v)) ? (T)(object)(DateTime?)v : defaultValue;
+            }
+            if (t == typeof(byte?))
+            {
+                byte v;
+                return (byte.TryParse(value, out v)) ? (T)(object)(byte?)v : defaultValue;
+            }
+            if (t == typeof(uint?))
+            {
+                uint v;
+                return (uint.TryParse(value, out v)) ? (T)(object)(uint?)v : defaultValue;
+            }
+            if (t == typeof(ulong?))
+            {
+                ulong v;
+                return (ulong.TryParse(value, out v)) ? (T)(object)(ulong?)v : defaultValue;
+            }
+            if (t == typeof(ushort?))
+            {
+                ushort v;
+                return (ushort.TryParse(value, out v)) ? (T)(object)(ushort?)v : defaultValue;
+            }
+            if (t == typeof(SByte?))
+            {
+                SByte v;
+                return (SByte.TryParse(value, out v)) ? (T)(object)(SByte?)v : defaultValue;
+            }
+            if (t == typeof(short?))
+            {
+                short v;
+                return (short.TryParse(value, out v)) ? (T)(object)(short?)v : defaultValue;
+            }
+            else
+            {
+                var converter = ConverterUtil.GetConverter(t);
+                if (converter != null)
+                {
+                    try
+                    {
+                        return (T)converter.ConvertFromString(value.ToString());
+                    }
+                    catch { }
+                }
+                return defaultValue;
+            }
+        }
+
+        //public static T Parse<T>(string value, bool isNullable) where T : IConvertible
+        //{
+        //    return (T?)Parse<T>(value, default(T));
+        //}
+        #endregion
+
+        #region NZ
 
         public static string NzOr(string a, string b)
         {
@@ -628,7 +1227,7 @@ namespace Nistec
         /// <param name="value"></param>
         /// <param name="valueIfNull"></param>
         /// <returns></returns>
-        public static string NZorEmpty(object value, string valueIfNull=null)
+        public static string NZorEmpty(object value, string valueIfNull = null)
         {
             try
             {
@@ -674,15 +1273,16 @@ namespace Nistec
         {
             return (value == equalTo) ? valueIfEqual : value;
         }
-        public static int NZlessThen(int value, int lessThen, int valueIfLessThen, bool lessThenEqual=false)
+        public static int NZlessThen(int value, int lessThen, int valueIfLessThen, bool lessThenEqual = false)
         {
             return lessThenEqual ? (value <= lessThen ? valueIfLessThen : value) : (value < lessThen ? valueIfLessThen : value);
         }
-        public static int NZgreatThenl(int value, int greatThen, int valueIfGreatThen, bool greatThenEqual=false)
+        public static int NZgreatThenl(int value, int greatThen, int valueIfGreatThen, bool greatThenEqual = false)
         {
             return greatThenEqual ? (value >= greatThen ? valueIfGreatThen : value) : (value > greatThen ? valueIfGreatThen : value);
         }
-        #region NZ
+
+        
 
 
         public static object ChangeType(object value, Type type)
@@ -701,7 +1301,7 @@ namespace Nistec
                         return StringToBool(value.ToString(), false);
                     else if (underLineType == typeof(DateTime))
                     {
-                            return ParseDateTime(value);
+                        return ParseDateTimeObject(value, true);
                     }
                     return Convert.ChangeType(value, underLineType);
                 }
@@ -715,7 +1315,7 @@ namespace Nistec
                 }
                 if (type == typeof(DateTime))
                 {
-                    return ParseDateTime(value,MinDate);//, MinDate);
+                    return ParseDateTimeObject(value, false, MinDate);//, MinDate);
                 }
                 if (type == typeof(Guid))
                 {
@@ -723,7 +1323,7 @@ namespace Nistec
                 }
                 if (type.IsEnum)
                 {
-                    return EnumExtension.ParseOrCast(type,value, value);
+                    return EnumExtension.ParseOrCast(type, value, value);
                 }
                 return (value == null || value == DBNull.Value) ? GenericTypes.Default(type) : Convert.ChangeType(value, type);
             }
@@ -747,31 +1347,31 @@ namespace Nistec
                 return null;
             }
         }
- 
-		public static object NZ(object value,object valueIfNull)
-		{
-			try
-			{
-				return (value ==null || value == DBNull.Value) ? valueIfNull:(object)value;
-			}
-			catch
-			{
-				return valueIfNull;
-			}
-		}
 
-		public static int NZ(object value,int valueIfNull)
-		{
-			try
-			{
-				return (value ==null || value == DBNull.Value) ? valueIfNull:ToInt(value.ToString(), NumberStyles.Number,valueIfNull);
-			}
-			catch
-			{
-				return valueIfNull;
-			}
-		}
-        
+        public static object NZ(object value, object valueIfNull)
+        {
+            try
+            {
+                return (value == null || value == DBNull.Value) ? valueIfNull : (object)value;
+            }
+            catch
+            {
+                return valueIfNull;
+            }
+        }
+
+        public static int NZ(object value, int valueIfNull)
+        {
+            try
+            {
+                return (value == null || value == DBNull.Value) ? valueIfNull : ToInt(value.ToString(), NumberStyles.Number, valueIfNull);
+            }
+            catch
+            {
+                return valueIfNull;
+            }
+        }
+
         public static float NZ(object value, float valueIfNull)
         {
             try
@@ -784,108 +1384,108 @@ namespace Nistec
             }
         }
 
-		public static double NZ(object value,double valueIfNull)
-		{
-			try
-			{
+        public static double NZ(object value, double valueIfNull)
+        {
+            try
+            {
                 return (value == null || value == DBNull.Value) ? valueIfNull : ToDouble(value.ToString(), NumberStyles.Number, valueIfNull);
-			}
-			catch
-			{
-				return valueIfNull;
-			}
-		}
+            }
+            catch
+            {
+                return valueIfNull;
+            }
+        }
 
-		public static decimal NZ(object value,decimal valueIfNull)
-		{
-			try
-			{
-				return (value ==null || value == DBNull.Value) ? valueIfNull: ToDecimal(value.ToString(), NumberStyles.Number,valueIfNull);
-			}
-			catch
-			{
-				return valueIfNull;
-			}
-		}
-        
-		
-        public static DateTime NZ(object value,DateTime valueIfNull)
-		{
-			try
-			{
-				return (value ==null || value == DBNull.Value) ? valueIfNull:ToDateTime(value.ToString(),valueIfNull);
-			}
-			catch
-			{
-				return valueIfNull;
-			}
-		}
+        public static decimal NZ(object value, decimal valueIfNull)
+        {
+            try
+            {
+                return (value == null || value == DBNull.Value) ? valueIfNull : ToDecimal(value.ToString(), NumberStyles.Number, valueIfNull);
+            }
+            catch
+            {
+                return valueIfNull;
+            }
+        }
 
-		public static string NZ(object value,string valueIfNull)
-		{
-			try
-			{
-				return (value ==null || value == DBNull.Value) ? valueIfNull:value.ToString();
-			}
-			catch
-			{
-				return valueIfNull;
-			}
-		}
-		public static bool NZ(object value,bool valueIfNull)
-		{
-			try
-			{
-                return (value == null || value == DBNull.Value) ? valueIfNull : StringToBool(value.ToString(),valueIfNull);
-			}
-			catch
-			{
-				return valueIfNull;
-			}
-		}
 
-		#endregion
+        public static DateTime NZ(object value, DateTime valueIfNull)
+        {
+            try
+            {
+                return (value == null || value == DBNull.Value) ? valueIfNull : ToDateTime(value.ToString(), valueIfNull);
+            }
+            catch
+            {
+                return valueIfNull;
+            }
+        }
 
-		#region Types Number Methods
+        public static string NZ(object value, string valueIfNull)
+        {
+            try
+            {
+                return (value == null || value == DBNull.Value) ? valueIfNull : value.ToString();
+            }
+            catch
+            {
+                return valueIfNull;
+            }
+        }
+        public static bool NZ(object value, bool valueIfNull)
+        {
+            try
+            {
+                return (value == null || value == DBNull.Value) ? valueIfNull : StringToBool(value.ToString(), valueIfNull);
+            }
+            catch
+            {
+                return valueIfNull;
+            }
+        }
 
-	
-		public static double Fix(double Number)
-		{
-			if (Number >= 0)
-			{
-				return Math.Floor(Number);
-			}
-			return -Math.Floor(-Number);
-		}
+        #endregion
 
-		public static string GetOnlyDigits(string sourceValue)
-		{
-			StringBuilder sb = new StringBuilder();
-			foreach (char localChar in sourceValue)
-			{
-				if (Char.IsDigit(localChar)) sb.Append(localChar);
-			}
-			return sb.ToString();
-		}
+        #region Types Number Methods
 
-		public static int GetNextDozen(int value)
-		{
-			int mod = 0, auxVal = value;
-			do
-			{
-				mod = auxVal%10;
-				if (mod != 0) auxVal++;
-			}
-			while(mod != 0);
 
-			return auxVal;
-		}
+        public static double Fix(double Number)
+        {
+            if (Number >= 0)
+            {
+                return Math.Floor(Number);
+            }
+            return -Math.Floor(-Number);
+        }
+
+        public static string GetOnlyDigits(string sourceValue)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (char localChar in sourceValue)
+            {
+                if (Char.IsDigit(localChar)) sb.Append(localChar);
+            }
+            return sb.ToString();
+        }
+
+        public static int GetNextDozen(int value)
+        {
+            int mod = 0, auxVal = value;
+            do
+            {
+                mod = auxVal % 10;
+                if (mod != 0) auxVal++;
+            }
+            while (mod != 0);
+
+            return auxVal;
+        }
 
         public static Guid ToGuid(object value)
         {
             Guid g = Guid.Empty;
 
-            if (value == null || value== DBNull.Value)
+            if (value == null || value == DBNull.Value)
                 return g;
             Guid.TryParse(value.ToString(), out g);
             return g;
@@ -901,11 +1501,13 @@ namespace Nistec
             return g;
         }
 
-  
+
         public static double ToDouble(object value, double defaultValue)
         {
             if (value == null)
                 return defaultValue;
+            if (value is double)
+                return (double)value;
             double val;//0;
             if (Double.TryParse(value.ToString(), NumberStyles.Number, null, out val))
                 return val;
@@ -915,6 +1517,8 @@ namespace Nistec
         {
             if (value == null)
                 return defaultValue;
+            if (value is decimal)
+                return (decimal)value;
             decimal val;//0;
             if (Decimal.TryParse(value.ToString(), NumberStyles.Number, null, out val))
                 return val;
@@ -925,6 +1529,8 @@ namespace Nistec
         {
             if (value == null)
                 return 0;
+            if (value is int)
+                return (int)value;
             int val;//0;
             if (int.TryParse(value.ToString(), out val))
                 return val;
@@ -934,6 +1540,8 @@ namespace Nistec
         {
             if (value == null)
                 return defaultValue;
+            if (value is int)
+                return (int)value;
             int val;//0;
             if (int.TryParse(value.ToString(), out val))
                 return val;
@@ -944,6 +1552,8 @@ namespace Nistec
         {
             if (value == null)
                 return 0;
+            if (value is long)
+                return (long)value;
             long val;//0;
             if (long.TryParse(value.ToString(), out val))
                 return val;
@@ -953,6 +1563,8 @@ namespace Nistec
         {
             if (value == null)
                 return defaultValue;
+            if (value is long)
+                return (long)value;
             long val;//0;
             if (long.TryParse(value.ToString(), out val))
                 return val;
@@ -963,8 +1575,10 @@ namespace Nistec
         {
             if (value == null)
                 return defaultValue;
+            if (value is byte)
+                return (byte)value;
             byte val;//0;
-            if (byte.TryParse(value.ToString(),  out val))
+            if (byte.TryParse(value.ToString(), out val))
                 return val;
             return defaultValue;
         }
@@ -973,6 +1587,8 @@ namespace Nistec
         {
             if (value == null)
                 return defaultValue;
+            if (value is float)
+                return (float)value;
             float val;//0;
             if (float.TryParse(value.ToString(), out val))
                 return val;
@@ -980,47 +1596,57 @@ namespace Nistec
         }
 
         public static double ToDouble(object value, NumberStyles style, double defaultValue)
-		{
-			if(value==null)
-				return defaultValue;
+        {
+            if (value == null)
+                return defaultValue;
+            if (value is double)
+                return (double)value;
             double val;//0;
             if (Double.TryParse(value.ToString(), style, null, out val))
                 return val;
             return defaultValue;
-		}
+        }
 
         public static decimal ToDecimal(object value, NumberStyles style, decimal defaultValue)
-		{
-			if(value==null)
-				return defaultValue;
+        {
+            if (value == null)
+                return defaultValue;
+            if (value is decimal)
+                return (decimal)value;
             decimal val;//0;
             if (Decimal.TryParse(value.ToString(), style, null, out val))
                 return val;
             return defaultValue;
-		}
+        }
         public static int ToInt(object value, NumberStyles style, int defaultValue)
-		{
-			if(value==null)
-				return defaultValue;
+        {
+            if (value == null)
+                return defaultValue;
+            if (value is int)
+                return (int)value;
             int val;//0;
             if (int.TryParse(value.ToString(), style, null, out val))
                 return val;
             return defaultValue;
-    	}
+        }
 
-		public static bool ToBool(object value,bool defaultValue)
-		{
-			if(value==null)
-				return defaultValue;
-			return StringToBool(value.ToString(),defaultValue);
-		}
+        public static bool ToBool(object value, bool defaultValue)
+        {
+            if (value == null)
+                return defaultValue;
+            if (value is bool)
+                return (bool)value;
+            return StringToBool(value.ToString(), defaultValue);
+        }
 
         public static byte ToByte(object value, NumberStyles style, byte defaultValue)
         {
             if (value == null)
                 return defaultValue;
-             byte val;//0;
-            if (byte.TryParse(value.ToString(),style,null, out val))
+            if (value is byte)
+                return (byte)value;
+            byte val;//0;
+            if (byte.TryParse(value.ToString(), style, null, out val))
                 return val;
             return defaultValue;
         }
@@ -1029,22 +1655,24 @@ namespace Nistec
         {
             if (value == null)
                 return defaultValue;
+            if (value is float)
+                return (float)value;
             float val;// 0F;
             if (float.TryParse(value.ToString(), style, null, out val))
                 return val;
             return defaultValue;
         }
 
-		private static double DecimalToDouble(IConvertible ValueInterface)
-		{
-			return Convert.ToDouble(ValueInterface.ToDecimal(null));
-		}
+        private static double DecimalToDouble(IConvertible ValueInterface)
+        {
+            return Convert.ToDouble(ValueInterface.ToDecimal(null));
+        }
         public static object ConvertToNumber(string value)
         {
             if (value == null)
                 return null;
 
-            if(Regex.IsMatch(value,@"^(-|)[0-9]\.+[0-9]+$"))
+            if (Regex.IsMatch(value, @"^(-|)[0-9]\.+[0-9]+$"))
             {
                 return ToDouble(value, 0);
             }
@@ -1065,167 +1693,168 @@ namespace Nistec
             return null;
         }
 
-		internal static NumberFormatInfo GetNormalizedNumberFormat(NumberFormatInfo InNumberFormat)
-		{
-			NumberFormatInfo info2;
-			NumberFormatInfo info5 = InNumberFormat;
-			if (((((info5.CurrencyDecimalSeparator != null) && (info5.NumberDecimalSeparator != null)) && ((info5.CurrencyGroupSeparator != null) && (info5.NumberGroupSeparator != null))) && (((info5.CurrencyDecimalSeparator.Length == 1) && (info5.NumberDecimalSeparator.Length == 1)) && ((info5.CurrencyGroupSeparator.Length == 1) && (info5.NumberGroupSeparator.Length == 1)))) && (((info5.CurrencyDecimalSeparator[0] == info5.NumberDecimalSeparator[0]) && (info5.CurrencyGroupSeparator[0] == info5.NumberGroupSeparator[0])) && (info5.CurrencyDecimalDigits == info5.NumberDecimalDigits)))
-			{
-				return InNumberFormat;
-			}
-			info5 = null;
-			NumberFormatInfo info4 = InNumberFormat;
-			if ((((info4.CurrencyDecimalSeparator != null) && (info4.NumberDecimalSeparator != null)) && ((info4.CurrencyDecimalSeparator.Length == info4.NumberDecimalSeparator.Length) && (info4.CurrencyGroupSeparator != null))) && ((info4.NumberGroupSeparator != null) && (info4.CurrencyGroupSeparator.Length == info4.NumberGroupSeparator.Length)))
-			{
-				int num3 = info4.CurrencyDecimalSeparator.Length - 1;
-				int num1 = 0;
-				while (num1 <= num3)
-				{
-					if (info4.CurrencyDecimalSeparator[num1] != info4.NumberDecimalSeparator[num1])
-					{
-						goto Label_019D;
-					}
-					num1++;
-				}
-				int num2 = info4.CurrencyGroupSeparator.Length - 1;
-				for (num1 = 0; num1 <= num2; num1++)
-				{
-					if (info4.CurrencyGroupSeparator[num1] != info4.NumberGroupSeparator[num1])
-					{
-						goto Label_019D;
-					}
-				}
-				return InNumberFormat;
-			}
-			info4 = null;
-			Label_019D:
-				info2 = (NumberFormatInfo) InNumberFormat.Clone();
-			NumberFormatInfo info3 = info2;
-			info3.CurrencyDecimalSeparator = info3.NumberDecimalSeparator;
-			info3.CurrencyGroupSeparator = info3.NumberGroupSeparator;
-			info3.CurrencyDecimalDigits = info3.NumberDecimalDigits;
-			info3 = null;
-			return info2;
-		}
+        internal static NumberFormatInfo GetNormalizedNumberFormat(NumberFormatInfo InNumberFormat)
+        {
+            NumberFormatInfo info2;
+            NumberFormatInfo info5 = InNumberFormat;
+            if (((((info5.CurrencyDecimalSeparator != null) && (info5.NumberDecimalSeparator != null)) && ((info5.CurrencyGroupSeparator != null) && (info5.NumberGroupSeparator != null))) && (((info5.CurrencyDecimalSeparator.Length == 1) && (info5.NumberDecimalSeparator.Length == 1)) && ((info5.CurrencyGroupSeparator.Length == 1) && (info5.NumberGroupSeparator.Length == 1)))) && (((info5.CurrencyDecimalSeparator[0] == info5.NumberDecimalSeparator[0]) && (info5.CurrencyGroupSeparator[0] == info5.NumberGroupSeparator[0])) && (info5.CurrencyDecimalDigits == info5.NumberDecimalDigits)))
+            {
+                return InNumberFormat;
+            }
+            info5 = null;
+            NumberFormatInfo info4 = InNumberFormat;
+            if ((((info4.CurrencyDecimalSeparator != null) && (info4.NumberDecimalSeparator != null)) && ((info4.CurrencyDecimalSeparator.Length == info4.NumberDecimalSeparator.Length) && (info4.CurrencyGroupSeparator != null))) && ((info4.NumberGroupSeparator != null) && (info4.CurrencyGroupSeparator.Length == info4.NumberGroupSeparator.Length)))
+            {
+                int num3 = info4.CurrencyDecimalSeparator.Length - 1;
+                int num1 = 0;
+                while (num1 <= num3)
+                {
+                    if (info4.CurrencyDecimalSeparator[num1] != info4.NumberDecimalSeparator[num1])
+                    {
+                        goto Label_019D;
+                    }
+                    num1++;
+                }
+                int num2 = info4.CurrencyGroupSeparator.Length - 1;
+                for (num1 = 0; num1 <= num2; num1++)
+                {
+                    if (info4.CurrencyGroupSeparator[num1] != info4.NumberGroupSeparator[num1])
+                    {
+                        goto Label_019D;
+                    }
+                }
+                return InNumberFormat;
+            }
+            info4 = null;
+            Label_019D:
+            info2 = (NumberFormatInfo)InNumberFormat.Clone();
+            NumberFormatInfo info3 = info2;
+            info3.CurrencyDecimalSeparator = info3.NumberDecimalSeparator;
+            info3.CurrencyGroupSeparator = info3.NumberGroupSeparator;
+            info3.CurrencyDecimalDigits = info3.NumberDecimalDigits;
+            info3 = null;
+            return info2;
+        }
 
-			#endregion
+        #endregion
 
-		#region Boolean
+        #region Boolean
 
-		public static bool StringToBool(string value,bool defaultValue)
-		{
+        public static bool StringToBool(string value, bool defaultValue)
+        {
             bool val = defaultValue;
-			try
-			{
-                if (value == "0" || value=="off")
+            try
+            {
+                if (value == "0" || value == "off")
                     return false;
-                if (value == "1" || value=="on")
+                if (value == "1" || value == "on")
                     return true;
-                if(Boolean.TryParse(value, out val))
+                if (Boolean.TryParse(value, out val))
                     return Boolean.Parse(value);
                 return defaultValue;
-			}
-			catch
-			{
-				return defaultValue;
-			}
-		}
+            }
+            catch
+            {
+                return defaultValue;
+            }
+        }
 
         public static int BoolToInt(object value, bool defaultValue)
         {
-            return BoolToInt(ToBool(value,defaultValue));
+            return BoolToInt(ToBool(value, defaultValue));
         }
 
         public static int BoolToInt(bool value)
         {
             return value ? 1 : 0;
         }
-		#endregion
+        #endregion
 
-		#region Types Percent Methods
+        #region Types Percent Methods
 
-			public static bool IsPercentString(string val, System.IFormatProvider provider )
-			{
-				System.Globalization.NumberFormatInfo l_Info;
-				if (provider==null)
-					l_Info = System.Globalization.CultureInfo.CurrentCulture.NumberFormat;
-				else
-					l_Info = (System.Globalization.NumberFormatInfo)provider.GetFormat(typeof(System.Globalization.NumberFormatInfo));
+        public static bool IsPercentString(string val, System.IFormatProvider provider)
+        {
+            System.Globalization.NumberFormatInfo l_Info;
+            if (provider == null)
+                l_Info = System.Globalization.CultureInfo.CurrentCulture.NumberFormat;
+            else
+                l_Info = (System.Globalization.NumberFormatInfo)provider.GetFormat(typeof(System.Globalization.NumberFormatInfo));
 
-				if (val.IndexOf(l_Info.PercentSymbol) == -1)
-					return false;
-				else
-					return true;
-			}
+            if (val.IndexOf(l_Info.PercentSymbol) == -1)
+                return false;
+            else
+                return true;
+        }
 
-			public static double StringToPercentDouble(string val,
-				System.Globalization.NumberStyles style , 
-				System.IFormatProvider provider,
-				bool p_ConsiderAllStringAsPercent)
-			{
-				bool l_IsPercentString = IsPercentString(val,provider);
-				if (l_IsPercentString)
-				{
-					return double.Parse(val.Replace("%",""),style,provider) / 100.0;
-				}
-				else
-				{
-					if (p_ConsiderAllStringAsPercent)
-						return double.Parse(val,style,provider) / 100.0;
-					else
-						return double.Parse(val,style,provider);
-				}
-			}
-			public static float StringToPercentFloat(string val,
-				System.Globalization.NumberStyles style , 
-				System.IFormatProvider provider ,
-				bool p_ConsiderAllStringAsPercent)
-			{
-				bool l_IsPercentString = IsPercentString(val,provider);
-				if (l_IsPercentString)
-				{
-					return float.Parse(val.Replace("%",""),style,provider) / 100;
-				}
-				else
-				{
-					if (p_ConsiderAllStringAsPercent)
-						return float.Parse(val,style,provider) / 100;
-					else
-						return float.Parse(val,style,provider);
-				}
-			}
-			public static decimal StringToPercentDecimal(string val,
-				System.Globalization.NumberStyles style , 
-				System.IFormatProvider provider,
-				bool p_ConsiderAllStringAsPercent )
-			{
-				bool l_IsPercentString = IsPercentString(val,provider);
-				if (l_IsPercentString)
-				{
-					return decimal.Parse(val.Replace("%",""),style,provider) / 100.0M;
-				}
-				else
-				{
-					if (p_ConsiderAllStringAsPercent)
-						return decimal.Parse(val,style,provider) / 100.0M;
-					else
-						return decimal.Parse(val,style,provider);
-				}
-			}
+        public static double StringToPercentDouble(string val,
+            System.Globalization.NumberStyles style,
+            System.IFormatProvider provider,
+            bool p_ConsiderAllStringAsPercent)
+        {
+            bool l_IsPercentString = IsPercentString(val, provider);
+            if (l_IsPercentString)
+            {
+                return double.Parse(val.Replace("%", ""), style, provider) / 100.0;
+            }
+            else
+            {
+                if (p_ConsiderAllStringAsPercent)
+                    return double.Parse(val, style, provider) / 100.0;
+                else
+                    return double.Parse(val, style, provider);
+            }
+        }
+        public static float StringToPercentFloat(string val,
+            System.Globalization.NumberStyles style,
+            System.IFormatProvider provider,
+            bool p_ConsiderAllStringAsPercent)
+        {
+            bool l_IsPercentString = IsPercentString(val, provider);
+            if (l_IsPercentString)
+            {
+                return float.Parse(val.Replace("%", ""), style, provider) / 100;
+            }
+            else
+            {
+                if (p_ConsiderAllStringAsPercent)
+                    return float.Parse(val, style, provider) / 100;
+                else
+                    return float.Parse(val, style, provider);
+            }
+        }
+        public static decimal StringToPercentDecimal(string val,
+            System.Globalization.NumberStyles style,
+            System.IFormatProvider provider,
+            bool p_ConsiderAllStringAsPercent)
+        {
+            bool l_IsPercentString = IsPercentString(val, provider);
+            if (l_IsPercentString)
+            {
+                return decimal.Parse(val.Replace("%", ""), style, provider) / 100.0M;
+            }
+            else
+            {
+                if (p_ConsiderAllStringAsPercent)
+                    return decimal.Parse(val, style, provider) / 100.0M;
+                else
+                    return decimal.Parse(val, style, provider);
+            }
+        }
 
 
-			#endregion
+        #endregion
 
-		#region DateTime
-		
-		private static Calendar CurrentCalendar
-		{
-			get
-			{
-				return Thread.CurrentThread.CurrentCulture.Calendar;
-			}
-		}
+        #region DateTime
 
+        private static Calendar CurrentCalendar
+        {
+            get
+            {
+                return Thread.CurrentThread.CurrentCulture.Calendar;
+            }
+        }
+
+       
         public static string DateFormatExact(object value, string sourceFormt, string returnFormt)
         {
             if (value == null || value == DBNull.Value || value.ToString() == "")
@@ -1255,225 +1884,346 @@ namespace Nistec
                 return (DateTime?)val;
             return (DateTime?)null;
         }
+        /*
+       public static string[] IsoDateFormats
+       {
+           get
+           {
+               string[] isoFormats = { "yyyy-MM-dd hh:mm:ss tt", "yyyy-MM-dd hh:mm:ss", "yyyy-MM-dd hh:mm", "yyyy-MM-dd" };
+               return isoFormats;
+           }
+       }
+       public static string[] StdDateFormats
+       {
+           get
+           {
+               string[] stdFormats = {
+               "d/M/yyyy h:mm:ss tt", "d/M/yyyy h:mm tt",
+                        "dd/MM/yyyy hh:mm:ss", "d/M/yyyy h:mm:ss",
+                        "d/M/yyyy hh:mm tt", "d/M/yyyy hh tt",
+                        "d/M/yyyy h:mm", "d/M/yyyy h:mm",
+                        "dd/MM/yyyy hh:mm", "dd/M/yyyy hh:mm"};
+               return stdFormats;
+           }
+       }
+       public static string[] UsDateFormats
+       {
+           get
+           {
+               string[] usFormats = {"M/d/yyyy h:mm:ss tt", "M/d/yyyy h:mm tt",
+                        "MM/dd/yyyy hh:mm:ss", "M/d/yyyy h:mm:ss",
+                        "M/d/yyyy hh:mm tt", "M/d/yyyy hh tt",
+                        "M/d/yyyy h:mm", "M/d/yyyy h:mm",
+                        "MM/dd/yyyy hh:mm", "M/dd/yyyy hh:mm"};
+               return usFormats;
+           }
+       }
 
-        public static string[] IsoDateFormats
-        {
-            get
-            {
-                string[] isoFormats = { "yyyy-MM-dd hh:mm:ss tt", "yyyy-MM-dd hh:mm:ss", "yyyy-MM-dd hh:mm", "yyyy-MM-dd" };
-                return isoFormats;
-            }
-        }
-        public static string[] StdDateFormats
-        {
-            get
-            {
-                string[] stdFormats = {
-                "d/M/yyyy h:mm:ss tt", "d/M/yyyy h:mm tt",
-                         "dd/MM/yyyy hh:mm:ss", "d/M/yyyy h:mm:ss",
-                         "d/M/yyyy hh:mm tt", "d/M/yyyy hh tt",
-                         "d/M/yyyy h:mm", "d/M/yyyy h:mm",
-                         "dd/MM/yyyy hh:mm", "dd/M/yyyy hh:mm"};
-                return stdFormats;
-            }
-        }
-        public static string[] UsDateFormats
-        {
-            get
-            {
-                string[] usFormats = {"M/d/yyyy h:mm:ss tt", "M/d/yyyy h:mm tt",
-                         "MM/dd/yyyy hh:mm:ss", "M/d/yyyy h:mm:ss",
-                         "M/d/yyyy hh:mm tt", "M/d/yyyy hh tt",
-                         "M/d/yyyy h:mm", "M/d/yyyy h:mm",
-                         "MM/dd/yyyy hh:mm", "M/dd/yyyy hh:mm"};
-                return usFormats;
-            }
-        }
+       public static DateTime? DateTimeFormatExact(object value)
+       {
+           if (value == null || value == DBNull.Value || value.ToString() == "")
+               return (DateTime?)null;
 
-        public static DateTime? DateTimeFormatExact(object value)
+           DateTime val;
+           if (DateTime.TryParseExact(value.ToString(), StdDateFormats, Types.GetCultureInfo(), DateTimeStyles.None, out val))
+               return (DateTime?)val;
+           return (DateTime?)null;
+       }
+
+       public static DateTime ParseDateTime(object value, DateTime defaultValue)
+       {
+
+           if (value == null || value == DBNull.Value || value.ToString() == "")
+               return defaultValue;
+           string str = value.ToString();
+
+           try
+           {
+               int arg1 = 0;
+               int arg2 = 0;
+               int arg3 = 0;
+
+               int h = 0;
+               int m = 0;
+               int s = 0;
+
+
+               string[] parts = str.Split(new string[] { " ", "T" }, StringSplitOptions.RemoveEmptyEntries);
+
+               if (parts.Length > 0)
+               {
+                   string[] args = parts[0].Split('/', '-');
+                   arg1 = RemoveLeadingZero(args[0]);
+                   arg2 = RemoveLeadingZero(args[1]);
+                   arg3 = RemoveLeadingZero(args[2]);
+               }
+
+               if (parts.Length > 1)
+               {
+
+                   string[] args = parts[1].Split(':', '.');
+
+                   if (args.Length > 0)
+                       h = RemoveLeadingZero(args[0]);
+                   if (args.Length > 1)
+                       m = RemoveLeadingZero(args[1]);
+                   if (args.Length > 2)
+                       s = RemoveLeadingZero(args[2]);
+               }
+
+               if (parts.Length > 2)
+               {
+
+                   //[AM|PM|am|pm]
+                   switch (parts[2])
+                   {
+                       case "PM":
+                       case "pm":
+                           if (h < 12)
+                               h = h + 12;
+                           break;
+                   }
+               }
+
+               if (str.IndexOf('-') > 0)
+                   return new DateTime(arg1, arg2, arg3, h, m, s);
+               else
+                   return new DateTime(arg3, arg2, arg1, h, m, s);
+           }
+           catch
+           {
+               return defaultValue;
+           }
+       }
+       public static DateTime? ParseDateTime(object value)
+       {
+
+           if (value == null || value == DBNull.Value || value.ToString() == "")
+               return (DateTime?)null;
+           string str = value.ToString();
+
+           try
+           {
+               int arg1 = 0;
+               int arg2 = 0;
+               int arg3 = 0;
+
+               int h = 0;
+               int m = 0;
+               int s = 0;
+
+
+               string[] parts = str.Split(new string[] { " ", "T" }, StringSplitOptions.RemoveEmptyEntries);
+
+               if (parts.Length > 0)
+               {
+                   string[] args = parts[0].Split('/', '-');
+                   arg1 = RemoveLeadingZero(args[0]);
+                   arg2 = RemoveLeadingZero(args[1]);
+                   arg3 = RemoveLeadingZero(args[2]);
+               }
+
+               if (parts.Length > 1)
+               {
+
+                   string[] args = parts[1].Split(':', '.');
+
+                   if (args.Length > 0)
+                       h = RemoveLeadingZero(args[0]);
+                   if (args.Length > 1)
+                       m = RemoveLeadingZero(args[1]);
+                   if (args.Length > 2)
+                       s = RemoveLeadingZero(args[2]);
+               }
+
+               if (parts.Length > 2)
+               {
+
+                   //[AM|PM|am|pm]
+                   switch (parts[2])
+                   {
+                       case "PM":
+                       case "pm":
+                           if (h < 12)
+                               h = h + 12;
+                           break;
+                   }
+               }
+
+               if (str.IndexOf('-') > 0)
+                   return new DateTime(arg1, arg2, arg3, h, m, s);
+               else
+                   return new DateTime(arg3, arg2, arg1, h, m, s);
+           }
+           catch
+           {
+               return null;
+           }
+       }
+       */
+        public static object ParseDateTimeObject(object value, bool isNullable, DateTime? defaultValue=null)
         {
+
             if (value == null || value == DBNull.Value || value.ToString() == "")
-                return (DateTime?)null;
+                return defaultValue;
+            string str = value.ToString();
+            object returnVal = null;
+            try
+            {
+                int arg1 = 0;
+                int arg2 = 0;
+                int arg3 = 0;
+
+                int h = 0;
+                int m = 0;
+                int s = 0;
+
+                string[] parts = str.Split(new string[] { " ", "T" }, StringSplitOptions.RemoveEmptyEntries);
+
+                if (parts.Length > 0)
+                {
+                    string[] args = parts[0].Split('/', '-');
+                    arg1 = RemoveLeadingZero(args[0]);
+                    arg2 = RemoveLeadingZero(args[1]);
+                    arg3 = RemoveLeadingZero(args[2]);
+                }
+
+                if (parts.Length > 1)
+                {
+
+                    string[] args = parts[1].Split(':', '.');
+
+                    if (args.Length > 0)
+                        h = RemoveLeadingZero(args[0]);
+                    if (args.Length > 1)
+                        m = RemoveLeadingZero(args[1]);
+                    if (args.Length > 2)
+                        s = RemoveLeadingZero(args[2]);
+                }
+
+                if (parts.Length > 2)
+                {
+
+                    //[AM|PM|am|pm]
+                    switch (parts[2])
+                    {
+                        case "PM":
+                        case "pm":
+                            if (h < 12)
+                                h = h + 12;
+                            break;
+                    }
+                }
+
+                if (str.IndexOf('-') > 0)
+                    returnVal = new DateTime(arg1, arg2, arg3, h, m, s);
+                else
+                    returnVal = new DateTime(arg3, arg2, arg1, h, m, s);
+
+            }
+            catch
+            {
+                returnVal = (isNullable) ? defaultValue: (defaultValue!=null && defaultValue.HasValue) ? defaultValue.Value : Types.MinDate;
+            }
+
+            if(isNullable)
+                return (DateTime?)returnVal;
+            else
+                return (DateTime)returnVal;
+        }
+
+        public static DateTime ToDateTime(string value, DateFormat format)
+        {
+            return ParseDateTime(value, DateTime.Now, Formatter.ToDateFormat(format));
+        }
+        public static DateTime ToDateTime(string value, DateTime defaultValue, DateFormat format)
+        {
+            return ParseDateTime(value, defaultValue, Formatter.ToDateFormat(format));
+        }
+        public static DateTime ParseDateTime(string value, DateTime defaultValue, string format)
+        {
+            if (value == null || value == DBNull.Value.ToString() || value == "")
+                return defaultValue;
 
             DateTime val;
-            if (DateTime.TryParseExact(value.ToString(), StdDateFormats, Types.GetCultureInfo(), DateTimeStyles.None, out val))
-                return (DateTime?)val;
-            return (DateTime?)null;
+            if (DateTime.TryParseExact(value, format, CultureInfo.InvariantCulture, DateTimeStyles.None, out val))
+                return val;
+            return defaultValue;
         }
 
-        public static int RemoveLeadingZero(string value)
-        {
-            //string str = Regx.RegexReplace("^0+(?!$)", value, "");
-            int val;
-            int.TryParse(value.TrimStart('0'), out val);
-            return val;
-        }
-        //static int DatePart(string value)
+        //public static DateTime DateFromString(string Value)
         //{
-        //    //string str = Regx.RegexReplace("^0+(?!$)", value, "");
-        //    string str = value.TrimStart('0');
-
-        //    int val;
-        //    if (str.Length == 2)
-        //    {
-        //        if (str[0] == '0')
-        //            int.TryParse(str[1].ToString(), out val);
-        //        else
-        //            int.TryParse(str, out val);
-        //    }
-        //    else
-        //    {
-        //        int.TryParse(str, out val);
-        //    }
-        //    return val;
+        //    return ParseDateTime(Value, Types.GetCultureInfo(), DateTime.Now);
         //}
-        public static DateTime ParseDateTime(object value, DateTime defaultValue)
+        public static DateTime ToLocalDateTime(string Value)
         {
-
-            if (value == null || value == DBNull.Value || value.ToString() == "")
-                return defaultValue;
-            string str = value.ToString();
-
-            try
-            {
-                int arg1 = 0;
-                int arg2 = 0;
-                int arg3 = 0;
-
-                int h = 0;
-                int m = 0;
-                int s = 0;
-
-
-                string[] parts = str.Split(new string[] { " ", "T" }, StringSplitOptions.RemoveEmptyEntries);
-
-                if (parts.Length > 0)
-                {
-                    string[] args = parts[0].Split('/', '-');
-                    arg1 = RemoveLeadingZero(args[0]);
-                    arg2 = RemoveLeadingZero(args[1]);
-                    arg3 = RemoveLeadingZero(args[2]);
-                }
-
-                if (parts.Length > 1)
-                {
-
-                    string[] args = parts[1].Split(':', '.');
-
-                    if (args.Length > 0)
-                        h = RemoveLeadingZero(args[0]);
-                    if (args.Length > 1)
-                        m = RemoveLeadingZero(args[1]);
-                    if (args.Length > 2)
-                        s = RemoveLeadingZero(args[2]);
-                }
-
-                if (parts.Length > 2)
-                {
-
-                    //[AM|PM|am|pm]
-                    switch (parts[2])
-                    {
-                        case "PM":
-                        case "pm":
-                            if (h < 12)
-                                h = h + 12;
-                            break;
-                    }
-                }
-
-                if (str.IndexOf('-') > 0)
-                    return new DateTime(arg1, arg2, arg3, h, m, s);
-                else
-                    return new DateTime(arg3, arg2, arg1, h, m, s);
-            }
-            catch
-            {
-                return defaultValue;
-            }
+            if (Value == null || Value == DBNull.Value.ToString())
+                return DateTime.Now;
+            return ParseDateTime(Value, Formatter.LocalCulture, DateTime.Now);
         }
-        public static DateTime? ParseDateTime(object value)
+        public static DateTime ToDateTime(string Value, CultureInfo culture)
         {
-
-            if (value == null || value == DBNull.Value || value.ToString() == "")
-                return (DateTime?)null;
-            string str = value.ToString();
-
-            try
-            {
-                int arg1 = 0;
-                int arg2 = 0;
-                int arg3 = 0;
-
-                int h = 0;
-                int m = 0;
-                int s = 0;
-
-
-                string[] parts = str.Split(new string[] { " ", "T" }, StringSplitOptions.RemoveEmptyEntries);
-                
-                if (parts.Length > 0)
-                {
-                    string[] args = parts[0].Split('/', '-');
-                    arg1 = RemoveLeadingZero(args[0]);
-                    arg2 = RemoveLeadingZero(args[1]);
-                    arg3 = RemoveLeadingZero(args[2]);
-                }
-
-                if (parts.Length > 1)
-                {
-
-                    string[] args = parts[1].Split(':', '.');
-
-                    if (args.Length > 0)
-                        h = RemoveLeadingZero(args[0]);
-                    if (args.Length > 1)
-                        m = RemoveLeadingZero(args[1]);
-                    if (args.Length > 2)
-                        s = RemoveLeadingZero(args[2]);
-                }
-
-                if (parts.Length > 2)
-                {
-
-                    //[AM|PM|am|pm]
-                    switch (parts[2])
-                    {
-                        case "PM":
-                        case "pm":
-                            if (h < 12)
-                                h = h + 12;
-                            break;
-                    }
-                }
-
-                if (str.IndexOf('-') > 0)
-                    return new DateTime(arg1, arg2, arg3, h, m, s);
-                else
-                    return new DateTime(arg3, arg2, arg1, h, m, s);
-            }
-            catch
-            {
-                return null;
-            }
+            if (Value == null || Value == DBNull.Value.ToString())
+                return DateTime.Now;
+            return ParseDateTime(Value, culture, DateTime.Now);
         }
 
-
-        public static DateTime DateFromString(string Value)
-		{
-            return ToDateTime(Value, Types.GetCultureInfo());
-		}
-
+        public static DateTime ToDateTime(string Value)
+        {
+            if (Value == null || Value == DBNull.Value.ToString())
+                return DateTime.Now;
+            return ParseDateTime(Value, DateTime.Now);
+        }
+        public static DateTime ToDateTime(string Value, DateTime defaultValue)
+        {
+            if (Value == null || Value == DBNull.Value.ToString())
+                return defaultValue;
+            return ParseDateTime(Value, defaultValue);
+        }
         public static DateTime ToDateTime(object Value)
         {
-            return ToDateTime(Value, DateTime.Now);
+            if (Value == null || Value == DBNull.Value)
+                return DateTime.Now;
+            return ParseDateTime(Value.ToString(), DateTime.Now);
         }
-
         public static DateTime ToDateTime(object Value, DateTime defaultValue)
         {
-            if (Value == null || Value==DBNull.Value)
+            if (Value == null || Value == DBNull.Value)
                 return defaultValue;
-            return ToDateTime(Value.ToString(),defaultValue);
+            return ParseDateTime(Value.ToString(), defaultValue);
+        }
+
+        public static DateTime ToDateTime(string Value, DateTimeFormatInfo dtf, DateTime defaultValue)
+        {
+            DateTime val;
+            if (DateTime.TryParse(Value, dtf, DateTimeStyles.None, out val))
+                return val;
+            return defaultValue;
+        }
+        //new
+        static DateTime ParseDateTime(string Value, DateTime defaultValue)
+        {
+            DateTime val;
+            if (DateTime.TryParse(Value, out val))
+                return val;
+            return defaultValue;
+        }
+        //new
+        static DateTime ParseDateTime(string Value, CultureInfo culture, DateTime defaultValue)
+        {
+            if (culture == null)
+                culture = Types.GetCultureInfo();
+            DateTime val;
+            if (DateTime.TryParse(Value, culture, DateTimeStyles.None, out val))
+                return val;
+            return defaultValue;
+        }
+        /*
+        public static DateTime ToDateTime(object Value, DateTime defaultValue)
+        {
+            if (Value == null || Value == DBNull.Value)
+                return defaultValue;
+            return ToDateTime(Value.ToString(), defaultValue);
         }
 
         public static DateTime ToDateTime(string Value, DateTime defaultValue)
@@ -1484,7 +2234,7 @@ namespace Nistec
             return defaultValue;
         }
 
-        public static DateTime ToDateTime(string Value,DateTimeFormatInfo dtf, DateTime defaultValue)
+        public static DateTime ToDateTime(string Value, DateTimeFormatInfo dtf, DateTime defaultValue)
         {
             DateTime val;
             if (DateTime.TryParse(Value, dtf, DateTimeStyles.None, out val))
@@ -1501,57 +2251,57 @@ namespace Nistec
         }
 
         public static DateTime ToDateTime(string Value, DateTimeFormatInfo dtf)
-		{
+        {
             return ToDateTime(Value, dtf, DateTime.Now);
-		}
+        }
 
         public static DateTime ToDateTime(string Value, CultureInfo culture)
-		{
+        {
             return ToDateTime(Value, culture, DateTime.Now);
-		}
-
-		/// <summary>
-		/// Get string date and return formated string date ,on exception return defult value
-		/// </summary>
-		/// <param name="s">string dateTime</param>
-		/// <param name="format">format</param>
-		/// <param name="defaultValue">value to return if invalid cast exception</param>
-		/// <returns>String Date Time formated</returns>
-		public static string  FormatDate(string s,string format, DateTime defaultValue)
-		{
-			try
-			{
+        }
+       
+        /// <summary>
+        /// Get string date and return formated string date ,on exception return defult value
+        /// </summary>
+        /// <param name="s">string dateTime</param>
+        /// <param name="format">format</param>
+        /// <param name="defaultValue">value to return if invalid cast exception</param>
+        /// <returns>String Date Time formated</returns>
+        public static string FormatDate(string s, string format, DateTime defaultValue)
+        {
+            try
+            {
                 return ToDateTime(s, defaultValue).ToString(format);
-			}
-			catch(Exception)
-			{
-				return defaultValue.ToString(format);
-			}
-		}
-
-		/// <summary>
-		/// Get string date and return formated string date ,on exception return defult value
-		/// </summary>
-		/// <param name="s">string dateTime</param>
-		/// <param name="format">format</param>
-		/// <param name="defaultValue">string value to return if invalid cast exception</param>
-		/// <returns>String Date Time formated</returns>
-		public static string FormatDate(string s,string format, string defaultValue)
-		{
+            }
+            catch (Exception)
+            {
+                return defaultValue.ToString(format);
+            }
+        }
+         */
+        /// <summary>
+        /// Get string date and return formated string date ,on exception return defult value
+        /// </summary>
+        /// <param name="s">string dateTime</param>
+        /// <param name="format">format</param>
+        /// <param name="defaultValue">string value to return if invalid cast exception</param>
+        /// <returns>String Date Time formated</returns>
+        public static string FormatDate(string s, string format, string defaultValue)
+        {
             DateTime val;
             try
-			{
+            {
                 if (string.IsNullOrEmpty(s))
                     return defaultValue;
                 if (DateTime.TryParse(s, out val))
                     return val.ToString(format);
                 return defaultValue;
-			}
-			catch(Exception)
-			{
-				return defaultValue;
-			}
-		}
+            }
+            catch (Exception)
+            {
+                return defaultValue;
+            }
+        }
 
         //public static bool IsDate(string s)
         //{
@@ -1575,7 +2325,7 @@ namespace Nistec
 
         public static System.Globalization.DateTimeFormatInfo DateFormatInfo(string cultureName)//"he-IL"
         {
-            return new CultureInfo(cultureName, false).DateTimeFormat; 
+            return new CultureInfo(cultureName, false).DateTimeFormat;
         }
 
         public static bool IsDateTime(string s)
@@ -1605,90 +2355,91 @@ namespace Nistec
             return int.Parse(value.ToString("yyyyMMdd"));
         }
 
+        /*
         public static int TodayInt()
         {
             return int.Parse(DateTime.Today.ToString("yyyyMMdd"));
         }
 
 
-		public static string DateToString(DateTime value,string format)
-		{
-			return value.ToString(format, CultureInfo.CurrentCulture);
-		}
+        public static string DateToString(DateTime value, string format)
+        {
+            return value.ToString(format, CultureInfo.CurrentCulture);
+        }
 
-		public static string DateToString(DateTime value)
-		{
-			string sep = System.Globalization.DateTimeFormatInfo.CurrentInfo.DateSeparator;
-			string format = String.Empty;
-		
-			DateTime t = new DateTime(2000,2,1);
-			string   tStr  = t.ToShortDateString();					
-			if(tStr.IndexOf("1") > tStr.IndexOf("2"))
-			{
-				format = "MM" + sep + "dd" + sep + "yyyy";
-			}
-			else
-			{
-				format = "dd" + sep + "MM" + sep + "yyyy";
-			}
-		
-			return value.ToString(format, CultureInfo.CurrentCulture);
-		}
-		
-		public static DateTime DateValue(string StringDate)
-		{
-			DateTime time2 = DateFromString(StringDate);
-			return time2.Date;
-		}
+        public static string DateToString(DateTime value)
+        {
+            string sep = System.Globalization.DateTimeFormatInfo.CurrentInfo.DateSeparator;
+            string format = String.Empty;
+
+            DateTime t = new DateTime(2000, 2, 1);
+            string tStr = t.ToShortDateString();
+            if (tStr.IndexOf("1") > tStr.IndexOf("2"))
+            {
+                format = "MM" + sep + "dd" + sep + "yyyy";
+            }
+            else
+            {
+                format = "dd" + sep + "MM" + sep + "yyyy";
+            }
+
+            return value.ToString(format, CultureInfo.CurrentCulture);
+        }
+
+        public static DateTime DateValue(string StringDate)
+        {
+            DateTime time2 = DateFromString(StringDate);
+            return time2.Date;
+        }
 
 
- 
+
         public static DateTime DateStart(DateTime d)
         {
-            return new DateTime(d.Year,d.Month,d.Day,0,0,0);
+            return new DateTime(d.Year, d.Month, d.Day, 0, 0, 0);
         }
         public static DateTime DateEnd(DateTime d)
         {
             return new DateTime(d.Year, d.Month, d.Day, 23, 59, 59);
         }
+        */
+        #endregion
+
+        #region Bytes
+
+        public static string BytesToHexString(byte[] byteArray)
+        {
+            StringBuilder sb = new StringBuilder(40);
+            foreach (byte bValue in byteArray)
+            {
+                sb.AppendFormat(CultureInfo.CurrentCulture, bValue.ToString("x2", CultureInfo.CurrentCulture).ToUpper(CultureInfo.CurrentCulture));
+            }
+            return sb.ToString();
+        }
+
+
+        public static byte[] BytesFromString(string stringValue)
+        {
+            return (new UnicodeEncoding()).GetBytes(stringValue);
+        }
+
+        public static string BytesToString(byte[] byteArray)
+        {
+            return (new UnicodeEncoding()).GetString(byteArray);
+        }
 
         #endregion
 
-		#region Bytes
+        #region Formats
 
-		public static string BytesToHexString(byte[] byteArray)
-		{
-			StringBuilder sb = new StringBuilder(40);
-			foreach(byte bValue in byteArray)
-			{
-				sb.AppendFormat(CultureInfo.CurrentCulture, bValue.ToString("x2", CultureInfo.CurrentCulture).ToUpper(CultureInfo.CurrentCulture));
-			}
-			return sb.ToString();
-		}
+        public struct BoolRange
+        {
+            public object T;
+            public object F;
+        }
 
 
-		public static byte[] BytesFromString(string stringValue)
-		{
-			return (new UnicodeEncoding()).GetBytes(stringValue);
-		}
-
-		public static string BytesToString(byte[] byteArray)
-		{
-			return (new UnicodeEncoding()).GetString(byteArray);
-		}
-	
-		#endregion
-
-		#region Formats
-
-		public struct BoolRange
-		{
-			public object T;
-			public object F;
-		}
-
-
-		#endregion
+        #endregion
 
         #region enum
 
@@ -1766,254 +2517,258 @@ namespace Nistec
 
 
         private static System.Globalization.CultureInfo GetCulture(System.Globalization.CultureInfo cultureInfo)
+        {
+            if (cultureInfo == null)
+                return System.Globalization.CultureInfo.CurrentCulture;
+            else
+                return cultureInfo;
+        }
+        public static string GetTypeName(object o)
+        {
+            return o==null ? null: o.GetType().FullName;
+        }
+       
+        public static CultureInfo GetCultureInfo()
+        {
+            return Thread.CurrentThread.CurrentCulture;
+        }
+
+        public static DateTimeFormatInfo GetDateTimeFormatInfo()
+        {
+            return Thread.CurrentThread.CurrentCulture.DateTimeFormat;
+        }
+
+        internal static Encoding GetFileIOEncoding()
+        {
+            return Encoding.Default;
+        }
+
+        internal static int GetLocaleCodePage()
+        {
+            return Thread.CurrentThread.CurrentCulture.TextInfo.ANSICodePage;
+        }
+
+        public static bool IsGuid(string candidate, out Guid output)
+        {
+            Regex isGuid = new Regex(@"^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$", RegexOptions.Compiled);
+
+            bool isValid = false;
+
+            output = Guid.Empty;
+
+            if (candidate != null)
             {
-                if (cultureInfo == null)
-                    return System.Globalization.CultureInfo.CurrentCulture;
-                else
-                    return cultureInfo;
-            }
-
-            public static CultureInfo GetCultureInfo()
-            {
-                return Thread.CurrentThread.CurrentCulture;
-            }
-
-            public static DateTimeFormatInfo GetDateTimeFormatInfo()
-            {
-                return Thread.CurrentThread.CurrentCulture.DateTimeFormat;
-            }
-
-            internal static Encoding GetFileIOEncoding()
-            {
-                return Encoding.Default;
-            }
-
-            internal static int GetLocaleCodePage()
-            {
-                return Thread.CurrentThread.CurrentCulture.TextInfo.ANSICodePage;
-            }
-
-            public static bool IsGuid(string candidate, out Guid output)
-            {
-                Regex isGuid = new Regex(@"^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$", RegexOptions.Compiled);
-
-                bool isValid = false;
-
-                output = Guid.Empty;
-
-                if (candidate != null)
+                if (isGuid.IsMatch(candidate))
                 {
-                    if (isGuid.IsMatch(candidate))
-                    {
-                        output = new Guid(candidate);
-                        isValid = true;
-                    }
+                    output = new Guid(candidate);
+                    isValid = true;
                 }
-                return isValid;
             }
+            return isValid;
+        }
 
-            public static bool IsGuid(string guid)
+        public static bool IsGuid(string guid)
+        {
+            Regex isGuid = new Regex(@"^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$", RegexOptions.Compiled);
+
+            bool isValid = false;
+
+            if (guid != null)
             {
-                Regex isGuid = new Regex(@"^(\{){0,1}[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}(\}){0,1}$", RegexOptions.Compiled);
-
-                bool isValid = false;
-
-                if (guid != null)
+                if (isGuid.IsMatch(guid))
                 {
-                    if (isGuid.IsMatch(guid))
-                    {
-                        isValid = true;
-                    }
+                    isValid = true;
                 }
-                return isValid;
             }
+            return isValid;
+        }
 
 
-            /// <summary>
-            /// IsValidTime
-            /// </summary>
-            /// <param name="time">12:30</param>
-            /// <returns></returns>
-            public static bool IsValidTime(string time)
-            {
-                if (string.IsNullOrEmpty(time))
-                    return false;
-                string[] args = time.Split(':');
-                if (args == null || args.Length != 2)
-                    return false;
-                int h = Nistec.Types.ToInt(args[0], -1);
-                int m = Nistec.Types.ToInt(args[1], -1);
-                if (h < 0 || m < 0)
-                    return false;
-                return (h >= 0 && h <= 23 && m >= 0 && m <= 59);
-
-            }
-            public static bool IsValidTime(string time, ref int[] value)
-            {
-                if (string.IsNullOrEmpty(time))
-                    return false;
-                string[] args = time.Split(':');
-                if (args == null || args.Length != 2)
-                    return false;
-                int h = Nistec.Types.ToInt(args[0], -1);
-                int m = Nistec.Types.ToInt(args[1], -1);
-                if (h < 0 || m < 0)
-                    return false;
-                if (h >= 0 && h <= 23 && m >= 0 && m <= 59)
-                {
-                    value = new int[] { h, m };
-                    return true;
-                }
+        /// <summary>
+        /// IsValidTime
+        /// </summary>
+        /// <param name="time">12:30</param>
+        /// <returns></returns>
+        public static bool IsValidTime(string time)
+        {
+            if (string.IsNullOrEmpty(time))
                 return false;
-
-            }
-            /// <summary>
-            /// IsValidMonthDay
-            /// </summary>
-            /// <param name="date">22/11</param>
-            /// <returns></returns>
-            public static bool IsValidMonthDay(string date, ref int[] value)
-            {
-                if (string.IsNullOrEmpty(date))
-                    return false;
-                string[] args = date.Split('/');
-                if (args == null || args.Length != 2)
-                    return false;
-                int d = Nistec.Types.ToInt(args[0], -1);
-                int m = Nistec.Types.ToInt(args[1], -1);
-                if (m < 0 || d < 0)
-                    return false;
-                if (m >= 0 && m <= 12 && d >= 0 && d <= 31)
-                {
-                    value = new int[] { d, m };
-                    return true;
-                }
+            string[] args = time.Split(':');
+            if (args == null || args.Length != 2)
                 return false;
-            }
+            int h = Nistec.Types.ToInt(args[0], -1);
+            int m = Nistec.Types.ToInt(args[1], -1);
+            if (h < 0 || m < 0)
+                return false;
+            return (h >= 0 && h <= 23 && m >= 0 && m <= 59);
 
-            public static bool? IsTrue(object value, bool? nullValue = null)
+        }
+        public static bool IsValidTime(string time, ref int[] value)
+        {
+            if (string.IsNullOrEmpty(time))
+                return false;
+            string[] args = time.Split(':');
+            if (args == null || args.Length != 2)
+                return false;
+            int h = Nistec.Types.ToInt(args[0], -1);
+            int m = Nistec.Types.ToInt(args[1], -1);
+            if (h < 0 || m < 0)
+                return false;
+            if (h >= 0 && h <= 23 && m >= 0 && m <= 59)
             {
-                if (value == null)
+                value = new int[] { h, m };
+                return true;
+            }
+            return false;
+
+        }
+        /// <summary>
+        /// IsValidMonthDay
+        /// </summary>
+        /// <param name="date">22/11</param>
+        /// <returns></returns>
+        public static bool IsValidMonthDay(string date, ref int[] value)
+        {
+            if (string.IsNullOrEmpty(date))
+                return false;
+            string[] args = date.Split('/');
+            if (args == null || args.Length != 2)
+                return false;
+            int d = Nistec.Types.ToInt(args[0], -1);
+            int m = Nistec.Types.ToInt(args[1], -1);
+            if (m < 0 || d < 0)
+                return false;
+            if (m >= 0 && m <= 12 && d >= 0 && d <= 31)
+            {
+                value = new int[] { d, m };
+                return true;
+            }
+            return false;
+        }
+
+        public static bool? IsTrue(object value, bool? nullValue = null)
+        {
+            if (value == null)
+                return nullValue;
+            switch (value.ToString().ToLower())
+            {
+                case "1":
+                case "on":
+                case "true":
+                    return true;
+                case "0":
+                case "off":
+                case "false":
+                    return false;
+                default:
                     return nullValue;
-                switch (value.ToString().ToLower())
-                {
-                    case "1":
-                    case "on":
-                    case "true":
-                        return true;
-                    case "0":
-                    case "off":
-                    case "false":
-                        return false;
-                    default:
-                        return nullValue;
-                }
             }
+        }
 
-            
-            public static bool IsBool(object Expression)
+
+        public static bool IsBool(object Expression)
+        {
+            if (Expression != null)
             {
-                if (Expression != null)
-                {
-                    if (Expression is bool)
-                    {
-                        return true;
-                    }
-                    if (Expression is string)
-                    {
-                        string val = (string)Expression;
-                        if (!(val.ToLower().Contains("false") || val.ToLower().Contains("true")))
-                        {
-                            return false;
-                        }
-                        try
-                        {
-                            bool res = bool.Parse((string)Expression);
-                            return true;
-                        }
-                        catch (Exception)
-                        {
-                        }
-                    }
-                }
-                return false;
-            }
-            public static bool IsDBNull(object Expression)
-            {
-                if ((Expression != null) && (Expression == DBNull.Value))
+                if (Expression is bool)
                 {
                     return true;
                 }
-                return false;
-            }
-
-            public static Boolean IsNumeric(object input)
-            {
-                if (input == null || input == DBNull.Value)
-                    return false;
-                Double temp;
-                return Double.TryParse(input.ToString(), out temp);
-            }
-            public static Boolean IsNumeric(String input)
-            {
-                Double temp;
-                return Double.TryParse(input, out temp);
-            }
-
-            public static Boolean IsNumeric(String input, NumberStyles numberStyle)
-            {
-                Double temp;
-                return Double.TryParse(input, numberStyle, CultureInfo.CurrentCulture, out temp);
-            }
-
-            internal static bool IsNumericTypeCode(TypeCode TypCode)
-            {
-                switch (TypCode)
+                if (Expression is string)
                 {
-                    case TypeCode.Boolean:
-                    case TypeCode.Byte:
-                    case TypeCode.Int16:
-                    case TypeCode.Int32:
-                    case TypeCode.Int64:
-                    case TypeCode.Single:
-                    case TypeCode.Double:
-                    case TypeCode.Decimal:
+                    string val = (string)Expression;
+                    if (!(val.ToLower().Contains("false") || val.ToLower().Contains("true")))
+                    {
+                        return false;
+                    }
+                    try
+                    {
+                        bool res = bool.Parse((string)Expression);
                         return true;
+                    }
+                    catch (Exception)
+                    {
+                    }
                 }
+            }
+            return false;
+        }
+        public static bool IsDBNull(object Expression)
+        {
+            if ((Expression != null) && (Expression == DBNull.Value))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        public static Boolean IsNumeric(object input)
+        {
+            if (input == null || input == DBNull.Value)
+                return false;
+            Double temp;
+            return Double.TryParse(input.ToString(), out temp);
+        }
+        public static Boolean IsNumeric(String input)
+        {
+            Double temp;
+            return Double.TryParse(input, out temp);
+        }
+
+        public static Boolean IsNumeric(String input, NumberStyles numberStyle)
+        {
+            Double temp;
+            return Double.TryParse(input, numberStyle, CultureInfo.CurrentCulture, out temp);
+        }
+
+        internal static bool IsNumericTypeCode(TypeCode TypCode)
+        {
+            switch (TypCode)
+            {
+                case TypeCode.Boolean:
+                case TypeCode.Byte:
+                case TypeCode.Int16:
+                case TypeCode.Int32:
+                case TypeCode.Int64:
+                case TypeCode.Single:
+                case TypeCode.Double:
+                case TypeCode.Decimal:
+                    return true;
+            }
+            return false;
+        }
+
+        public static bool IsNumber(string s)
+        {
+            try
+            {
+                double result = 0;
+                return Double.TryParse(s, System.Globalization.NumberStyles.Any, System.Globalization.NumberFormatInfo.CurrentInfo, out result);
+            }
+            catch
+            {
                 return false;
             }
+        }
+        public static bool IsNumber(string s, System.Globalization.NumberStyles style)
+        {
+            try
+            {
+                double result = 0;
+                return Double.TryParse(s, style, System.Globalization.NumberFormatInfo.CurrentInfo, out result);
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
-            public static bool IsNumber(string s)
-            {
-                try
-                {
-                    double result = 0;
-                    return Double.TryParse(s, System.Globalization.NumberStyles.Any, System.Globalization.NumberFormatInfo.CurrentInfo, out result);
-                }
-                catch
-                {
-                    return false;
-                }
-            }
-            public static bool IsNumber(string s, System.Globalization.NumberStyles style)
-            {
-                try
-                {
-                    double result = 0;
-                    return Double.TryParse(s, style, System.Globalization.NumberFormatInfo.CurrentInfo, out result);
-                }
-                catch
-                {
-                    return false;
-                }
-            }
-
-            public static bool IsNumber(object obj)
-            {
-                if (obj == null)
-                    return false;
-                return IsNumber(obj.ToString());
-            }
+        public static bool IsNumber(object obj)
+        {
+            if (obj == null)
+                return false;
+            return IsNumber(obj.ToString());
+        }
 
         public static bool IsNumericType(Type type)
         {
@@ -2042,7 +2797,23 @@ namespace Nistec
 
         #region Nullable
 
-        public static string ToNullableDateTimeformat(object value, string culture = "he-IL", string format= "yyyy-MM-dd hh:mm:ss")
+        public static DateTime? ToNullableDate(string value, DateFormat format)
+        {
+            return ParseNullableDate(value, Formatter.ToDateFormat(format));
+        }
+        public static DateTime? ParseNullableDate(string value, string format)
+        {
+            if (value == null || value == DBNull.Value.ToString() || value == "")
+                return (DateTime?)null;
+
+            DateTime val;
+            if (DateTime.TryParseExact(value, format, CultureInfo.InvariantCulture, DateTimeStyles.None, out val))
+                return (DateTime?)val;
+            return (DateTime?)null;
+        }
+
+        /*
+        public static string ToNullableDateTimeformat(object value, string culture = "he-IL", string format = "yyyy-MM-dd hh:mm:ss")
         {
             if (value == null || value == DBNull.Value || value.ToString() == "")
                 return null;
@@ -2054,7 +2825,6 @@ namespace Nistec
             }
             return null;
         }
-
         public static DateTime? ToNullableDateIso(object value)
         {
             if (value == null || value == DBNull.Value || value.ToString() == "")
@@ -2070,11 +2840,13 @@ namespace Nistec
             if (value == null || value == DBNull.Value || value.ToString() == "")
                 return (DateTime?)null;
 
-           DateTime val;
-           if(DateTime.TryParseExact(value.ToString(), "yyyy-MM-dd hh:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out val))
-               return (DateTime?)val;
+            DateTime val;
+            if (DateTime.TryParseExact(value.ToString(), "yyyy-MM-dd hh:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out val))
+                return (DateTime?)val;
             return (DateTime?)null;
         }
+        */
+
         public static DateTime? ToNullableDate(object value, string culture = "he-IL")
         {
             if (value == null || value == DBNull.Value || value.ToString() == "")
@@ -2084,10 +2856,13 @@ namespace Nistec
                 return (DateTime?)val;
             return (DateTime?)null;
         }
+
         public static int? ToNullableInt(object value)
         {
             if (value == null || value == DBNull.Value || value.ToString() == "")
                 return (int?)null;
+            if (value is int?)
+                return (int?)value;
             int val;
             if (int.TryParse(value.ToString(), out val))
                 return (int?)val;
@@ -2099,6 +2874,8 @@ namespace Nistec
             {
                 if (value == null || value == DBNull.Value || value.ToString() == "")
                     return (bool?)null;
+                if (value is bool?)
+                    return (bool?)value;
                 bool val;
                 string str = value.ToString();
 
@@ -2117,287 +2894,541 @@ namespace Nistec
         }
 
         internal static Type GetNonNullableType(this Type type)
+        {
+            if (IsNullableType(type))
             {
-                if (IsNullableType(type))
-                {
-                    return type.GetGenericArguments()[0];
-                }
-                return type;
+                return type.GetGenericArguments()[0];
             }
+            return type;
+        }
 
-            internal static Type GetNullableType(Type type)
+        internal static Type GetNullableType(Type type)
+        {
+            if (type.IsValueType && !IsNullableType(type))
             {
-                if (type.IsValueType && !IsNullableType(type))
-                {
-                    return typeof(Nullable<>).MakeGenericType(type);
-                }
-                return type;
+                return typeof(Nullable<>).MakeGenericType(type);
             }
+            return type;
+        }
 
-            internal static bool IsNullableType(this Type type)
-            {
-                return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
-            }
-        
+        internal static bool IsNullableType(this Type type)
+        {
+            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
+        }
+
         #endregion
 
-            #region Is
+        #region Is Type
 
-            internal static bool IsBool(Type type)
-            {
-                return GetNonNullableType(type) == typeof(bool);
-            }
+        internal static bool IsBool(Type type)
+        {
+            return GetNonNullableType(type) == typeof(bool);
+        }
 
-            internal static bool IsNumeric(Type type)
+        internal static bool IsNumeric(Type type)
+        {
+            type = GetNonNullableType(type);
+            if (!type.IsEnum)
             {
-                type = GetNonNullableType(type);
-                if (!type.IsEnum)
+                switch (Type.GetTypeCode(type))
                 {
-                    switch (Type.GetTypeCode(type))
-                    {
-                        case TypeCode.Char:
-                        case TypeCode.SByte:
-                        case TypeCode.Byte:
-                        case TypeCode.Int16:
-                        case TypeCode.Int32:
-                        case TypeCode.Int64:
-                        case TypeCode.Double:
-                        case TypeCode.Single:
-                        case TypeCode.UInt16:
-                        case TypeCode.UInt32:
-                        case TypeCode.UInt64:
-                            return true;
-                    }
+                    case TypeCode.Char:
+                    case TypeCode.SByte:
+                    case TypeCode.Byte:
+                    case TypeCode.Int16:
+                    case TypeCode.Int32:
+                    case TypeCode.Int64:
+                    case TypeCode.Double:
+                    case TypeCode.Single:
+                    case TypeCode.UInt16:
+                    case TypeCode.UInt32:
+                    case TypeCode.UInt64:
+                        return true;
                 }
+            }
+            return false;
+        }
+
+        internal static bool IsInteger(Type type)
+        {
+            type = GetNonNullableType(type);
+            if (type.IsEnum)
+            {
                 return false;
             }
-
-            internal static bool IsInteger(Type type)
+            switch (Type.GetTypeCode(type))
             {
-                type = GetNonNullableType(type);
-                if (type.IsEnum)
-                {
+                case TypeCode.Byte:
+                case TypeCode.SByte:
+                case TypeCode.Int16:
+                case TypeCode.Int32:
+                case TypeCode.Int64:
+                case TypeCode.UInt16:
+                case TypeCode.UInt32:
+                case TypeCode.UInt64:
+                    return true;
+                default:
                     return false;
-                }
+            }
+        }
+
+
+        internal static bool IsArithmetic(Type type)
+        {
+            type = GetNonNullableType(type);
+            if (!type.IsEnum)
+            {
                 switch (Type.GetTypeCode(type))
                 {
-                    case TypeCode.Byte:
-                    case TypeCode.SByte:
                     case TypeCode.Int16:
                     case TypeCode.Int32:
                     case TypeCode.Int64:
+                    case TypeCode.Double:
+                    case TypeCode.Single:
                     case TypeCode.UInt16:
                     case TypeCode.UInt32:
                     case TypeCode.UInt64:
                         return true;
-                    default:
-                        return false;
                 }
             }
+            return false;
+        }
 
-
-            internal static bool IsArithmetic(Type type)
+        internal static bool IsUnsignedInt(Type type)
+        {
+            type = GetNonNullableType(type);
+            if (!type.IsEnum)
             {
-                type = GetNonNullableType(type);
-                if (!type.IsEnum)
-                {
-                    switch (Type.GetTypeCode(type))
-                    {
-                        case TypeCode.Int16:
-                        case TypeCode.Int32:
-                        case TypeCode.Int64:
-                        case TypeCode.Double:
-                        case TypeCode.Single:
-                        case TypeCode.UInt16:
-                        case TypeCode.UInt32:
-                        case TypeCode.UInt64:
-                            return true;
-                    }
-                }
-                return false;
-            }
-
-            internal static bool IsUnsignedInt(Type type)
-            {
-                type = GetNonNullableType(type);
-                if (!type.IsEnum)
-                {
-                    switch (Type.GetTypeCode(type))
-                    {
-                        case TypeCode.UInt16:
-                        case TypeCode.UInt32:
-                        case TypeCode.UInt64:
-                            return true;
-                    }
-                }
-                return false;
-            }
-
-            internal static bool IsIntegerOrBool(Type type)
-            {
-                type = GetNonNullableType(type);
-                if (!type.IsEnum)
-                {
-                    switch (Type.GetTypeCode(type))
-                    {
-                        case TypeCode.Int64:
-                        case TypeCode.Int32:
-                        case TypeCode.Int16:
-                        case TypeCode.UInt64:
-                        case TypeCode.UInt32:
-                        case TypeCode.UInt16:
-                        case TypeCode.Boolean:
-                        case TypeCode.SByte:
-                        case TypeCode.Byte:
-                            return true;
-                    }
-                }
-                return false;
-            }
-
-            private static bool IsDelegate(Type t)
-            {
-                return t.IsSubclassOf(typeof(System.MulticastDelegate));
-            }
-
-            internal static bool IsConvertible(Type type)
-            {
-                type = GetNonNullableType(type);
-                if (type.IsEnum)
-                {
-                    return true;
-                }
                 switch (Type.GetTypeCode(type))
                 {
+                    case TypeCode.UInt16:
+                    case TypeCode.UInt32:
+                    case TypeCode.UInt64:
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        internal static bool IsIntegerOrBool(Type type)
+        {
+            type = GetNonNullableType(type);
+            if (!type.IsEnum)
+            {
+                switch (Type.GetTypeCode(type))
+                {
+                    case TypeCode.Int64:
+                    case TypeCode.Int32:
+                    case TypeCode.Int16:
+                    case TypeCode.UInt64:
+                    case TypeCode.UInt32:
+                    case TypeCode.UInt16:
                     case TypeCode.Boolean:
-                    case TypeCode.Byte:
                     case TypeCode.SByte:
-                    case TypeCode.Int16:
-                    case TypeCode.Int32:
-                    case TypeCode.Int64:
-                    case TypeCode.UInt16:
-                    case TypeCode.UInt32:
-                    case TypeCode.UInt64:
-                    case TypeCode.Single:
-                    case TypeCode.Double:
-                    case TypeCode.Char:
-                        return true;
-                    default:
-                        return false;
-                }
-            }
-            internal static Type FindGenericType(Type definition, Type type)
-            {
-                while (type != null && type != typeof(object))
-                {
-                    if (type.IsGenericType && AreEquivalent(type.GetGenericTypeDefinition(), definition))
-                    {
-                        return type;
-                    }
-                    if (definition.IsInterface)
-                    {
-                        foreach (Type itype in type.GetInterfaces())
-                        {
-                            Type found = FindGenericType(definition, itype);
-                            if (found != null)
-                                return found;
-                        }
-                    }
-                    type = type.BaseType;
-                }
-                return null;
-            }
-
-            internal static bool IsUnsigned(Type type)
-            {
-                type = GetNonNullableType(type);
-                switch (Type.GetTypeCode(type))
-                {
                     case TypeCode.Byte:
-                    case TypeCode.UInt16:
-                    case TypeCode.Char:
-                    case TypeCode.UInt32:
-                    case TypeCode.UInt64:
                         return true;
-                    default:
-                        return false;
                 }
             }
+            return false;
+        }
 
-            internal static bool IsFloatingPoint(Type type)
+        private static bool IsDelegate(Type t)
+        {
+            return t.IsSubclassOf(typeof(System.MulticastDelegate));
+        }
+
+        internal static bool IsConvertible(Type type)
+        {
+            type = GetNonNullableType(type);
+            if (type.IsEnum)
             {
-                type = GetNonNullableType(type);
-                switch (Type.GetTypeCode(type))
-                {
-                    case TypeCode.Single:
-                    case TypeCode.Double:
-                        return true;
-                    default:
-                        return false;
-                }
+                return true;
             }
-
-            internal static bool AreEquivalent(Type t1, Type t2)
+            switch (Type.GetTypeCode(type))
             {
-                return t1 == t2 || t1.IsEquivalentTo(t2);
-            }
-
-            internal static bool AreReferenceAssignable(Type dest, Type src)
-            {
-                // WARNING: This actually implements "Is this identity assignable and/or reference assignable?"
-                if (AreEquivalent(dest, src))
-                {
+                case TypeCode.Boolean:
+                case TypeCode.Byte:
+                case TypeCode.SByte:
+                case TypeCode.Int16:
+                case TypeCode.Int32:
+                case TypeCode.Int64:
+                case TypeCode.UInt16:
+                case TypeCode.UInt32:
+                case TypeCode.UInt64:
+                case TypeCode.Single:
+                case TypeCode.Double:
+                case TypeCode.Char:
                     return true;
-                }
-                if (!dest.IsValueType && !src.IsValueType && dest.IsAssignableFrom(src))
-                {
-                    return true;
-                }
-                return false;
+                default:
+                    return false;
             }
-            #endregion
-            public static object StringToObject(string type, string value)
+        }
+        internal static Type FindGenericType(Type definition, Type type)
+        {
+            while (type != null && type != typeof(object))
             {
-                if (type == null)
+                if (type.IsGenericType && AreEquivalent(type.GetGenericTypeDefinition(), definition))
+                {
+                    return type;
+                }
+                if (definition.IsInterface)
+                {
+                    foreach (Type itype in type.GetInterfaces())
+                    {
+                        Type found = FindGenericType(definition, itype);
+                        if (found != null)
+                            return found;
+                    }
+                }
+                type = type.BaseType;
+            }
+            return null;
+        }
+
+        internal static bool IsUnsigned(Type type)
+        {
+            type = GetNonNullableType(type);
+            switch (Type.GetTypeCode(type))
+            {
+                case TypeCode.Byte:
+                case TypeCode.UInt16:
+                case TypeCode.Char:
+                case TypeCode.UInt32:
+                case TypeCode.UInt64:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        internal static bool IsFloatingPoint(Type type)
+        {
+            type = GetNonNullableType(type);
+            switch (Type.GetTypeCode(type))
+            {
+                case TypeCode.Single:
+                case TypeCode.Double:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        internal static bool AreEquivalent(Type t1, Type t2)
+        {
+            return t1 == t2 || t1.IsEquivalentTo(t2);
+        }
+
+        internal static bool AreReferenceAssignable(Type dest, Type src)
+        {
+            // WARNING: This actually implements "Is this identity assignable and/or reference assignable?"
+            if (AreEquivalent(dest, src))
+            {
+                return true;
+            }
+            if (!dest.IsValueType && !src.IsValueType && dest.IsAssignableFrom(src))
+            {
+                return true;
+            }
+            return false;
+        }
+        #endregion
+
+        #region Is Serialize
+
+        public static bool IsISerializable(Type type)
+        {
+            if (typeof(ISerializable).IsAssignableFrom(type))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        public static bool IsPrimitiveOrString(Type type)
+        {
+            if (type == typeof(string))
+            {
+                return true;
+            }
+
+            return IsPrimitive(type);
+        }
+
+        /// <summary>
+        ///   Is the simple type (string, DateTime, TimeSpan, Decimal, Enumeration or other primitive type)
+        /// </summary>
+        /// <param name = "type"></param>
+        /// <returns></returns>
+        public static bool IsPrimitive(Type type)
+        {
+            if (type == typeof(DateTime))
+            {
+                return true;
+            }
+            if (type == typeof(TimeSpan))
+            {
+                return true;
+            }
+            if (type == typeof(Decimal))
+            {
+                // new since the version 2
+                return true;
+            }
+            if (type == typeof(Guid))
+            {
+                // new since the version 2.8
+                return true;
+            }
+
+
+            return type.IsPrimitive;
+        }
+
+        /// <summary>
+        ///   Is the simple type (string, DateTime, TimeSpan, Decimal, Enumeration or other primitive type)
+        /// </summary>
+        /// <param name = "type"></param>
+        /// <returns></returns>
+        public static bool IsSimple(Type type)
+        {
+            if (type == typeof(string))
+            {
+                return true;
+            }
+            if (type == typeof(Type) || type.IsSubclassOf(typeof(Type)))
+            {
+                // new since v.2.11
+                return true;
+            }
+            if (type.IsEnum)
+            {
+                return true;
+            }
+            if (type == typeof(byte[]))
+            {
+                // since v.2.16 is byte[] a simple type
+                return true;
+            }
+
+            return IsPrimitive(type);
+        }
+
+        /// <summary>
+        ///   Is type an IEnumerable
+        /// </summary>
+        /// <param name = "type"></param>
+        /// <returns></returns>
+        public static bool IsEnumerable(Type type)
+        {
+            return typeof(IEnumerable).IsAssignableFrom(type);
+        }
+
+        /// <summary>
+        ///   Is type an Generic IEnumerable
+        /// </summary>
+        /// <param name = "type"></param>
+        /// <returns></returns>
+        public static bool IsGenericEnumerable(Type type)
+        {
+            return type.IsGenericType && typeof(IEnumerable<>).IsAssignableFrom(type);
+        }
+
+        /// <summary>
+        ///   Is type ICollection
+        /// </summary>
+        /// <param name = "type"></param>
+        /// <returns></returns>
+        public static bool IsCollection(Type type)
+        {
+            return typeof(ICollection).IsAssignableFrom(type);
+        }
+
+        /// <summary>
+        ///   Is type IDictionary
+        /// </summary>
+        /// <param name = "type"></param>
+        /// <param name = "includeGeneric"></param>
+        /// <returns></returns>
+        public static bool IsAssignableFromDictionary(Type type, bool includeGeneric = false)
+        {
+            if (includeGeneric)
+                return (type.IsGenericType || (type.BaseType != null && type.BaseType.IsGenericType)) && typeof(IDictionary).IsAssignableFrom(type);
+            return typeof(IDictionary).IsAssignableFrom(type);
+        }
+
+        /// <summary>
+        ///   Is type Is Generic Dictionary{string,object}
+        /// </summary>
+        /// <param name = "type"></param>
+        /// <returns></returns>
+        public static bool IsStringObjectDictionary(Type type)
+        {
+            return type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(Dictionary<string, object>) || type.GetGenericTypeDefinition() == typeof(ConcurrentDictionary<string, object>));
+        }
+
+        /// <summary>
+        ///   Is type Is Generic Dictionary
+        /// </summary>
+        /// <param name = "type"></param>
+        /// <returns></returns>
+        public static bool IsGenericDictionary(Type type)
+        {
+            return type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(Dictionary<,>) || type.GetGenericTypeDefinition() == typeof(ConcurrentDictionary<,>));
+        }
+
+        public static bool IsGenericKeyStringDictionary(Type type)
+        {
+            return type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(Dictionary<,>) || type.GetGenericTypeDefinition() == typeof(ConcurrentDictionary<,>)) && type.GetGenericArguments()[0] == typeof(string);
+            //return type.IsGenericType && typeof(IDictionary<,>).IsAssignableFrom(type) && type.GetGenericArguments()[0] == typeof(string);
+        }
+
+        public static bool IsKeyValuePair(Type type)
+        {
+            if (type.IsGenericType)
+            {
+                return type.GetGenericTypeDefinition() != null ? type.GetGenericTypeDefinition() == typeof(KeyValuePair<,>) : false;
+            }
+            return false;
+        }
+        public static bool IsKeyValuePaire<TKey, TValue>(Type type)
+        {
+            return type == typeof(KeyValuePair<TKey, TValue>);
+        }
+
+
+        /// <summary>
+        ///   Is type Is Generic List
+        /// </summary>
+        /// <param name = "type"></param>
+        /// <returns></returns>
+        public static bool IsGenericList(Type type)
+        {
+
+            return (type.IsGenericType && (type.GetGenericTypeDefinition() == typeof(List<>)));
+
+            //return type.IsGenericType && typeof(IList<>).IsAssignableFrom(type);
+        }
+
+        /// <summary>
+        ///   Is type Is Generic Hashset
+        /// </summary>
+        /// <param name = "type"></param>
+        /// <returns></returns>
+        public static bool IsGenericSet(Type type)
+        {
+            return type.IsGenericType && typeof(ISet<>).IsAssignableFrom(type);
+        }
+
+        /// <summary>
+        ///   Is it array? It does not matter if singledimensional or multidimensional
+        /// </summary>
+        /// <param name = "type"></param>
+        /// <returns></returns>
+        public static bool IsArray(Type type)
+        {
+            return type.IsArray;
+        }
+
+        public static bool IsType(Type type)
+        {
+            return type == typeof(Type) || type.IsSubclassOf(typeof(Type));
+        }
+        public static bool IsDataTable(Type type)
+        {
+            return type == typeof(DataTable);
+        }
+        public static bool IsDataSet(Type type)
+        {
+            return type == typeof(DataSet);
+        }
+        public static bool IsStream(Type type)
+        {
+            return typeof(Stream).IsAssignableFrom(type);
+        }
+        public static bool IsXmlDocument(Type type)
+        {
+            return typeof(XmlDocument) == type;
+        }
+        public static bool IsXmlNode(Type type)
+        {
+            return typeof(XmlNode).IsAssignableFrom(type);
+        }
+        public static bool IsListKeyValue<TKey, TValue>(Type type)
+        {
+            return typeof(IKeyValue).IsAssignableFrom(type)
+                || type == typeof(List<KeyValuePair<TKey, TValue>>);
+        }
+
+        public static bool IsISerialEntity(Type type)
+        {
+            return typeof(ISerialEntity).IsAssignableFrom(type);
+        }
+        public static bool IsISerialContext(Type type)
+        {
+            return typeof(ISerialContext).IsAssignableFrom(type);
+        }
+        public static bool IsISerialJson(Type type)
+        {
+            return typeof(ISerialJson).IsAssignableFrom(type);
+        }
+
+
+        #endregion
+
+        #region extended
+
+        public static int RemoveLeadingZero(string value)
+        {
+            //string str = Regx.RegexReplace("^0+(?!$)", value, "");
+            int val;
+            int.TryParse(value.TrimStart('0'), out val);
+            return val;
+        }
+
+        public static object StringToObject(string type, string value)
+        {
+            if (type == null)
+                return value;
+            switch (type.ToLower())
+            {
+                case "boolean":
+                case "bool":
+                    return ToBool(value, false);
+                case "byte":
+                case "sbyte":
+                    return ToByte(value, (byte)0);
+                case "int16":
+                case "int32":
+                case "int":
+                    return ToInt(value);
+                case "int64":
+                case "long":
+                    return ToLong(value);
+                case "uint16":
+                case "uint32":
+                case "uint":
+                    return (uint)ToInt(value);
+                case "uint64":
+                case "ulong":
+                    return (ulong)ToLong(value);
+                case "single":
+                case "float":
+                    return ToFloat(value, 0f);
+                case "double":
+                    return ToDouble(value, 0);
+                case "datetime":
+                case "date":
+                    return ToDateTime(value);
+                case "decimal":
+                    return ToDecimal(value, 0);
+                case "guid":
+                    return ToGuid(value);
+                default:
                     return value;
-                switch (type.ToLower())
-                {
-                    case "boolean":
-                    case "bool":
-                        return ToBool(value, false);
-                    case "byte":
-                    case "sbyte":
-                        return ToByte(value, (byte)0);
-                    case "int16":
-                    case "int32":
-                    case "int":
-                        return ToInt(value);
-                    case "int64":
-                    case "long":
-                        return ToLong(value);
-                    case "uint16":
-                    case "uint32":
-                    case "uint":
-                        return (uint)ToInt(value);
-                    case "uint64":
-                    case "ulong":
-                        return (ulong)ToLong(value);
-                    case "single":
-                    case "float":
-                        return ToFloat(value, 0f);
-                    case "double":
-                        return ToDouble(value, 0);
-                    case "datetime":
-                    case "date":
-                        return ToDateTime(value);
-                    case "decimal":
-                        return ToDecimal(value, 0);
-                    case "guid":
-                        return ToGuid(value);
-                    default:
-                        return value;
-                }
             }
+        }
+        #endregion
     }
 	#endregion
 }

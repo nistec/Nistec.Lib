@@ -124,7 +124,7 @@ namespace Nistec.Generic
         #region collection methods
 
         /// <summary>
-        /// Get this as sorted <see cref="IOrderedEnumerable<KeyValuePair<string, object>>"/>
+        /// Get this as sorted "IOrderedEnumerable !KeyValuePair string, object"
         /// </summary>
         /// <returns></returns>
         public IOrderedEnumerable<KeyValuePair<string, object>> Sorted()

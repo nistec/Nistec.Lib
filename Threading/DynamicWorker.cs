@@ -225,9 +225,9 @@ namespace Nistec.Threading
         public bool EnableResetEvent { get; private set; }
         public ListenerState State { get; private set; }
         public int MaxConnections { get; set; }
-
-        int _ActiveConnections;
-        public int ActiveConnections { get { return _ActiveConnections; } }
+        public bool IsMultiTasks { get; set; }
+        long _ActiveConnections;
+        public int ActiveConnections { get { return (int)_ActiveConnections; } }
 
         protected void OnStateChanged(ListenerState state)
         {
@@ -245,11 +245,12 @@ namespace Nistec.Threading
 
         public DynamicInterval DynamicWait { get; private set; }
 
-        public DynamicWorker(DynamicWaitType waitType = DynamicWaitType.DynamicWait, int maxThread = 1, int interval = 1000, int maxConnections=9999)
+        public DynamicWorker(DynamicWaitType waitType = DynamicWaitType.DynamicWait, int maxThread = 1, int interval = 1000, int maxConnections=9999, bool isMultiTasks=true)
         {
             MaxThreads = (maxThread < 1 || maxThread > MAXTHREAD) ? MAXTHREAD : maxThread;
             Interval = (interval < 1) ? 1000 : interval;
             MaxConnections = maxConnections;
+            IsMultiTasks = isMultiTasks;
             _ActiveConnections = 0;
             EnableResetEvent = false;
             Name = "ActionWorker";
@@ -264,11 +265,13 @@ namespace Nistec.Threading
             }
         }
 
-        public DynamicWorker(DynamicInterval dynamicWait)
+        public DynamicWorker(DynamicInterval dynamicWait, int maxConnections = 9999, bool isMultiTasks = true)
         {
             DynamicWait = dynamicWait;
             MaxThreads = dynamicWait.MaxThread;
             Interval = dynamicWait.DynamicWait;
+            MaxConnections = maxConnections;
+            IsMultiTasks = isMultiTasks;
             EnableResetEvent = false;
             Name = "ActionWorker";
             WaitType = DynamicWaitType.DynamicWait;
@@ -387,7 +390,7 @@ namespace Nistec.Threading
         }
 
         bool lockWasTaken = false;
-        object _locker = new object();
+        static object _locker = new object();
         //long delay;
 
         //public void Delay(TimeSpan time)
@@ -398,19 +401,29 @@ namespace Nistec.Threading
         static readonly AutoResetEvent ResetEvent = new AutoResetEvent(false);
 
         protected bool WorkerAction() {
-            Interlocked.Increment(ref _ActiveConnections);
-            bool ack = ActionTask();
+            try
+            {
+                if (Interlocked.Read(ref _ActiveConnections) > MaxConnections)
+                {
+                    Thread.Sleep(100);
+                }
 
-            //when EnableDynamicWait is true, the ack is for calc DynamicWait()
-            if (EnableDynamicWait)
-                DynamicWait.DynamicWaitAck(ack);
-            //when EnableResetEvent is true, if ack is true the ResetEvent.Set() should set here, otherwise it is by ActionTask
-            else if (EnableResetEvent && ack)
-                ResetEvent.Set();
+                Interlocked.Increment(ref _ActiveConnections);
+                bool ack = ActionTask();
 
-            Interlocked.Decrement(ref _ActiveConnections);
+                //when EnableDynamicWait is true, the ack is for calc DynamicWait()
+                if (EnableDynamicWait)
+                    DynamicWait.DynamicWaitAck(ack);
+                //when EnableResetEvent is true, if ack is true the ResetEvent.Set() should set here, otherwise it is by ActionTask
+                if (EnableResetEvent && ack)
+                    ResetEvent.Set();
 
-            return ack;
+                return ack;
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _ActiveConnections);
+            }
         }
 
         protected void Worker()
@@ -429,19 +442,19 @@ namespace Nistec.Threading
 
                     if (_Pause)
                         Thread.Sleep(_PauseInterval);
-                    else if (Thread.VolatileRead(ref _ActiveConnections) >= MaxConnections)
-                    {
-                        Console.WriteLine("DynamicWorker MaxConnection exceeded, Connections: {0} of {1}", ActiveConnections, MaxConnections);
-                        Thread.Sleep(100);
-                        //counter++;
-                        //if (counter % 10 == 0)
-                        //Log.WarnFormat("Scheduler MaxConnection exceeded, Connections:{0}, {1}", m_Connections, counter);
-                    }
-                    else
+                    //else if (Thread.VolatileRead(ref _ActiveConnections) > MaxConnections)
+                    //{
+                    //    //Console.WriteLine("DynamicWorker MaxConnection exceeded, Connections: {0} of {1}", ActiveConnections, MaxConnections);
+                    //    Thread.Sleep(100);
+                    //    //counter++;
+                    //    //if (counter % 10 == 0)
+                    //    //Log.WarnFormat("Scheduler MaxConnection exceeded, Connections:{0}, {1}", m_Connections, counter);
+                    //}
+                    else if(IsMultiTasks)
                     {
 
-                        Monitor.Enter(_locker);
-                        lockWasTaken = true;
+                        //Monitor.Enter(_locker);
+                        //lockWasTaken = true;
 
                         var task = Task.Factory.StartNew(() =>
                            WorkerAction()
@@ -463,16 +476,20 @@ namespace Nistec.Threading
                         //            ActionTask();
                         //    }
                     }
+                    else
+                    {
+                        WorkerAction();
+                    }
                 }
                 catch (Exception ex)
                 {
                     ActionLog(LogLevel.Error, Name +" error " + ex.Message);
                 }
-                finally
-                {
-                    if (lockWasTaken) Monitor.Exit(_locker);
-                    //Interlocked.Exchange(ref synchronized, 0);
-                }
+                //finally
+                //{
+                //    if (lockWasTaken) Monitor.Exit(_locker);
+                //    //Interlocked.Exchange(ref synchronized, 0);
+                //}
                 //Console.WriteLine("DynamicWait interval: {0}", DynamicWait.DynamicWait);
 
                 if (EnableDynamicWait)

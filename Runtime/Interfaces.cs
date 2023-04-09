@@ -37,10 +37,14 @@ namespace Nistec.Runtime
 
     public interface IMessageStream
     {
+        ///// <summary>
+        ///// Get or Set the message key.
+        ///// </summary>
+        //Guid ItemId { get;}
         /// <summary>
         /// Get or Set the message key.
         /// </summary>
-        string Id { get; set; }
+        string Identifier { get;}
         /// <summary>
         /// Get or Set The serializer formatter.
         /// </summary>
@@ -52,7 +56,11 @@ namespace Nistec.Runtime
         /// <summary>
         /// Get or Set the message group.
         /// </summary>
-        string GroupId { get; set; }
+        string CustomId { get; set; }
+        /// <summary>
+        /// Get or Set the message group.
+        /// </summary>
+        string SessionId { get; set; }
         /// <summary>
         /// Get or Set the message command.
         /// </summary>

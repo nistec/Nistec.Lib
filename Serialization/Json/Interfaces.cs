@@ -43,6 +43,8 @@ namespace Nistec.Serialization
 
         void ParseTo(Dictionary<string, string> d, string json);
 
+        void ParseTo<T>(Dictionary<string, T> d, string json);
+
         void ParseTo<T>(List<T> d, string json);
 
         //IDictionary<string, object> ParseToDictionary(string json);
