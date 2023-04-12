@@ -68,6 +68,16 @@ namespace Nistec
         //bool Initialized { get; }
         ListenerState State { get; }
     }
+
+    public interface IAck
+    {
+        string Display();
+        string ToJson();
+    }
+    public interface IJson
+    {
+        string ToJson();
+    }
 }
 
 namespace Nistec.Esb

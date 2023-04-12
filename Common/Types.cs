@@ -36,8 +36,55 @@ using System.Collections.Concurrent;
 
 namespace Nistec
 {
+    #region ObjectExtension
 
-	#region Strings
+    public static class ObjectExtension
+    {
+        public static bool IsNull(this Object obj)
+        {
+            if (obj == null)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        //public static bool IsNotNull(this Object obj)
+        //{
+        //    if (IsNull(obj))
+        //    {
+        //        return false;
+        //    }
+        //    else
+        //    {
+        //        return true;
+        //    }
+        //}
+
+        public static string ToProprtyString(this object obj, bool multiline=true)
+        {
+            if (obj.IsNull()) return string.Empty;
+            StringBuilder sb = new StringBuilder();
+            foreach (var p in obj.GetType().GetProperties())
+            {
+                var o = p.GetValue(obj, null);
+                var ostr = !o.IsNull() ? o.ToString() : "";
+                if (multiline)
+                    sb.AppendLine(p.Name + ":" + ostr + ", ");
+                else
+                    sb.Append(p.Name + ":" + ostr + ", ");
+            }
+            return sb.ToString();
+        }
+    }
+
+
+    #endregion
+
+    #region Strings
 
     public sealed class Strings
     {
@@ -60,14 +107,32 @@ namespace Nistec
             if (string.IsNullOrEmpty(s))
                 return false;
             s = s.Trim();
-            return (s.StartsWith("{") && s.EndsWith("}")) || (s.StartsWith("[") && s.EndsWith("]"));
+            return (s.StartsWith("{") && s.EndsWith("}")) || (s.StartsWith("[") && s.EndsWith("]")) || (s.StartsWith("\"{") && s.EndsWith("}\"")) || (s.StartsWith("\"[") && s.EndsWith("]\""));
         }
         public static bool IsXmlString(string s)
         {
             if (string.IsNullOrEmpty(s))
                 return false;
             s = s.Trim();
-            return s.StartsWith("<") && s.EndsWith(">");
+            return s.StartsWith("<") && s.EndsWith(">")|| s.StartsWith("\"<") && s.EndsWith(">\"");
+        }
+
+        public static string ReflatJson(string json, bool pretty=true)
+        {
+            if (json == null)
+                return "na";
+
+            json = json.Replace("\\\\", "\\").Replace("\\\"", "\"").Replace("\\\"", "\"").Replace("\\r\\n", "").Trim('\"');
+            if (!IsJsonString(json))
+            {
+                return json;
+            }
+            if (pretty)
+            {
+                return json.Replace("{", "").Replace("}", Environment.NewLine).Replace("}\"", Environment.NewLine).Replace(",", Environment.NewLine);//.Replace(",\"", Environment.NewLine);
+            }
+            else
+                return json.Replace("{", "").Replace("}", Environment.NewLine);
         }
 
         public static string StrReverse(string Expression)
@@ -364,6 +429,14 @@ namespace Nistec
             List<string> list = new List<string>();
             return s.Split(spliter).ToList<string>();
 
+        }
+        public static string ArrayToString(string[] array)
+        {
+            if (array == null || array.Length == 0)
+            {
+                return string.Empty;
+            }
+            return array.JoinTrim();
         }
 
         public static string ArrayToString(string[] array, char spliter, bool trimEnd)
@@ -1281,8 +1354,14 @@ namespace Nistec
         {
             return greatThenEqual ? (value >= greatThen ? valueIfGreatThen : value) : (value > greatThen ? valueIfGreatThen : value);
         }
-
-        
+        public static object NZeq(object value, object equalTo, object ifYes,object ifNot)
+        {
+            return (value == equalTo) ? ifYes : ifNot;
+        }
+        public static string NZeq(string value, string equalTo, string ifYes, string ifNot)
+        {
+            return (value == equalTo) ? ifYes : ifNot;
+        }
 
 
         public static object ChangeType(object value, Type type)

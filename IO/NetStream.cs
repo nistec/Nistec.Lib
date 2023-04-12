@@ -410,6 +410,32 @@ namespace Nistec.IO
             return new NetStream(b);
         }
         /// <summary>
+        /// Write text to stream
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public static NetStream WriteTo(string text)
+        {
+            return new NetStream(Encoding.UTF8.GetBytes(text ?? ""));
+
+            //var stream = new NetStream();
+            //var writer = new StreamWriter(stream);
+            //writer.Write(text);
+            //writer.Flush();
+            //stream.Position = 0;
+            //return stream;
+        }
+        /// <summary>
+        /// Read stream to text
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <returns></returns>
+        public static string ReadTo(NetStream stream)
+        {
+            return Encoding.UTF8.GetString(stream.ToArray());
+        }
+
+        /// <summary>
         /// Save the current stream to file.
         /// </summary>
         /// <param name="filename"></param>

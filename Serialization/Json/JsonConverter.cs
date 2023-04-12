@@ -489,6 +489,76 @@ namespace Nistec.Serialization
 
             return output.ToString();
         }
+
+        public static string PrintReflat(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return input;
+
+            var output = new StringBuilder();
+            int depth = 0;
+            int len = input.Length;
+            char[] chars = input.ToCharArray();
+            for (int i = 0; i < len; ++i)
+            {
+                char ch = chars[i];
+
+                if (ch == '\"') // found string span
+                {
+                    bool str = true;
+                    while (str)
+                    {
+                        output.Append(ch);
+                        ch = chars[++i];
+                        if (ch == '\\')
+                        {
+                            output.Append(ch);
+                            ch = chars[++i];
+                        }
+                        else if (ch == '\"')
+                            str = false;
+                    }
+                }
+
+                switch (ch)
+                {
+                    case '{':
+                        //output.Append(ch);
+                        output.AppendLine();
+                        //AppendIndent(output, ++depth);
+                        break;
+                    case '[':
+                        output.Append(ch);
+                        //output.AppendLine();
+                        //AppendIndent(output, ++depth);
+                        break;
+                    case '}':
+                        output.AppendLine();
+                        //AppendIndent(output, --depth);
+                        //output.Append(ch);
+                        break;
+                    case ']':
+                        //output.AppendLine();
+                        //AppendIndent(output, --depth);
+                        output.Append(ch);
+                        break;
+                    case ',':
+                        output.Append(ch);
+                        output.AppendLine();
+                        AppendIndent(output, depth);
+                        break;
+                    case ':':
+                        output.Append(" : ");
+                        break;
+                    default:
+                        if (!char.IsWhiteSpace(ch))
+                            output.Append(ch);
+                        break;
+                }
+            }
+
+            return output.ToString();
+        }
         #endregion
     }
 }

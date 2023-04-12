@@ -151,21 +151,22 @@ namespace Nistec.Threading
 
     public class DynamicInterval
     {
-        public DynamicInterval(int defaultWait = 1000, int minWait = 100, int maxWait = 10000, int maxThread = 1)
+        public DynamicInterval(int defaultWait = 1000, int maxWait = 10000, int maxThread = 1)
         {
             IntervalWait = defaultWait;
             MaxThread = (maxThread < 1 || maxThread > DynamicWorker.MAXTHREAD) ? DynamicWorker.MAXTHREAD : maxThread;
             IntervalWait = defaultWait;
-            MinWait = minWait;
+            MinWait = defaultWait > 200 ? defaultWait / 2 : defaultWait;
             MaxWait = maxWait;
-            Step = minWait <= 100 ? 10 : minWait / 10;
+            Step = MinWait <= 100 ? 10 : MinWait / 10;
         }
+        
         int Step = 10;
         int MaxWait = 5000;
-        int MinWait = 100;
+        int MinWait = 10;
 
         int IntervalWait = 0;
-        int _MaxThread = 1;
+        //int _MaxThread = 1;
         int IntervalDivWait = 0;
 
         //public bool EnableDynamicWait { get; set; }
@@ -213,6 +214,7 @@ namespace Nistec.Threading
     public class DynamicWorker : IDynamicWait,IListener
     {
         public const int MAXTHREAD = 10;
+        public const int MAXWAIT = 10000;
 
         public Func<bool> ActionTask { get; set; }
         public Action<LogLevel, string> ActionLog { get; set; }
@@ -258,7 +260,7 @@ namespace Nistec.Threading
             EnableDynamicWait = waitType == DynamicWaitType.DynamicWait;
             if (waitType== DynamicWaitType.DynamicWait)
             {
-                DynamicWait = new DynamicInterval(Interval);
+                DynamicWait = new DynamicInterval(Interval, MAXWAIT, maxThread);
             }
             else if(waitType== DynamicWaitType.ResetEvent){
                 EnableResetEvent = true;
