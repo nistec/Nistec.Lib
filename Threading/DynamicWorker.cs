@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Nistec.Generic;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,9 +11,9 @@ namespace Nistec.Threading
 
     public enum DynamicWaitType
     {
-        None,
-        DynamicWait,
-        ResetEvent,
+        None = 0,
+        DynamicWait = 1,
+        ResetEvent = 2,
     }
 
     public interface IDynamicWait
@@ -195,7 +196,7 @@ namespace Nistec.Threading
                 else if (IntervalDivWait > MinWait)
                     return Interlocked.Exchange(ref IntervalWait, IntervalDivWait);
                 else
-                    return Interlocked.Exchange(ref IntervalWait, IntervalWait - Step);
+                    return Interlocked.Add(ref IntervalWait, - Step);
             }
             else
             {
@@ -203,7 +204,7 @@ namespace Nistec.Threading
                 if (IntervalWait > MaxWait)
                     return Interlocked.Exchange(ref IntervalWait, MaxWait);
                 else
-                    return Interlocked.Exchange(ref IntervalWait, IntervalWait + Step);
+                    return Interlocked.Add(ref IntervalWait, Step);
             }
         }
     }
@@ -223,13 +224,31 @@ namespace Nistec.Threading
         public int Interval { get; set; }
         public string Name { get; set; }
         public DynamicWaitType WaitType { get; private set; }
-        public bool EnableDynamicWait { get; private set; }
+        public bool EnableDynamicWait { get; set; }
         public bool EnableResetEvent { get; private set; }
         public ListenerState State { get; private set; }
         public int MaxConnections { get; set; }
         public bool IsMultiTasks { get; set; }
         long _ActiveConnections;
         public int ActiveConnections { get { return (int)_ActiveConnections; } }
+
+        public NameValueArgs Report()
+        {
+            var args = new NameValueArgs();
+            args.Add("Name", Name);
+            args.Add("MaxThreads", MaxThreads);
+            args.Add("Interval", Interval);
+            args.Add("WaitType", WaitType.ToString());
+            args.Add("EnableDynamicWait", EnableDynamicWait);
+            args.Add("EnableResetEvent", EnableResetEvent);
+            args.Add("State", State.ToString());
+            args.Add("MaxConnections", MaxConnections);
+            args.Add("IsMultiTasks", IsMultiTasks);
+            args.Add("ActiveConnections", ActiveConnections);
+            args.Add("ActiveConnections", ActiveConnections);
+            args.Add("MaxThreads", MaxThreads);
+            return args;
+        }
 
         protected void OnStateChanged(ListenerState state)
         {
@@ -244,6 +263,13 @@ namespace Nistec.Threading
         //public bool EnableResetEvent { get { return _EnableResetEvent; } set{ _EnableResetEvent = (value && EnableDynamicWait)?false: value; } }
 
         //public bool EnableDynamicWait { get { return DynamicWait != null; } }
+
+        public int CurrentWait()
+        {
+            if (WaitType == DynamicWaitType.DynamicWait)
+                return DynamicWait.DynamicWait;
+            return Interval;
+        }
 
         public DynamicInterval DynamicWait { get; private set; }
 

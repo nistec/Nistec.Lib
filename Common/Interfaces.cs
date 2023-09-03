@@ -71,13 +71,19 @@ namespace Nistec
 
     public interface IAck
     {
+        string Identifier { get;}
+        string Message { get; }
+        object Response { get; }
+        int Status { get; }
+        bool IsOk { get; }
         string Display();
         string ToJson();
     }
-    public interface IJson
-    {
-        string ToJson();
-    }
+
+    //public interface IJson
+    //{
+    //    string ToJson();
+    //}
 }
 
 namespace Nistec.Esb

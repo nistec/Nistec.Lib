@@ -409,6 +409,12 @@ namespace Nistec.IO
             byte[] b = Convert.FromBase64String(base64String);
             return new NetStream(b);
         }
+
+        public static byte[] GetBytes(string text)
+        {
+            return Encoding.UTF8.GetBytes(text ?? "");
+        }
+
         /// <summary>
         /// Write text to stream
         /// </summary>

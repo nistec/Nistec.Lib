@@ -617,7 +617,20 @@ namespace Nistec.Serialization
                 throw ex;
             }
         }
-        
+        public static string ToBase64(byte[] bytes)
+        {
+            if (bytes == null)
+                return null;
+            return Convert.ToBase64String(bytes, 0, bytes.Length);
+        }
+
+        public static byte[] FromBase64(string base64String)
+        {
+            if (base64String == null)
+                return null;
+
+            return Convert.FromBase64String(base64String);
+        }
 
         /// <summary>
         /// DeserializeFromBase64

@@ -32,6 +32,11 @@ namespace Nistec//.Data
         private int min;
         private int max;
         private bool isNotNull;
+
+        public static Range Empty
+        {
+            get { return new Range(0, 0); }
+        }
         public Range(int min, int max)
         {
             if (min > max)

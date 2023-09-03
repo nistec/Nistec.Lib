@@ -157,7 +157,10 @@ namespace Nistec.Generic
 
             base.Add(key, value == null ? null : value.ToString());
         }
-
+        public virtual void Add(string[] keyValueParameters)
+        {
+            Parse(keyValueParameters);
+        }
         #endregion
 
         #region ctor
@@ -511,7 +514,7 @@ namespace Nistec.Generic
         //    return sortedDict;
         //}
 
-       
+
         #region ISerialJson
         /*
         public string ToJson(bool pretty = false)
@@ -548,6 +551,19 @@ namespace Nistec.Generic
         */
 
         #endregion
+
+        public static GenericNameValue Convert(IDictionary<string, string> dic)
+        {
+            if (dic == null)
+                return null;
+            var nva = new GenericNameValue();
+
+            foreach (var entry in dic.ToArray())
+            {
+                nva[entry.Key] = Types.NzOr(entry.Value, "");
+            }
+            return nva;
+        }
 
     }
 
@@ -865,6 +881,19 @@ namespace Nistec.Generic
         #endregion
 
         #region converter
+
+        public static GenericKeyValue<T> Convert(IDictionary<string, object> dic)
+        {
+            if (dic == null)
+                return null;
+            var nva = new GenericKeyValue<T>();
+
+            foreach (var entry in dic.ToArray())
+            {
+                nva[entry.Key] = (T)GenericTypes.Cast<T>(entry.Value) ;
+            }
+            return nva;
+        }
 
         public IDictionary Dictionary()
         {

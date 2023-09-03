@@ -33,7 +33,30 @@ namespace Nistec.Runtime
 {
     public enum TransformType : byte { None = 0, Object = 100, Stream = 101, Json = 102, Base64 = 103, Text = 104, Ack = 105, State = 106, Csv = 107, Xml = 108 }//{Message=0,Stream=1,Json=2 }
 
-    public enum DuplexTypes : byte { None = 0, NoWaite = 1, WaitOne=2}
+    public enum DuplexTypes : byte { None = 0, Respond = 1 }//, WaitOne=2}
+
+    public interface ITransformHeader //: IDisposable
+    {
+
+        /// <summary>
+        /// Get or Set indicate wether the message is a duplex type.
+        /// </summary>
+        bool IsDuplex { get; }//{ get; set; }
+
+        /// <summary>
+        /// Get or Set DuplexType.
+        /// </summary>
+        DuplexTypes DuplexType { get; }
+
+        ///// <summary>
+        /////  Get or Set The message expiration.
+        ///// </summary>
+        //int Expiration { get;}
+        /// <summary>
+        /// Get or Set The result type name.
+        /// </summary>
+        TransformType TransformType { get; }
+    }
 
     public interface IMessageStream
     {
@@ -68,11 +91,7 @@ namespace Nistec.Runtime
         /// <summary>
         /// Get or Set who send the message.
         /// </summary>
-        string Sender { get; set; }
-        /// <summary>
-        /// Get or Set indicate wether the message is a duplex type.
-        /// </summary>
-        DuplexTypes DuplexType { get; set; }
+        string Source { get; set; }
         /// <summary>
         ///  Get or Set The message expiration.
         /// </summary>
@@ -80,7 +99,7 @@ namespace Nistec.Runtime
         /// <summary>
         /// Get or Set the last time that message was modified.
         /// </summary>
-        DateTime Modified { get; set; }
+        DateTime Creation { get; set; }
         /// <summary>
         /// Get or Set the extra arguments for current message.
         /// </summary>
@@ -89,6 +108,12 @@ namespace Nistec.Runtime
         /// Get or Set the transform type name.
         /// </summary>
         TransformType TransformType { get; set; }
+        /// <summary>
+        /// Get or Set indicate wether the message is a duplex type.
+        /// </summary>
+        DuplexTypes DuplexType { get; set; }
+
+        //ITransformHeader Transform { get;}
         /// <summary>
         /// Get entity as json
         /// </summary>

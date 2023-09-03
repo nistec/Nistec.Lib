@@ -10,8 +10,7 @@ namespace Nistec.Runtime
     {
 
         PerformanceCounter pc;
-
-       
+               
         //CPUCounter.NextValue();
         public static PerformanceCounter CPUCounter()
         {

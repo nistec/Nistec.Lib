@@ -33,6 +33,7 @@ using System.Data;
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using Nistec.Serialization;
+using System.Net.NetworkInformation;
 
 namespace Nistec.Generic
 {
@@ -390,6 +391,24 @@ namespace Nistec.Generic
         }
         #endregion
 
+        static string _MacAddress;
+        public static string MacAddress()
+        {
+            if(_MacAddress==null)
+            {
+                _MacAddress = (
+                    from nic in NetworkInterface.GetAllNetworkInterfaces()
+                    where nic.OperationalStatus == OperationalStatus.Up
+                    select nic.GetPhysicalAddress().ToString()
+                ).FirstOrDefault();
+            }
+            return _MacAddress;
+        }
+        public static string NewUxid()
+        {
+            return NewUsid(MacAddress());
+        }
+
         public static Guid NewUuid()
         {
 
@@ -399,6 +418,27 @@ namespace Nistec.Generic
                 return guid;
             else
                 return Guid.NewGuid();
+        }
+        public static string Identifier()
+        {
+            Guid guid = NewUuid();
+            return Strings.StrReverse(BaseConverter.ToBase32String(guid.ToByteArray())).ToLower();
+        }
+
+        public static string NewUsid(string generatorId)
+        {
+            Guid guid= NewUuid();
+            return Strings.StrReverse(BaseConverter.ToBase32String(guid.ToByteArray())) + generatorId;
+        }
+
+        public static void SetGenerator(byte a, byte b, byte c)
+        {
+            GENERATORID = string.Format("{0}{1}{2}", a, b, c);
+        }
+        internal static string GENERATORID = "000";
+        public static string NewUsid()
+        {
+            return NewUsid(GENERATORID);
         }
 
         public static string GuidSegment()
@@ -675,8 +715,50 @@ namespace Nistec.Generic
             }
             return ret;
         }
- 
+
+        public static Dictionary<string, T> ParseQueryString<T>(string qs, bool enableNull)
+        {
+            Dictionary<string, T> dictionary = new Dictionary<string, T>();
+
+            if (qs == null)
+                qs = string.Empty;
+
+            string str = qs.Replace("&amp;", "&"); 
+
+            if (string.IsNullOrEmpty(str))
+            {
+                return dictionary;
+            }
+            if (!str.Contains('='))
+            {
+                return dictionary;
+            }
+
+            foreach (string arg in str.Split(new char[] { '&' }))
+            {
+                if (!string.IsNullOrEmpty(arg))
+                {
+                    string[] strArray = arg.Split(new char[] { '=' });
+                    if (strArray.Length == 2)
+                    {
+                        string key = Regx.RegexReplace("amp;", strArray[0], "");
+                        object val = strArray[1];
+                        if (val != null || (enableNull && val == null))
+                        {
+                            dictionary[key] = (T)GenericTypes.Cast<T>(val);
+                        }
+                    }
+                    //else
+                    //{
+                    //    dictionary[arg] = null;
+                    //}
+                }
+            }
+
+            return dictionary;
+        }
     }
+
     public static class KeyValueExtension
     {
         public static string Get(this NameValueArgs nv, string key)
@@ -961,6 +1043,18 @@ namespace Nistec.Generic
             }
             return sb.ToString().TrimEnd('&');
         }
+        public static object[] ToNameValue(this NameValueCollection args)
+        {
+            List<object> o = new List<object>();
+
+            foreach (string key in args)
+            {
+                o.Add(key);
+                o.Add(args[key]);
+            }
+            return o.ToArray();
+        }
+
         public static T Get<T>(this NameValueCollection nv, string key)
         {
             return GenericTypes.Convert<T>(nv[key]);

@@ -36,6 +36,7 @@ using System.Collections.Concurrent;
 
 namespace Nistec
 {
+ 
     #region ObjectExtension
 
     public static class ObjectExtension
@@ -658,6 +659,7 @@ namespace Nistec
                 case DateFormat.sql:
                     return "yyyy-MM-dd hh:mm:ss";
                 case DateFormat.sqlDate:
+                case DateFormat.isoDate:
                     return "yyyy-MM-dd";
                 case DateFormat.iso:
                     return "yyyy-MM-ddThh:mm:ss";
@@ -733,6 +735,7 @@ namespace Nistec
                 {
                     case DateFormat.sql:
                     case DateFormat.iso:
+                    case DateFormat.isoDate:
                     case DateFormat.sqlDate:
                         year = Types.ToInt(args[0]);
                         month = Types.ToInt(args[1]);
@@ -789,6 +792,7 @@ namespace Nistec
                 switch (format)
                 {
                     case DateFormat.sqlDate:
+                    case DateFormat.isoDate:
                     case DateFormat.mmddyyyy:
                     case DateFormat.ddmmyyyy:
                         //do nothing
@@ -980,6 +984,7 @@ namespace Nistec
         sql,//yyyy-MM-dd hh:mm:ss
         sqlDate,//yyyy-MM-dd
         iso,//yyyy-MM-ddThh:mm:ss
+        isoDate,//yyyy-MM-dd
         ddmmyyyy,//dd/MM/yyyy
         ddmmyyyy_hhmm,//dd/MM/yyyy hh:mm
         ddmmyyyy_hhmmss,//dd/MM/yyyy hh:mm:ss
@@ -2889,6 +2894,18 @@ namespace Nistec
             if (DateTime.TryParseExact(value, format, CultureInfo.InvariantCulture, DateTimeStyles.None, out val))
                 return (DateTime?)val;
             return (DateTime?)null;
+        }
+        public static string ToNullableDateTimeformat(object value, string culture = "he-IL", DateFormat format= DateFormat.sql)
+        {
+            if (value == null || value == DBNull.Value || value.ToString() == "")
+                return null;
+            DateTime val;
+            if (DateTime.TryParse(value.ToString(), new CultureInfo(culture, false).DateTimeFormat, DateTimeStyles.AssumeLocal, out val))
+            {
+                if (((DateTime?)val).HasValue)
+                    return ((DateTime?)val).Value.ToString(Formatter.ToDateFormat(format));
+            }
+            return null;
         }
 
         /*

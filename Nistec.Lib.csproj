@@ -83,6 +83,7 @@
       <HintPath>..\References\_Dll\System.Net.Http.dll</HintPath>
     </Reference>
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.Transactions" />
     <Reference Include="System.Web" />
@@ -105,6 +106,7 @@
     <Compile Include="Common\Enums.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Common\Id64Generator.cs" />
     <Compile Include="Common\Interfaces.cs" />
     <Compile Include="Common\TaskExtensions.cs" />
     <Compile Include="Common\Validation.cs" />
@@ -142,6 +144,7 @@
     <Compile Include="Runtime\Advanced\SyncQueueBox.cs" />
     <Compile Include="Runtime\Advanced\SyncTimerDispatcher.cs" />
     <Compile Include="Runtime\Diagnostics.cs" />
+    <Compile Include="Runtime\Signer.cs" />
     <Compile Include="Serialization\Binary\Interfaces.cs" />
     <Compile Include="Serialization\Formatters.cs" />
     <Compile Include="Serialization\Binary\SerializerExtension.cs" />

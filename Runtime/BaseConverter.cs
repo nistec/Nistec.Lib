@@ -30,7 +30,7 @@ namespace Nistec.Runtime
 {
     public class BaseConverter
     {
- 
+
         #region method ToHex
 
         /// <summary>
@@ -210,148 +210,181 @@ namespace Nistec.Runtime
             return val;
         }
 
-       
+
         #endregion
 
         #region base 32
 
         // the valid chars for the encoding
-            //private static string Base32Chars = "QAZ2WSX3" + "EDC4RFV5" + "TGB6YHN7" + "UJM8K9LP";
+        //public static string Base32CharsMask = "QAZ2WSX3" + "EDC4RFV5" + "TGB6YHN7" + "UJM8K9LP";
+        //private static string Base32Chars = "ABCDEFGH" + "IJKLMNOP" + "QRSTUVWX" + "YZ456789";
 
-            private static string Base32Chars = "ABCDEFGH" + "IJKLMNOP" + "QRSTUVWX" + "YZ456789";
+        public static string Base32CharsMask1 = "lc6rm5wfns2bv7ojqdyh4guaeikptxz3";
 
-            /// <summary>
-            /// Convert string to Base32 string
-            /// </summary>
-            /// <param name="text"></param>
-            /// <returns></returns>
-            public static string ToBase32(string text)
+        //The RFC 4648 Base 32 alphabet
+        public const string Base32CharsUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+        //public const string Base32Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ456789";
+        public const string Base32CharsLower = "abcdefghijklmnopqrstuvwxyz234567";
+
+        /// <summary>
+        /// Convert string to Base32 string
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public static string ToBase32(string text)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(text);
+            return ToBase32String(bytes);
+        }
+
+        /// <summary>
+        /// Convert Base32String to string
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public static string FromBase32(string text)
+        {
+            byte[] bytes = FromBase32String(text);
+            string result = Encoding.UTF8.GetString(bytes);
+            return result;
+        }
+
+        public static string Base32MaskedEncode(string text)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(text);
+            return ToBase32String(bytes, Base32CharsMask1);
+        }
+
+        public static string Base32MaskedDecode(string text)
+        {
+            byte[] bytes = FromBase32String(text, Base32CharsMask1);
+            string result = Encoding.UTF8.GetString(bytes);
+            return result;
+        }
+
+        public static string Base32Encode(string text, string map)
+        {
+            byte[] bytes = Encoding.UTF8.GetBytes(text);
+            return ToBase32String(bytes, map);
+        }
+
+        public static string Base32Decode(string text, string map)
+        {
+            byte[] bytes = FromBase32String(text,map);
+            string result = Encoding.UTF8.GetString(bytes);
+            return result;
+        }
+
+        /// <summary>
+        /// Converts an array of bytes to a Base32 string.
+        /// </summary>
+        public static string ToBase32String(byte[] bytes, string map= Base32CharsLower)
+        {
+            StringBuilder sb = new StringBuilder();         // holds the base32 chars
+            byte index;
+            int hi = 5;
+            int currentByte = 0;
+
+            while (currentByte < bytes.Length)
             {
-                byte[] bytes = Encoding.UTF8.GetBytes(text);
-                return ToBase32String(bytes);
-            }
-
-            /// <summary>
-            /// Convert Base32String to string
-            /// </summary>
-            /// <param name="text"></param>
-            /// <returns></returns>
-            public static string FromBase32(string text)
-            {
-                byte[] bytes = FromBase32String(text);
-                string result = Encoding.UTF8.GetString(bytes);
-                return result;
-            }
-
-            /// <summary>
-            /// Converts an array of bytes to a Base32 string.
-            /// </summary>
-            public static string ToBase32String(byte[] bytes)
-            {
-                StringBuilder sb = new StringBuilder();         // holds the base32 chars
-                byte index;
-                int hi = 5;
-                int currentByte = 0;
-
-                while (currentByte < bytes.Length)
+                // do we need to use the next byte?
+                if (hi > 8)
                 {
-                    // do we need to use the next byte?
-                    if (hi > 8)
+                    // get the last piece from the current byte, shift it to the right
+                    // and increment the byte counter
+                    index = (byte)(bytes[currentByte++] >> (hi - 5));
+                    if (currentByte != bytes.Length)
                     {
-                        // get the last piece from the current byte, shift it to the right
-                        // and increment the byte counter
-                        index = (byte)(bytes[currentByte++] >> (hi - 5));
-                        if (currentByte != bytes.Length)
-                        {
-                            // if we are not at the end, get the first piece from
-                            // the next byte, clear it and shift it to the left
-                            index = (byte)(((byte)(bytes[currentByte] << (16 - hi)) >> 3) | index);
-                        }
-
-                        hi -= 3;
-                    }
-                    else if (hi == 8)
-                    {
-                        index = (byte)(bytes[currentByte++] >> 3);
-                        hi -= 3;
-                    }
-                    else
-                    {
-
-                        // simply get the stuff from the current byte
-                        index = (byte)((byte)(bytes[currentByte] << (8 - hi)) >> 3);
-                        hi += 5;
+                        // if we are not at the end, get the first piece from
+                        // the next byte, clear it and shift it to the left
+                        index = (byte)(((byte)(bytes[currentByte] << (16 - hi)) >> 3) | index);
                     }
 
-                    sb.Append(Base32Chars[index]);
+                    hi -= 3;
+                }
+                else if (hi == 8)
+                {
+                    index = (byte)(bytes[currentByte++] >> 3);
+                    hi -= 3;
+                }
+                else
+                {
+
+                    // simply get the stuff from the current byte
+                    index = (byte)((byte)(bytes[currentByte] << (8 - hi)) >> 3);
+                    hi += 5;
                 }
 
-                return sb.ToString();
+                sb.Append(map[index]);
             }
 
+            return sb.ToString();
+        }
 
-            /// <summary>
-            /// Converts a Base32-k string into an array of bytes.
-            /// </summary>
-            /// <exception cref="System.ArgumentException">
-            /// Input string <paramref name="str">s</paramref> contains invalid Base32 characters.
-            /// </exception>
-            public static byte[] FromBase32String(string str)
+
+        /// <summary>
+        /// Converts a Base32-k string into an array of bytes.
+        /// </summary>
+        /// <exception cref="System.ArgumentException">
+        /// Input string <paramref name="str">s</paramref> contains invalid Base32 characters.
+        /// </exception>
+        public static byte[] FromBase32String(string str, string map= Base32CharsLower)
+        {
+            int numBytes = str.Length * 5 / 8;
+            byte[] bytes = new Byte[numBytes];
+
+            // all UPPERCASE chars
+            //str = str.ToUpper();
+
+            int bit_buffer;
+            int currentCharIndex;
+            int bits_in_buffer;
+
+            if (str.Length < 3)
             {
-                int numBytes = str.Length * 5 / 8;
-                byte[] bytes = new Byte[numBytes];
-
-                // all UPPERCASE chars
-                str = str.ToUpper();
-
-                int bit_buffer;
-                int currentCharIndex;
-                int bits_in_buffer;
-
-                if (str.Length < 3)
-                {
-                    bytes[0] = (byte)(Base32Chars.IndexOf(str[0]) | Base32Chars.IndexOf(str[1]) << 5);
-                    return bytes;
-                }
-
-                bit_buffer = (Base32Chars.IndexOf(str[0]) | Base32Chars.IndexOf(str[1]) << 5);
-                bits_in_buffer = 10;
-                currentCharIndex = 2;
-                for (int i = 0; i < bytes.Length; i++)
-                {
-                    bytes[i] = (byte)bit_buffer;
-                    bit_buffer >>= 8;
-                    bits_in_buffer -= 8;
-                    while (bits_in_buffer < 8 && currentCharIndex < str.Length)
-                    {
-                        bit_buffer |= Base32Chars.IndexOf(str[currentCharIndex++]) << bits_in_buffer;
-                        bits_in_buffer += 5;
-                    }
-                }
-
+                bytes[0] = (byte)(map.IndexOf(str[0]) | map.IndexOf(str[1]) << 5);
                 return bytes;
             }
- 
+
+            bit_buffer = (map.IndexOf(str[0]) | map.IndexOf(str[1]) << 5);
+            bits_in_buffer = 10;
+            currentCharIndex = 2;
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                bytes[i] = (byte)bit_buffer;
+                bit_buffer >>= 8;
+                bits_in_buffer -= 8;
+                while (bits_in_buffer < 8 && currentCharIndex < str.Length)
+                {
+                    bit_buffer |= map.IndexOf(str[currentCharIndex++]) << bits_in_buffer;
+                    bits_in_buffer += 5;
+                }
+            }
+
+            return bytes;
+        }
+
         #endregion
 
         #region  base converter
 
-        static char[] map = new char[] { 
-        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 
-        'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 
-        'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 
-        'h', 'j', 'k', 'm', 'n', 'p', 'q', 'r', 's', 't', 
+        static char[] map = new char[] {
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K',
+        'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W',
+        'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g',
+        'h', 'j', 'k', 'm', 'n', 'p', 'q', 'r', 's', 't',
         'u', 'v', 'x', 'y', 'z', '2', '3', '4', };
 
         static char[] base62Map = new char[] { '0','1','2','3','4','5','6','7','8','9',
-        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 
-        'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 
-        'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 
-        'h', 'j', 'k', 'm', 'n', 'p', 'q', 'r', 's', 't', 
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K',
+        'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W',
+        'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f', 'g',
+        'h', 'j', 'k', 'm', 'n', 'p', 'q', 'r', 's', 't',
         'u', 'v', 'x', 'y', 'z', '2', '3', '4', };
 
 
-        
+
         public static string ToBase62(long inp)
         {
             return Encode(inp, base62Map);
@@ -446,9 +479,9 @@ namespace Nistec.Runtime
             if (text == null || expReplacment == null || expReplacment.Length == 0 || expReplacment.Length % 2 != 0)
                 return text;
 
-            for (int i = 0; i < expReplacment.Length;i++ )
+            for (int i = 0; i < expReplacment.Length; i++)
             {
-                text = text.Replace(expReplacment[i], expReplacment[i+1]);
+                text = text.Replace(expReplacment[i], expReplacment[i + 1]);
                 i++;
             }
             return text;
@@ -456,18 +489,18 @@ namespace Nistec.Runtime
 
         public static string UnEscape(string text, string[] expReplacment)
         {
-            if (text == null || expReplacment == null || expReplacment.Length==0 || expReplacment.Length % 2 != 0)
+            if (text == null || expReplacment == null || expReplacment.Length == 0 || expReplacment.Length % 2 != 0)
                 return text;
 
             for (int i = 0; i < expReplacment.Length; i++)
             {
-                text = text.Replace(expReplacment[i+1], expReplacment[i]);
+                text = text.Replace(expReplacment[i + 1], expReplacment[i]);
                 i++;
             }
             return text;
         }
 
-        public static string Escape(string text,char wrapper, params string[] replacments)
+        public static string Escape(string text, char wrapper, params string[] replacments)
         {
             if (text == null || replacments == null || replacments.Length == 0 || replacments.Length % 2 != 0)
                 return text;
