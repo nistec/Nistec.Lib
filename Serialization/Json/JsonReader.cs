@@ -29,6 +29,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using System.ComponentModel;
+using System.Threading.Tasks;
 
 namespace Nistec.Serialization
 {
@@ -50,6 +51,13 @@ namespace Nistec.Serialization
         private Dictionary<int, object> _CircularItemsRev = new Dictionary<int, object>();
         private bool _isCircular = true;
 
+        public async Task<T> ToObjectAsync<T>(string json)
+        {
+            return await Task.Run<T>(() =>
+            {
+                return ToObject<T>(json);
+            });
+        }
         public T ToObject<T>(string json)
         {
             Type t = typeof(T);

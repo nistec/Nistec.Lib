@@ -30,7 +30,8 @@ using System.Collections.Specialized;
 using System.Text;
 using Nistec.Generic;
 using Nistec.Runtime;
-#pragma warning disable  CS1591
+using System.Threading.Tasks;
+#pragma warning disable CS1591
 
 namespace Nistec.Serialization
 {
@@ -297,6 +298,20 @@ namespace Nistec.Serialization
             return JsonParser.Parse(json, returnType, JsonSerializer.DefaultOption.IgnoreCaseOnDeserialize);
         }
 
+        public static bool ParseEnum<TEnum>(string json, out TEnum result) where TEnum:struct
+        {
+            return EnumExtension.TryParse(json, out result);
+        }
+        public static TEnum ParseEnum<TEnum>(string json) where TEnum : struct
+        {
+            TEnum result;
+            if(EnumExtension.TryParse(json, out result))
+            {
+                return result;
+            }
+            return default(TEnum);
+        }
+
         /// <summary>
         /// Create a dynamic object from the json string
         /// </summary>
@@ -330,6 +345,16 @@ namespace Nistec.Serialization
         {
             return JsonReader.Get(DefaultOption).ToObject<T>(json);
         }
+
+        public static async Task<T> DeserializeAsync<T>(string json)
+        {
+            return await JsonReader.Get(DefaultOption).ToObjectAsync<T>(json);
+        }
+        public static async Task<T> DeserializeAsync<T>(string json, JsonSettings settings)
+        {
+            return await JsonReader.Get(settings).ToObjectAsync<T>(json);
+        }
+
         /// <summary>
         /// Create a typed generic object from the json with parameter override on this call
         /// </summary>

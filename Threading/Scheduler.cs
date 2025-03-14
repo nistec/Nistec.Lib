@@ -202,8 +202,14 @@ namespace Nistec.Threading
 
         public event SchedulerEventHandler ScheduleElapsed;
 
-  
- 
+        public Action<LogLevel,string> Trace { get; set; }
+
+        protected virtual void OnTrace(LogLevel level,string action)
+        {
+            if (Trace != null)
+                Trace.Invoke(level, action);
+        }
+
         /// <summary>
         /// SyncTimer constructor
         /// </summary>
@@ -221,7 +227,7 @@ namespace Nistec.Threading
             aTimer.Interval = (double)DefaultInterval;
             Start();
         }
-
+   
         #region auto sync
 
         System.Timers.Timer aTimer;
@@ -238,6 +244,7 @@ namespace Nistec.Threading
                 return aTimer.Enabled;
             }
         }
+
 
     
 
@@ -257,11 +264,12 @@ namespace Nistec.Threading
                 //initilized = true;
                 // Keep the timer alive until the end of Main.
                 GC.KeepAlive(aTimer);
-
+                OnTrace(LogLevel.Info,"Scheduler Started");
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Error:" + ex.Message);
+                OnTrace(LogLevel.Error, "Error: " + ex.Message);
             }
         }
 
@@ -275,6 +283,7 @@ namespace Nistec.Threading
             if (aTimer != null)
             {
                 aTimer.Stop();
+                OnTrace(LogLevel.Info, "Stoped");
             }
         }
 
@@ -282,6 +291,8 @@ namespace Nistec.Threading
         private void OnTimedEvent(object source, System.Timers.ElapsedEventArgs e)
         {
             Console.WriteLine("Start Scheduler ...");
+            OnTrace(LogLevel.Info, "Start Scheduler ...");
+
             if (scheduleList.Count > 0)
             {
                 OnSchedule();
@@ -291,6 +302,7 @@ namespace Nistec.Threading
 
         private void OnSchedule()
         {
+            OnTrace(LogLevel.Info, "OnSchedule");
 
             DateTime time = DateTime.Now;
             foreach (Schedule item in scheduleList.Values)
@@ -312,6 +324,7 @@ namespace Nistec.Threading
         public void Commit(string scheduleName)
         {
             actionList.Remove(scheduleName);
+            OnTrace(LogLevel.Info, "Scheduler Commit: " + scheduleName);
         }
 
 
@@ -334,7 +347,9 @@ namespace Nistec.Threading
         {
             if (scheduleList.ContainsKey(item.ScheduleName))
             {
-                throw new ArgumentException("item with the same name allready exists");
+                OnTrace(LogLevel.Error, "Error: Scheduler item with the same name allready exists " + item.ScheduleName);
+                return;
+                //throw new ArgumentException("item with the same name allready exists");
 
             }
             scheduleList[item.ScheduleName] = item;
@@ -342,6 +357,7 @@ namespace Nistec.Threading
 
         public bool RemoveItem(string name)
         {
+            OnTrace(LogLevel.Info, "Scheduler item will remove " + name);
             actionList.Remove(name);
             return scheduleList.Remove(name);
 

@@ -825,6 +825,8 @@ namespace Nistec.Serialization
                         return SerialType.dictionaryGenericType;
                     else if (SerializeTools.IsGenericList(type))
                         return SerialType.listGenericType;
+                    else if (SerializeTools.IsArray(type))
+                        return SerialType.arrayGenericType;
                     else if (SerializeTools.IsHashtable(type))
                         return SerialType.hashtableType;
                     else if (SerializeTools.IsAssignableFromDictionary(type))
@@ -946,7 +948,7 @@ namespace Nistec.Serialization
             object o = ActivatorUtil.CreateInstance(constructed);
             return (IList)o;
         }
-
+       
         public static byte[] StreamToBytes(Stream stream)
         {
             

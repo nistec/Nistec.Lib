@@ -437,6 +437,9 @@ namespace Nistec.Serialization
                     case SerialType.listGenericType:
                         WriteGenericList((IList)value);
                         break;
+                    case SerialType.arrayGenericType:
+                        WriteGenericArray((IList)value);
+                        break;
                     case SerialType.hashtableType:
                         WriteHashtable((IDictionary)value);
                         break;
@@ -557,6 +560,7 @@ namespace Nistec.Serialization
                 case SerialType.objectArrayType: return ReadArray<object>();
                 case SerialType.dictionaryEntityType:return ReadEntityAsDictionary(false,true);
                 case SerialType.listGenericType: return ReadGenericList();
+                case SerialType.arrayGenericType: return ReadGenericArray();
                 case SerialType.hashtableType: return ReadHashtable();
                 case SerialType.dictionaryGenericType: return ReadGenericDictionary();
                 case SerialType.dataTableType: return ReadDataTable();
@@ -2125,7 +2129,30 @@ namespace Nistec.Serialization
 
         #region Dynamic Collection Generic
 
-         internal void WriteGenericList(IList value)
+        internal void WriteGenericArray(IList value)
+        {
+
+            if (value == null)
+            {
+                Write(-1);
+            }
+            else
+            {
+                Type itemType = value.GetType().GetElementType();
+
+                //Type listType = SerializeTools.GetGenericBaseType(value.GetType());
+                //Type itemType = listType.GetGenericArguments()[0];
+
+                Write(value.Count);
+                Write(itemType.FullName);
+
+                foreach (var item in value)
+                {
+                    WriteAny(item);
+                }
+            }
+        }
+        internal void WriteGenericList(IList value)
         {
 
             if (value == null)
@@ -2174,9 +2201,35 @@ namespace Nistec.Serialization
             return list;
         }
 
-         
+        internal IList ReadGenericArray()
+        {
+            int count = ReadInt32();
+            if (count < 0) return null;
+            Type type = ReadType();
+            if (type == null)
+            {
+                Console.WriteLine("Error read type: ReadGenericList");
+                return null;
+            }
+            ArrayList array = new ArrayList();
+
+            try
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    var item = ReadAny();
+                    array.Add(item);
+                }
+            }
+            catch (Exception ex)
+            {
+                string err = ex.Message;
+            }
+            return array.ToArray(type);
+        }
+
         #endregion
-        
+
         #region DataSets
 
         void WriteDataSetXml(DataSet ds)
@@ -2525,6 +2578,19 @@ namespace Nistec.Serialization
             return Enum.ToObject(type, value);
         }
 
+        public virtual object ReadEnumParser()
+        {
+            Type type = ReadType();
+            string value = ReadString();
+            return EnumExtension.Parse(type,value, null);
+        }
+        public virtual string ReadEnumName()
+        {
+            Type type = ReadType();
+            string value = ReadString();
+            return value;
+        }
+
         //public void WriteNetStream(NetStream stream)
         //{
         //    if (stream == null)
@@ -2549,7 +2615,7 @@ namespace Nistec.Serialization
         //    return new NetStream(bytes);
         //}
 
-       
+
         /// <summary>
         /// Writes a Type to the buffer.
         /// </summary>

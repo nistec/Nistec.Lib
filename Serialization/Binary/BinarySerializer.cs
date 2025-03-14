@@ -527,6 +527,13 @@ namespace Nistec.Serialization
             return null;
         }
 
+        public static object Deserialize(byte[] buf, object valueIfNull)
+        {
+            object val = Deserialize(buf,false);
+            if (val == null)
+                val = valueIfNull;
+            return val;
+        }
         public static T Deserialize<T>(byte[] buf, bool enableException = false)
         {
 
@@ -556,7 +563,6 @@ namespace Nistec.Serialization
                         throw ex;
                 }
             }
-
             return default(T);
         }
   

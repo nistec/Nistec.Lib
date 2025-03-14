@@ -126,6 +126,7 @@ namespace Nistec.Serialization
         dictionaryAssignType = 43,
         netStreamType = 44,
         dictionaryEntityType = 45,
+        arrayGenericType = 46,
         otherType = 99,
         genericEntityAsIDictionaryType = 100,
         genericEntityAsIEntityType = 101

@@ -89,8 +89,10 @@ namespace Nistec.Serialization
         void WriteCount(int value);
         int ReadCount();
         object ReadValue();
+        object ReadEnumParser();
         //object StreamToValue(NetStream stream);
         T ReadValue<T>();
+        //T ReadEnum<T>();
         //T ReadValue<T>(SerialContextType contextType);
         void WriteString(string str);
         string ReadString();

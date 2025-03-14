@@ -34,8 +34,9 @@ using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using Nistec.Serialization;
 using System.Net.NetworkInformation;
+using System.Text.RegularExpressions;
 
-#pragma warning disable  CS1591
+#pragma warning disable CS1591
 
 namespace Nistec.Generic
 {
@@ -197,12 +198,45 @@ namespace Nistec.Generic
                 return defaultValue;
             }
         }
-              
+        public static bool TryParse<TEnum>(string value, out TEnum result) where TEnum : struct
+        {
+            if (!Enum.IsDefined(typeof(TEnum), value))
+            {
+                result = default(TEnum);
+                return false;
+            }
+            if (string.IsNullOrEmpty(value))
+            {
+                result = default(TEnum);
+                return false;
+            }
+            return Enum.TryParse(value, out result);
+        }
+
+        public static TEnum TryParse<TEnum>(string value, TEnum defaultValue)where TEnum : struct
+        {
+            if (!Enum.IsDefined(typeof(TEnum), value))
+            {
+                return defaultValue;
+            }
+            if (string.IsNullOrEmpty(value))
+                return defaultValue;
+            TEnum result;
+            if (Enum.TryParse(value, out result))
+            {
+                return result;
+            }
+            return defaultValue;
+        }
 
         public static T Parse<T>(string value, T defaultValue)
         {
             try
             {
+                if (!Enum.IsDefined(typeof(T), value))
+                {
+                    return defaultValue;
+                }
                 if (string.IsNullOrEmpty(value))
                     return defaultValue;
                 return (T) Enum.Parse(typeof(T), value, true);
@@ -217,6 +251,10 @@ namespace Nistec.Generic
         {
             try
             {
+                if (!Enum.IsDefined(type, value))
+                {
+                    return defaultValue;
+                }
                 if (string.IsNullOrEmpty(value))
                     return defaultValue;
                 return Enum.Parse(type, value, true);
@@ -227,7 +265,7 @@ namespace Nistec.Generic
             }
         }
 
-         /// <summary>
+        /// <summary>
         ///  Converts the string representation of the name or numeric value of one or
         ///  more enumerated constants to an equivalent enumerated object. A string parameter
         ///  is not case-insensitive.
@@ -306,6 +344,95 @@ namespace Nistec.Generic
         }
 
     }
+
+    public class SESSION
+    {
+        /// <summary>
+        /// DateTime.UtcNow + GuidSegment 0
+        /// </summary>
+        /// <returns></returns>
+        public static string Id()
+        {
+            var sessionid = Regex.Replace(DateTime.UtcNow.ToString("o"), "[^0-9]", "") + Guid.NewGuid().ToString().Split('-')[0];
+            return BaseConverter.ToBase32(sessionid);
+        }
+
+        public static string ToUtcString(string sessionid)
+        {
+            if (string.IsNullOrEmpty(sessionid))
+                return null;
+            sessionid = BaseConverter.FromBase32(sessionid);
+            string dt = sessionid.Substring(0, sessionid.Length - 8);
+            string dto = string.Format("{0}-{1}-{2}T{3}:{4}:{5}.{6} ",
+                dt.Substring(0, 4), dt.Substring(4, 2), dt.Substring(6, 2),
+                dt.Substring(8, 2), dt.Substring(10, 2), dt.Substring(12, 2),
+                dt.Substring(14, dt.Length - 14));
+            return dto;
+        }
+        //public static double ToMili(string sessionid)
+        //{
+        //    string dt = sessionid.Substring(0, sessionid.Length - 8);
+        //    string dto = string.Format("{0}.{1}", dt.Substring(0, 14), dt.Substring(14, dt.Length - 14));
+        //    return double.Parse(dto);
+        //}
+        //public static double DurationMili(string sessionid, string finalsession)
+        //{
+        //    double sessTime = ToMili(sessionid);
+        //    double finalTime = string.IsNullOrEmpty(finalsession)?  ToMili(SessionId()): ToMili(finalsession);
+        //    double duration = finalTime- sessTime;
+        //    return duration;
+        //}
+        public static DateTime? ToUtcDateTime(string sessionid)
+        {
+            if (string.IsNullOrEmpty(sessionid))
+                return null;
+            var utcstring = ToUtcString(sessionid);
+            var utcdt = DateTimeOffset.Parse(utcstring).UtcDateTime;
+            return utcdt;
+        }
+        public static double DurationSeconds(string sessionid, string finalsession)
+        {
+            if (string.IsNullOrEmpty(sessionid))
+                return 0;
+            if (string.IsNullOrEmpty(finalsession))
+                finalsession = Id();
+            DateTime sessTime = ToUtcDateTime(sessionid).Value;
+            DateTime finalTime = ToUtcDateTime(finalsession).Value;
+
+            var duration = finalTime.Subtract(sessTime).TotalSeconds;
+            return duration;
+        }
+        public static TimeSpan DurationTime(string sessionid, string finalsession)
+        {
+            if (string.IsNullOrEmpty(sessionid))
+                return TimeSpan.Zero;
+            if (string.IsNullOrEmpty(finalsession))
+                finalsession = Id();
+            DateTime sessTime = ToUtcDateTime(sessionid).Value;
+            DateTime finalTime = ToUtcDateTime(finalsession).Value;
+
+            var duration = finalTime.Subtract(sessTime);
+            return duration;
+        }
+        public static TimeSpan DurationTime(string sessionid)
+        {
+            return DurationTime(sessionid, null);
+        }
+
+        //public static double DurationSeconds(string sessionid, DateTime final)
+        //{
+        //    DateTime sessTime = ToUtcDateTime(sessionid);
+        //    var duration = final.Subtract(sessTime).TotalSeconds;
+        //    return duration;
+        //}
+        //public static TimeSpan DurationTime(string sessionid, DateTime final)
+        //{
+        //    DateTime sessTime = ToUtcDateTime(sessionid);
+        //    var duration = final.Subtract(sessTime);
+        //    return duration;
+        //}
+    }
+
     /// <summary>
     /// UUID
     /// </summary>
@@ -358,11 +485,19 @@ namespace Nistec.Generic
         {
             return BaseConverter.ToBase62(UniqueId());
         }
+        /// <summary>
+        /// DateTime.UtcNow + GuidSegment 0
+        /// </summary>
+        /// <returns></returns>
+        public static string SessionId()
+        {
+            return SESSION.Id();
+        }
 
         #endregion
 
         #region big int
-               
+
 
         public static Guid ToGuid(ulong id)
         {
@@ -408,7 +543,7 @@ namespace Nistec.Generic
             return _MacAddress;
         }
         /// <summary>
-        /// NewUxid
+        /// NewUsid from MacAddress
         /// </summary>
         /// <returns></returns>
         public static string NewUxid()
@@ -416,7 +551,7 @@ namespace Nistec.Generic
             return NewUsid(MacAddress());
         }
         /// <summary>
-        /// NewUuid
+        /// NewUuid/Guid
         /// </summary>
         /// <returns></returns>
         public static Guid NewUuid()
@@ -430,7 +565,7 @@ namespace Nistec.Generic
                 return Guid.NewGuid();
         }
         /// <summary>
-        /// 
+        /// Guid to ToBase32String
         /// </summary>
         /// <returns></returns>
         public static string Identifier()
@@ -439,7 +574,7 @@ namespace Nistec.Generic
             return Strings.StrReverse(BaseConverter.ToBase32String(guid.ToByteArray())).ToLower();
         }
         /// <summary>
-        /// 
+        /// Guid ToBase32String + generatorId;
         /// </summary>
         /// <param name="generatorId"></param>
         /// <returns></returns>
@@ -460,7 +595,7 @@ namespace Nistec.Generic
         }
         internal static string GENERATORID = "000";
         /// <summary>
-        /// 
+        /// NewUsid from Generator
         /// </summary>
         /// <returns></returns>
         public static string NewUsid()
@@ -468,7 +603,7 @@ namespace Nistec.Generic
             return NewUsid(GENERATORID);
         }
         /// <summary>
-        /// 
+        /// Guid first Segmen
         /// </summary>
         /// <returns></returns>
         public static string GuidSegment()
@@ -557,7 +692,7 @@ namespace Nistec.Generic
             dic.TryGetValue(key, out value);
             return GenericTypes.Convert<T>(value);
         }
-        public static T GetEnum<T>(this Dictionary<string, object> dic, string key, T defaultValue)
+        public static T GetEnum<T>(this Dictionary<string, object> dic, string key, T defaultValue) where T : struct
         {
             object value = null;
             if(dic.TryGetValue(key, out value))
@@ -568,7 +703,7 @@ namespace Nistec.Generic
                 }
                 if (value is string)
                 {
-                    return EnumExtension.Parse<T>(value.ToString(), defaultValue);
+                    return EnumExtension.TryParse<T>(value.ToString(), defaultValue);
                 }
                 return (T)value;
             }

@@ -238,6 +238,17 @@ namespace Nistec.Runtime
             byte[] bytes = Encoding.UTF8.GetBytes(text);
             return ToBase32String(bytes);
         }
+        public static string ToBase32Asci(string text)
+        {
+            byte[] bytes = Encoding.ASCII.GetBytes(text);
+            return ToBase32String(bytes);
+        }
+        public static string FromBase32Asci(string text)
+        {
+            byte[] bytes = FromBase32String(text);
+            string result = Encoding.ASCII.GetString(bytes);
+            return result;
+        }
 
         /// <summary>
         /// Convert Base32String to string
