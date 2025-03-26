@@ -2303,6 +2303,48 @@ namespace Nistec
                 return val;
             return defaultValue;
         }
+
+        //new
+        static DateOnly ParseDateOnly(string Value, DateOnly defaultValue)
+        {
+            DateOnly val;
+            if (DateOnly.TryParse(Value, out val))
+                return val;
+            return defaultValue;
+        }
+        public static DateOnly ParseDateOnly(string Value, DateOnly defaultValue, string culture= DefaultCultureInfo)
+        {
+            if (culture == null)
+                culture = DefaultCultureInfo;
+            var cultureInfo = CultureInfo.GetCultureInfo(culture);
+            DateOnly val;
+            if (DateOnly.TryParse(Value, cultureInfo, DateTimeStyles.None, out val))
+                return val;
+            return defaultValue;
+        }
+        public static DateOnly ParseExactDateOnly(string value, DateOnly defaultValue, string format)
+        {
+            if (value == null || value == DBNull.Value.ToString() || value == "")
+                return defaultValue;
+            DateOnly val;
+            if (DateOnly.TryParseExact(value, format, CultureInfo.InvariantCulture, DateTimeStyles.None, out val))
+                return val;
+            return defaultValue;
+        }
+
+        static TimeOnly ParseTimeOnly(string Value, TimeOnly defaultValue)
+        {
+            TimeOnly val;
+            if (TimeOnly.TryParse(Value, out val))
+                return val;
+            return defaultValue;
+        }
+
+        public static DateOnly Today(this DateOnly date)
+        {
+            return DateOnly.FromDateTime(DateTime.Now);
+        }
+
         /*
         public static DateTime ToDateTime(object Value, DateTime defaultValue)
         {
@@ -2600,6 +2642,7 @@ namespace Nistec
 
         #region Info
 
+        public const string DefaultCultureInfo = "en-GB";
 
         private static System.Globalization.CultureInfo GetCulture(System.Globalization.CultureInfo cultureInfo)
         {
@@ -2616,6 +2659,11 @@ namespace Nistec
         public static CultureInfo GetCultureInfo()
         {
             return Thread.CurrentThread.CurrentCulture;
+        }
+
+        public static CultureInfo DefaultCulture()
+        {
+            return CultureInfo.GetCultureInfo(DefaultCultureInfo);
         }
 
         public static DateTimeFormatInfo GetDateTimeFormatInfo()

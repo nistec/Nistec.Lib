@@ -164,6 +164,24 @@ namespace Nistec.Collections
             //_queue.TryTake(out item);
             return item;
         }
+
+        public void Clear()
+        {
+            T item;
+            for (int i = 0; i < _queue.Count; i++)
+            {
+                _queue.TryDequeue(out item);
+            }
+        }
+
+        protected ConcurrentQueue<T> Queue
+        {
+            get
+            {
+                return _queue;
+            }
+        }
+
         #endregion
 
         #region start/stop

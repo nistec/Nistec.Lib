@@ -194,6 +194,32 @@ namespace Nistec
             return null;
         }
 
+        public static object Convert(string input, Type type)
+        {
+            try
+            {
+
+                if (type == null)
+                {
+                    return input;
+                }
+                if (type == typeof(object) || type == typeof(string))
+                {
+                    return input;
+                }
+                var converter = ConverterUtil.GetConverter(type);
+                if (converter != null)
+                {
+                    return converter.ConvertFromString(input.ToString());
+                }
+            }
+            catch
+            {
+                return Default(type);
+            }
+            return null;
+        }
+
         /// <summary>
         /// Convert string to struct.
         /// </summary>
