@@ -27,7 +27,8 @@ using System.Collections.Generic;
 using Nistec;
 using System.Diagnostics;
 using System.Globalization;
-#pragma warning disable  CS1591
+using System.Linq;
+#pragma warning disable CS1591
 
 namespace Nistec.Runtime
 {
@@ -723,7 +724,233 @@ namespace Nistec.Runtime
         }
 
         #endregion
- 
+
+        //public static string HashString(string cleartext)
+        //{
+        //    byte[] clearBytes = Encoding.UTF8.GetBytes(cleartext);
+        //    return HashBytes(clearBytes);
+        //}
+
+        //public static string HashBytes(byte[] clearBytes)
+        //{
+        //    SHA1 hasher = SHA1.Create();
+        //    byte[] hashBytes = hasher.ComputeHash(clearBytes);
+        //    //string hash = Types.BytesToHexString(hashBytes);
+        //    //Convert.ToHexString(hashBytes);
+        //    string hash = BitConverter.ToString(hashBytes).Replace("-", string.Empty);
+        //    //string hash = System.Convert.ToBase64String(hashBytes);
+        //    hasher.Clear();
+        //    return hash;
+        //}
+
+        public static string HashString(string input)
+        {
+            var hash = new SHA1Managed().ComputeHash(Encoding.UTF8.GetBytes(input));
+            return string.Concat(hash.Select(b => b.ToString("x2")));
+        }
+
+        //public static string Hash(string Input)
+        //{
+        //    if (Input == null || Input.Length <= 0) return "";
+
+        //    StringBuilder result = new StringBuilder();
+        //    SHA1 provider = SHA1.Create();
+        //    byte[] __result = provider.ComputeHash(Encoding.Default.GetBytes(Input));
+
+        //    foreach (Byte b in __result)
+        //        result.Append(String.Format("{0:x2}", b));
+
+        //    return result.ToString();
+        //}
+
+        public static string HashSql(string Input)
+        {
+            if (Input==null || Input.Length == 0)
+                return null;
+
+            using (SHA1 sha = SHA1.Create())
+            {
+                // Use UTF-16LE encoding to match SQL Server behavior
+                byte[] bytes = Encoding.Unicode.GetBytes(Input);
+                byte[] hashBytes = sha.ComputeHash(bytes);
+
+                StringBuilder sb = new StringBuilder();
+                foreach (byte b in hashBytes)
+                    sb.AppendFormat("{0:x2}", b);
+
+                return sb.ToString();
+            }
+        }
+
     }
 
+    public class DataProtection
+    {
+        /*
+        public static void Run()
+        {
+            try
+            {
+                ///////////////////////////////
+                //
+                // Memory Encryption - ProtectedMemory
+                //
+                ///////////////////////////////
+
+                // Create the original data to be encrypted (The data length should be a multiple of 16).
+                byte[] toEncrypt = UnicodeEncoding.ASCII.GetBytes("ThisIsSomeData16");
+
+                Console.WriteLine($"Original data: {UnicodeEncoding.ASCII.GetString(toEncrypt)}");
+                Console.WriteLine("Encrypting...");
+
+                // Encrypt the data in memory.
+                EncryptInMemoryData(toEncrypt, MemoryProtectionScope.SameLogon);
+
+                Console.WriteLine($"Encrypted data: {UnicodeEncoding.ASCII.GetString(toEncrypt)}");
+                Console.WriteLine("Decrypting...");
+
+                // Decrypt the data in memory.
+                DecryptInMemoryData(toEncrypt, MemoryProtectionScope.SameLogon);
+
+                Console.WriteLine($"Decrypted data: {UnicodeEncoding.ASCII.GetString(toEncrypt)}");
+
+                ///////////////////////////////
+                //
+                // Data Encryption - ProtectedData
+                //
+                ///////////////////////////////
+
+                // Create the original data to be encrypted
+                toEncrypt = UnicodeEncoding.ASCII.GetBytes("This is some data of any length.");
+
+                // Create a file.
+                FileStream fStream = new FileStream("Data.dat", FileMode.OpenOrCreate);
+
+                // Create some random entropy.
+                byte[] entropy = CreateRandomEntropy();
+
+                Console.WriteLine();
+                Console.WriteLine($"Original data: {UnicodeEncoding.ASCII.GetString(toEncrypt)}");
+                Console.WriteLine("Encrypting and writing to disk...");
+
+                // Encrypt a copy of the data to the stream.
+                int bytesWritten = EncryptDataToStream(toEncrypt, entropy, DataProtectionScope.CurrentUser, fStream);
+
+                fStream.Close();
+
+                Console.WriteLine("Reading data from disk and decrypting...");
+
+                // Open the file.
+                fStream = new FileStream("Data.dat", FileMode.Open);
+
+                // Read from the stream and decrypt the data.
+                byte[] decryptData = DecryptDataFromStream(entropy, DataProtectionScope.CurrentUser, fStream, bytesWritten);
+
+                fStream.Close();
+
+                Console.WriteLine($"Decrypted data: {UnicodeEncoding.ASCII.GetString(decryptData)}");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"ERROR: {e.Message}");
+            }
+        }
+        */
+        public static void EncryptInMemoryData(byte[] Buffer, MemoryProtectionScope Scope)
+        {
+            if (Buffer == null)
+                throw new ArgumentNullException(nameof(Buffer));
+            if (Buffer.Length <= 0)
+                throw new ArgumentException("The buffer length was 0.", nameof(Buffer));
+
+            // Encrypt the data in memory. The result is stored in the same array as the original data.
+            ProtectedMemory.Protect(Buffer, Scope);
+        }
+
+        public static void DecryptInMemoryData(byte[] Buffer, MemoryProtectionScope Scope)
+        {
+            if (Buffer == null)
+                throw new ArgumentNullException(nameof(Buffer));
+            if (Buffer.Length <= 0)
+                throw new ArgumentException("The buffer length was 0.", nameof(Buffer));
+
+            // Decrypt the data in memory. The result is stored in the same array as the original data.
+            ProtectedMemory.Unprotect(Buffer, Scope);
+        }
+
+        public static byte[] CreateRandomEntropy()
+        {
+            // Create a byte array to hold the random value.
+            byte[] entropy = new byte[16];
+
+            // Create a new instance of the RNGCryptoServiceProvider.
+            // Fill the array with a random value.
+            new RNGCryptoServiceProvider().GetBytes(entropy);
+
+            // Return the array.
+            return entropy;
+        }
+
+        public static int EncryptDataToStream(byte[] Buffer, byte[] Entropy, DataProtectionScope Scope, Stream S)
+        {
+            if (Buffer == null)
+                throw new ArgumentNullException(nameof(Buffer));
+            if (Buffer.Length <= 0)
+                throw new ArgumentException("The buffer length was 0.", nameof(Buffer));
+            if (Entropy == null)
+                throw new ArgumentNullException(nameof(Entropy));
+            if (Entropy.Length <= 0)
+                throw new ArgumentException("The entropy length was 0.", nameof(Entropy));
+            if (S == null)
+                throw new ArgumentNullException(nameof(S));
+
+            int length = 0;
+
+            // Encrypt the data and store the result in a new byte array. The original data remains unchanged.
+            byte[] encryptedData = ProtectedData.Protect(Buffer, Entropy, Scope);
+
+            // Write the encrypted data to a stream.
+            if (S.CanWrite && encryptedData != null)
+            {
+                S.Write(encryptedData, 0, encryptedData.Length);
+
+                length = encryptedData.Length;
+            }
+
+            // Return the length that was written to the stream.
+            return length;
+        }
+
+        public static byte[] DecryptDataFromStream(byte[] Entropy, DataProtectionScope Scope, Stream S, int Length)
+        {
+            if (S == null)
+                throw new ArgumentNullException(nameof(S));
+            if (Length <= 0)
+                throw new ArgumentException("The given length was 0.", nameof(Length));
+            if (Entropy == null)
+                throw new ArgumentNullException(nameof(Entropy));
+            if (Entropy.Length <= 0)
+                throw new ArgumentException("The entropy length was 0.", nameof(Entropy));
+
+            byte[] inBuffer = new byte[Length];
+            byte[] outBuffer;
+
+            // Read the encrypted data from a stream.
+            if (S.CanRead)
+            {
+                S.Read(inBuffer, 0, Length);
+
+                outBuffer = ProtectedData.Unprotect(inBuffer, Entropy, Scope);
+            }
+            else
+            {
+                throw new IOException("Could not read the stream.");
+            }
+
+            // Return the decrypted data
+            return outBuffer;
+        }
+    }
 }
+
+

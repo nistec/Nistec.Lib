@@ -37,13 +37,13 @@ using Nistec.IO;
 
 namespace Nistec.Serialization
 {
-  
+
     /// <summary>
     /// Represent a binary serializer/deserializer , using <see cref="BinaryStreamer"/>.
     /// </summary>
     public class BinarySerializer
     {
- 
+
         #region NetStream Converter
 
         public static NetStream ConvertToStream(object obj, Formatters formatter = Formatters.BinarySerializer)
@@ -52,7 +52,7 @@ namespace Nistec.Serialization
             if (formatter == Formatters.BinarySerializer)
             {
                 BinarySerializer f = new BinarySerializer();
-                f.Serialize(ns,obj);
+                f.Serialize(ns, obj);
             }
             else //if (formatter == Formatters.BinaryFormatter)
             {
@@ -76,7 +76,7 @@ namespace Nistec.Serialization
                 return f.Deserialize(stream);
             }
         }
-        
+
         #endregion
 
         #region Serialize/Deserialize
@@ -189,12 +189,12 @@ namespace Nistec.Serialization
             }
         }
 
-       /// <summary>
+        /// <summary>
         /// Deserialize object from stream.
-       /// </summary>
-       /// <param name="stream"></param>
-       /// <param name="enableException"></param>
-       /// <returns></returns>
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="enableException"></param>
+        /// <returns></returns>
         public object Deserialize(Stream stream, bool enableException = false)
         {
             try
@@ -298,8 +298,8 @@ namespace Nistec.Serialization
                 return default(T);
             using (NetStream ms = new NetStream())
             {
-              return  DeserializeXmlElement<T>(ms);
-           }
+                return DeserializeXmlElement<T>(ms);
+            }
         }
 
         public static void SerializeXmlElement(Stream stream, object body)
@@ -371,7 +371,7 @@ namespace Nistec.Serialization
         /// <param name="value"></param>
         /// <param name="enableException"></param>
         /// <returns></returns>
-        public static NetStream SerializeToStream(object value,bool enableException = false)
+        public static NetStream SerializeToStream(object value, bool enableException = false)
         {
             try
             {
@@ -406,6 +406,27 @@ namespace Nistec.Serialization
                 if (enableException)
                     throw ex;
                 return default(T);
+            }
+        }
+
+        /// <summary>
+        /// Deserialize object from <see cref="NetStream"/> stream.
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <param name="enableException"></param>
+        /// <returns></returns>
+        public static object DeserializeFromStream(NetStream stream, bool enableException = false)
+        {
+            try
+            {
+                BinarySerializer streamer = new BinarySerializer();
+                return streamer.Deserialize(stream);
+            }
+            catch (Exception ex)
+            {
+                if (enableException)
+                    throw ex;
+                return null;
             }
         }
 
@@ -449,11 +470,7 @@ namespace Nistec.Serialization
             streamer.Flush();
             return ns;
         }
-
-        #endregion
-
-        #region Formatters Serialization
-
+             
         public static int SizeOf(object o)
         {
             try
@@ -529,7 +546,7 @@ namespace Nistec.Serialization
 
         public static object Deserialize(byte[] buf, object valueIfNull)
         {
-            object val = Deserialize(buf,false);
+            object val = Deserialize(buf, false);
             if (val == null)
                 val = valueIfNull;
             return val;
@@ -565,7 +582,7 @@ namespace Nistec.Serialization
             }
             return default(T);
         }
-  
+
         #endregion
 
         #region base64 Serialization
@@ -739,7 +756,7 @@ namespace Nistec.Serialization
                     {
                         throw e;
                     }
-                     return false;
+                    return false;
                 }
                 catch (Exception ex)
                 {
@@ -791,5 +808,5 @@ namespace Nistec.Serialization
         #endregion
 
     }
-  
+
 }

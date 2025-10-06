@@ -152,6 +152,9 @@ namespace Nistec.Serialization
         {
             if (obj == null || obj is DBNull)
             {
+                //if (!_Settings.SerializeNullValues)
+                //    return;
+                //else
                 _output.Append("null");
                 return;
             }
@@ -175,7 +178,6 @@ namespace Nistec.Serialization
                     _output.Append(((IConvertible)obj).ToString(NumberFormatInfo.InvariantInfo)); break;
                 case "Char":
                 case "String":
-
                     WriteString(obj.ToString()); break;
                 case "DateTime":
                     WriteDateTime((DateTime)obj); break;
@@ -730,6 +732,10 @@ namespace Nistec.Serialization
                 {
                     //append = false;
                 }
+                else if (_Settings.SerializeZeroValues == false && o != null && o.ToString() == "0")
+                {
+                    //append = false;
+                }
                 else
                 {
                     if (append)
@@ -761,6 +767,8 @@ namespace Nistec.Serialization
         {
             if ((value == null) && _Settings.SerializeNullValues == false)
                 return;
+            else if (_Settings.SerializeZeroValues == false && value != null && value.ToString() == "0")
+                return;
             WriteStringValue(name);
 
             _output.Append(':');
@@ -772,6 +780,8 @@ namespace Nistec.Serialization
         {
             if ((value == null || value is DBNull) && _Settings.SerializeNullValues == false)
                 return;
+            else if (_Settings.SerializeZeroValues == false && value != null && value.ToString() == "0")
+                return;
             WriteStringValue(name);
             _output.Append(':');
             _output.Append(value);
@@ -781,6 +791,8 @@ namespace Nistec.Serialization
         internal void WritePair(string name, object value)
         {
             if ((value == null || value is DBNull) && _Settings.SerializeNullValues == false)
+                return;
+            else if (_Settings.SerializeZeroValues == false && value != null && value.ToString() == "0")
                 return;
             WriteStringValue(name);
 
@@ -793,6 +805,8 @@ namespace Nistec.Serialization
         {
             if ((value == null || value is DBNull) && _Settings.SerializeNullValues == false)
                 return;
+            else if (_Settings.SerializeZeroValues == false && value != null && value.ToString() == "0")
+                return;
             WriteStringValue(name);
 
             _output.Append(':');
@@ -802,6 +816,8 @@ namespace Nistec.Serialization
         internal void WriteToken(string name, object value, Type baseType)
         {
             if ((value == null || value is DBNull) && _Settings.SerializeNullValues == false)
+                return;
+            else if (_Settings.SerializeZeroValues == false && value != null && value.ToString() == "0")
                 return;
             WriteStringValue(name);
 

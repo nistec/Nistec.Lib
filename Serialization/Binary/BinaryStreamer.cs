@@ -205,6 +205,10 @@ namespace Nistec.Serialization
             //write
             this.m_encoder = NetEncoder.GetEncoder(encoding);
         }
+        ~BinaryStreamer()
+        {
+            Dispose(false);
+        }
 
         public virtual void Flush()
         {
@@ -2575,6 +2579,8 @@ namespace Nistec.Serialization
         {
             Type type = ReadType();
             int value = ReadInt32();
+            if (type == null)
+                return null;
             return Enum.ToObject(type, value);
         }
 

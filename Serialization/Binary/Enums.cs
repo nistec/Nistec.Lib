@@ -78,7 +78,7 @@ namespace Nistec.Serialization
 
 
     // Enum for the standard types handled by Read/WriteObject()
-    internal enum SerialType : byte
+    public enum SerialType : byte
     {
         nullType = 0,
         boolType = 1,

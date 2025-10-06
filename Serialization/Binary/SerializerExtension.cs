@@ -34,6 +34,29 @@ namespace Nistec.Serialization
     /// </summary>
     public static class SerializerExtension
     {
+        /// <summary>
+        /// Deserialize
+        /// </summary>
+        /// <param name="stream"></param>
+        /// <returns></returns>
+        public static object Deserialize(this NetStream stream)
+        {
+            if (stream == null)
+                return null;
+            return BinarySerializer.Deserialize(stream.ToArray(), false);
+        }
+        /// <summary>
+        /// Deserialize
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="stream"></param>
+        /// <returns></returns>
+        public static T Deserialize<T>(this NetStream stream)
+        {
+            if (stream == null)
+                return default(T);
+            return BinarySerializer.Deserialize<T>(stream.ToArray(), false);
+        }
 
         #region  IEntityFormatter
 
@@ -42,7 +65,7 @@ namespace Nistec.Serialization
         /// </summary>
         /// <param name="entity"></param>
         /// <returns></returns>
-        public static NetStream Serialize(this ISerialEntity entity)
+        public static NetStream EntityWrite(this ISerialEntity entity)//Serialize
         {
             NetStream ns = new NetStream();
             var streamer = new BinaryStreamer(ns);
@@ -56,7 +79,7 @@ namespace Nistec.Serialization
         /// <typeparam name="T"></typeparam>
         /// <param name="stream"></param>
         /// <returns></returns>
-        public static T Deserialize<T>(this NetStream stream) where T : ISerialEntity
+        public static T EntityRead<T>(this NetStream stream) where T : ISerialEntity//Deserialize
         {
             var streamer = new BinaryStreamer(stream);
             return streamer.ReadSerialEntity<T>(true);

@@ -571,12 +571,12 @@ namespace Nistec
             return !typeof(T).IsValueType;
         }
 
-        public static T OfType<T>(object o)
+        public static T Oftype<T>(object o)
         {
-            return OfType<T>(new object[] { o }).FirstOrDefault();
+            return Oftype<T>(new object[] { o }).FirstOrDefault();
         }
 
-        public static IEnumerable<T> OfType<T>(this IEnumerable source)
+        public static IEnumerable<T> Oftype<T>(this IEnumerable source)
         {
             foreach (object o in source)
                 if (o is T)

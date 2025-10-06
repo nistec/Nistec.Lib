@@ -1035,8 +1035,9 @@ namespace Nistec
         /// IsEmpty object|string|Guid or number==0
         /// </summary>
         /// <param name="value"></param>
+        /// <param name="includeZero"></param>
         /// <returns></returns>
-        public static bool IsEmpty(object value)
+        public static bool IsEmpty(object value, bool includeZero=true)
         {
             if (value == null || value == DBNull.Value)
                 return true;
@@ -1046,16 +1047,19 @@ namespace Nistec
                 return string.IsNullOrEmpty(value.ToString());
             if (type == typeof(Guid))
                 return Guid.Empty == new Guid(value.ToString());
-            if (type == typeof(int))
-                return Types.ToInt(value) == 0;
-            if (type == typeof(long))
-                return Types.ToLong(value) == 0;
-            if (type == typeof(decimal))
-                return Types.ToDecimal(value, 0) == 0;
-            if (type == typeof(float))
-                return Types.ToFloat(value, 0) == 0;
-            if (type == typeof(double))
-                return Types.ToDouble(value, 0) == 0;
+            if (includeZero)
+            {
+                if (type == typeof(int))
+                    return Types.ToInt(value) == 0;
+                if (type == typeof(long))
+                    return Types.ToLong(value) == 0;
+                if (type == typeof(decimal))
+                    return Types.ToDecimal(value, 0) == 0;
+                if (type == typeof(float))
+                    return Types.ToFloat(value, 0) == 0;
+                if (type == typeof(double))
+                    return Types.ToDouble(value, 0) == 0;
+            }
             return false;
         }
         #endregion

@@ -35,7 +35,12 @@ using System.Threading.Tasks;
 
 namespace Nistec.Serialization
 {
-   
+   public enum JsonOptions
+    {
+        DefaultOption,
+        IgnorNullOption,
+        IgnorNullZeroOption
+    }
 
     public class JsonSerializer : IJsonSerializer
     {
@@ -174,6 +179,16 @@ namespace Nistec.Serialization
         public static JsonSettings DefaultOption = new JsonSettings();
 
         /// <summary>
+        /// IgnorNullOption serializer option.
+        /// </summary>
+        public static JsonSettings IgnorNullOption = new JsonSettings() {SerializeNullValues=false };
+
+        /// <summary>
+        /// IgnorNullOption serializer option.
+        /// </summary>
+        public static JsonSettings IgnorNullZeroOption = new JsonSettings() { SerializeNullValues = false, SerializeZeroValues=false };
+
+        /// <summary>
         /// Default serializer with date format option.
         /// </summary>
         public static JsonSettings DefaultSettingsFormat(JsonDateFormat format)
@@ -190,6 +205,22 @@ namespace Nistec.Serialization
         {
             return Serialize(obj, null, JsonSerializer.DefaultOption, JsonFormat.None);
         }
+        /// <summary>
+        /// Create a json from object using default <see cref="JsonSettings"/>.
+        /// </summary>
+        /// <param name="obj"></param>
+        /// <param name="option"></param>
+        /// <param name="pretty"></param>
+        /// <returns></returns>
+        public static string Serialize(object obj, JsonOptions option, bool pretty=false)
+        {
+            if (option== JsonOptions.IgnorNullOption)
+                return Serialize(obj, null, JsonSerializer.IgnorNullOption, pretty ? JsonFormat.Indented : JsonFormat.None);
+            else if (option == JsonOptions.IgnorNullZeroOption)
+                return Serialize(obj, null, JsonSerializer.IgnorNullZeroOption, pretty ? JsonFormat.Indented : JsonFormat.None);
+            else
+                return Serialize(obj, null, JsonSerializer.DefaultOption, pretty ? JsonFormat.Indented : JsonFormat.None);
+        }
 
         /// <summary>
         /// Create a json from object using <see cref="JsonSettings"/> and format(optional) with Indented format.
@@ -201,6 +232,21 @@ namespace Nistec.Serialization
         {
             return Serialize(obj, null, JsonSerializer.DefaultOption, pretty ? JsonFormat.Indented : JsonFormat.None);
         }
+
+        ///// <summary>
+        ///// Create a json from object using <see cref="JsonSettings"/> and format(optional) with Indented format.
+        ///// </summary>
+        ///// <param name="obj"></param>
+        ///// <param name="pretty"></param>
+        ///// <param name="IgnorNullValues"></param>
+        ///// <returns></returns>
+        //public static string Serialize(object obj, bool pretty , bool IgnorNullValues)
+        //{
+        //    if (IgnorNullValues)
+        //        return Serialize(obj, null, JsonSerializer.IgnorNullOption, pretty ? JsonFormat.Indented : JsonFormat.None);
+        //    else
+        //        return Serialize(obj, null, JsonSerializer.DefaultOption, pretty ? JsonFormat.Indented : JsonFormat.None);
+        //}
 
         /// <summary>
         /// Create a json from object using <see cref="JsonSettings"/> and format(optional).
@@ -254,16 +300,25 @@ namespace Nistec.Serialization
             return json;
         }
 
-        public static string ConvertToJson(object[] keyValueParameters, JsonSettings settings, JsonFormat format= JsonFormat.None)
+        public static string ConvertToJson(params object[] keyValueParameters)
         {
-            if (settings == null)
-                settings = JsonSerializer.DefaultOption;
+            JsonSettings settings = JsonSerializer.DefaultOption;
+            string json = JsonWriter.Get(settings).ConvertToJson(keyValueParameters);
+            return json;
+        }
 
-            if (settings.EnableAnonymousTypes)
-            {
-                settings.UseExtensions = false;
-                settings.UseTypesExtension = false;
-            }
+        public static string ConvertToJson(object[] keyValueParameters, JsonOptions options, JsonFormat format= JsonFormat.None)
+        {
+            JsonSettings settings = JsonSettings.Options(options);
+
+            //if (settings == null)
+            //    settings = JsonSerializer.DefaultOption;
+
+            //if (settings.EnableAnonymousTypes)
+            //{
+            //    settings.UseExtensions = false;
+            //    settings.UseTypesExtension = false;
+            //}
             string json = JsonWriter.Get(settings).ConvertToJson(keyValueParameters);
             if (format == JsonFormat.Indented)
                 return JsonConverter.PrintJson(json);
@@ -344,6 +399,10 @@ namespace Nistec.Serialization
         public static T Deserialize<T>(string json)
         {
             return JsonReader.Get(DefaultOption).ToObject<T>(json);
+        }
+        public static IEnumerable<T> DeserializeArray<T>(string json)
+        {
+            return JsonReader.Get(DefaultOption).ToObjectArray<T>(json);
         }
 
         public static async Task<T> DeserializeAsync<T>(string json)

@@ -196,7 +196,7 @@ namespace Nistec.Generic
                 throw new ArgumentNullException("KeyValueArgs.Add key");
             }
 
-            base.Add(key, value == null ? null : value.ToString());
+            base.Add(key, value);// == null ? null : value.ToString());
         }
         /// <summary>
         /// 

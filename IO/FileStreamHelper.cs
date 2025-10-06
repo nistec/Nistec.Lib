@@ -272,6 +272,15 @@ namespace Nistec.IO
             return ReadBinaryStream(fileName, Encoding.UTF8, FileAccess.Read, FileShare.Read);
         }
 
+        public static long FileSize(string fileName)
+        {
+            var bytes= ReadBinaryStream(fileName);
+            if (bytes == null)
+                return 0;
+            return bytes.LongLength;
+        }
+
+
         public static string GetResourceStream(System.Reflection.Assembly assembly, string fileName)
         {
             string text = null;

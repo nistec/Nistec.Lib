@@ -78,6 +78,28 @@ namespace Nistec.Serialization
                 return (T)o;
         }
 
+        public IEnumerable<T> ToObjectArray<T>(string json)
+        {
+            Type t = typeof(T);
+            var o = ToObjectArray(json, t);
+
+            List<T> l = new List<T>();
+            T instance = default(T);
+            string j;
+            foreach (var i in o)
+            {
+                j = JsonSerializer.Serialize(i);
+                instance = JsonSerializer.Deserialize<T>(j);
+                l.Add(instance);
+
+                //instance =Nistec.Runtime.ActivatorUtil.CreateInstance<T>();
+                //((ISerialJson)instance).EntityRead(i.ToString(), null);
+                //l.Add(instance);
+            }
+            return l;//.ToArray();
+
+        }
+
         //public Dictionary<string,object> ToDictionary(string json, Type type)
         //{
         //    Type t = null;
@@ -174,6 +196,83 @@ namespace Nistec.Serialization
                 return ChangeType(o, type);
 
             return o;
+        }
+
+        public IEnumerable<object> ToObjectArray(string json, Type type)
+        {
+            Type t = null;
+            if (type != null && type.IsGenericType)
+                t = JsonActivator.Get.GetGenericTypeDefinition(type);
+            if (t == typeof(Dictionary<,>) || t == typeof(List<>))
+                _Settings.UseTypesExtension = false;
+
+            _useGlobalTypes = _Settings.UseTypesExtension;
+
+            //if (type != null && SerializeTools.IsISerialJson(type))
+            //{
+            //    object instance = ActivatorUtil.CreateInstance(type);
+            //    return ((ISerialJson)instance).EntityRead(json, null);
+            //}
+
+            object o = JsonParser.Parse(json, type, _Settings.IgnoreCaseOnDeserialize);
+            if (o == null)
+                return null;
+
+            var otype = o.GetType();
+
+
+            //if (type != null && otype == type)
+            //    return o;
+
+
+            //if (type != null && type == typeof(DataSet))
+            //    return CreateDataset(o as Dictionary<string, object>, null);
+
+            //if (type != null && type == typeof(DataTable))
+            //{
+            //    if (_Settings.UseDatasetSchema)
+            //        return CreateDataTable(o as Dictionary<string, object>, null);
+            //    else //if (_Settings.)
+            //        return ToDataTable(o as IList<object>);
+            //}
+            //if (o is IDictionary)
+            //{
+            //    if (type != null && t == typeof(Dictionary<,>)) // deserialize a dictionary
+            //        return RootDictionary(o, type);
+            //    else // deserialize an object
+            //        return ParseDictionary(o as Dictionary<string, object>, null, type, null);
+            //}
+
+            //added-in case the result is array
+            //if (otype.IsArray)
+            //{
+            //    return o;
+            //}
+
+            //added-in case of list of string
+            if (o is List<string>)
+            {
+                if (type != null && type == typeof(List<string>))
+                    return (o as List<string>);
+                else
+                    return (o as List<string>).ToArray();
+            }
+
+            if (o is List<object>)
+            {
+                if (type != null && t == typeof(Dictionary<,>)) // kv format
+                    return (RootDictionary(o, type) as List<object>).ToArray();
+
+                if (type != null && t == typeof(List<>)) // deserialize to generic list
+                    return (RootList(o, type) as List<object>).ToArray();
+
+                //if (type == typeof(Hashtable))
+                //    return RootHashTable((List<object>)o);
+                //else
+                    return (o as List<object>).ToArray();
+            }
+
+            return (o as List<object>).ToArray();
         }
 
         #region   private methods

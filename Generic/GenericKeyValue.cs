@@ -34,6 +34,67 @@ using Nistec.Data;
 
 namespace Nistec.Generic
 {
+
+    public static class NameValueParam
+    {
+        public static void Parse(object[] keyValueParameters)
+        {
+            if (keyValueParameters == null)
+            {
+                throw new ArgumentNullException("keyValueParameters");
+            }
+
+            int count = keyValueParameters.Length;
+            if (count % 2 != 0)
+            {
+                throw new ArgumentException("values parameter not correct, Not match key value arguments");
+            }
+            //for (int i = 0; i < count; i++)
+            //{
+            //    this[keyValueParameters[i]] = keyValueParameters[++i];
+            //}
+        }
+        public static void Add(IKeyValue kv, params object[] keyValueParameters)
+        {
+            Parse(keyValueParameters);
+            for (int i = 0; i < keyValueParameters.Length; i++)
+            {
+                kv.Add($"{keyValueParameters[i]}" ,keyValueParameters[++i]);
+            }
+        }
+        public static void Add(IKeyValue kv, params string[] keyValueParameters)
+        {
+            Parse(keyValueParameters);
+            for (int i = 0; i < keyValueParameters.Length; i++)
+            {
+                kv.Add(keyValueParameters[i], keyValueParameters[++i]);
+            }
+        }
+
+        public static object[] To(params object[] keyValueParameters)
+        {
+            Parse(keyValueParameters);
+            return keyValueParameters;
+        }
+        public static string[] To(params string[] keyValueParameters)
+        {
+            Parse(keyValueParameters);
+            return keyValueParameters;
+        }
+        public static GenericKeyValue ToGenericKeyValue(params object[] keyValueParameters)
+        {
+            return new GenericKeyValue(keyValueParameters);
+        }
+        public static GenericNameValue ToGenericNameValue(params string[] NameValueParameters)
+        {
+            return new GenericNameValue(NameValueParameters);
+        }
+        public static NameValueArgs ToNameValueArgs(params string[] NameValueParameters)
+        {
+            return new NameValueArgs(NameValueParameters);
+        }
+    }
+
     /// <summary>
     /// GenericKeyValue
     /// </summary>
@@ -140,6 +201,18 @@ namespace Nistec.Generic
 
         #endregion
 
+        public object[] ToKeyValueArray()
+        {
+            var list = new List<object>();
+
+            foreach (var entry in this)
+            {
+                list.Add(entry.Key);
+                list.Add(entry.Value);
+            }
+            return list.ToArray();
+        }
+
     }
     /// <summary>
     /// GenericNameValue
@@ -161,7 +234,7 @@ namespace Nistec.Generic
         }
         public virtual void Add(string[] keyValueParameters)
         {
-            Parse(keyValueParameters);
+            _Parse(keyValueParameters);
         }
         #endregion
 
@@ -201,7 +274,7 @@ namespace Nistec.Generic
         public GenericNameValue(string[] keyValue)
         {
             EnableDuplicate = false;
-            Parse(keyValue);
+            _Parse(keyValue);
             //Load(ParseQuery(keyValue));
         }
 
@@ -213,7 +286,7 @@ namespace Nistec.Generic
         //    return query;
         //}
 
-        void Parse(string[] keyValueParameters)
+        void _Parse(string[] keyValueParameters)
         {
             if (keyValueParameters==null)
             {
@@ -235,7 +308,7 @@ namespace Nistec.Generic
             this.ToNameValue(dr);
         }
 
-        public static GenericNameValue Create(params string[] keyValue)
+        public static GenericNameValue Parse(params string[] keyValue)
         {
             GenericNameValue pair = new GenericNameValue();
             if (keyValue == null)

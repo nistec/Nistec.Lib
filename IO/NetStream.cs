@@ -1436,6 +1436,14 @@ namespace Nistec.IO
                 return (this.m_length - this.m_origin);
             }
         }
+        public bool IsEmpty
+        {
+            get
+            {
+                return (this.m_capacity==0 || this.m_length==0);
+            }
+        }
+
         /// <summary>
         /// Get or sets the position within the
         ///     current stream.

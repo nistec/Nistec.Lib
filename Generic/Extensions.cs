@@ -390,35 +390,50 @@ namespace Nistec.Generic
             var utcdt = DateTimeOffset.Parse(utcstring).UtcDateTime;
             return utcdt;
         }
+        /*
         public static double DurationSeconds(string sessionid, string finalsession)
         {
-            if (string.IsNullOrEmpty(sessionid))
-                return 0;
-            if (string.IsNullOrEmpty(finalsession))
-                finalsession = Id();
-            DateTime sessTime = ToUtcDateTime(sessionid).Value;
-            DateTime finalTime = ToUtcDateTime(finalsession).Value;
+            try
+            {
+                if (string.IsNullOrEmpty(sessionid))
+                    return 0;
+                if (string.IsNullOrEmpty(finalsession))
+                    finalsession = Id();
+                DateTime sessTime = ToUtcDateTime(sessionid).Value;
+                DateTime finalTime = ToUtcDateTime(finalsession).Value;
 
-            var duration = finalTime.Subtract(sessTime).TotalSeconds;
-            return duration;
+                var duration = finalTime.Subtract(sessTime).TotalSeconds;
+                return duration;
+            }
+            catch
+            {
+                return 0;
+            }
         }
         public static TimeSpan DurationTime(string sessionid, string finalsession)
         {
-            if (string.IsNullOrEmpty(sessionid))
-                return TimeSpan.Zero;
-            if (string.IsNullOrEmpty(finalsession))
-                finalsession = Id();
-            DateTime sessTime = ToUtcDateTime(sessionid).Value;
-            DateTime finalTime = ToUtcDateTime(finalsession).Value;
+            try
+            {
+                if (string.IsNullOrEmpty(sessionid))
+                    return TimeSpan.Zero;
+                if (string.IsNullOrEmpty(finalsession))
+                    finalsession = Id();
+                DateTime sessTime = ToUtcDateTime(sessionid).Value;
+                DateTime finalTime = ToUtcDateTime(finalsession).Value;
 
-            var duration = finalTime.Subtract(sessTime);
-            return duration;
+                var duration = finalTime.Subtract(sessTime);
+                return duration;
+            }
+            catch
+            {
+                return TimeSpan.Zero;
+            }
         }
         public static TimeSpan DurationTime(string sessionid)
         {
             return DurationTime(sessionid, null);
         }
-
+        */
         //public static double DurationSeconds(string sessionid, DateTime final)
         //{
         //    DateTime sessTime = ToUtcDateTime(sessionid);
@@ -941,6 +956,7 @@ namespace Nistec.Generic
 
             return dictionary;
         }
+
     }
     /// <summary>
     /// 
@@ -1358,6 +1374,46 @@ namespace Nistec.Generic
             {
                 o.Add(key);
                 o.Add(args[key]);
+            }
+            return o.ToArray();
+        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="args"></param>
+        /// <param name="nameValues"></param>
+        /// <returns></returns>
+        public static object[] ToNameValue(this NameValueCollection args, params object[] nameValues)
+        {
+            if(nameValues.Length> 0 && nameValues.Length % 2!=0)
+            {
+                throw new ArgumentException("nameValues.Length is incorrect");
+            }
+            Dictionary<string,object> dic = new Dictionary<string, object>();
+            string k;
+            object v;
+            for (int i = 0; i < nameValues.Length; i++)
+            {
+                if (nameValues[i] == null)
+                {
+                    ++i;
+                }
+                else
+                {
+                    k = nameValues[i].ToString();
+                    v = nameValues[++i];
+                    dic[k] = v;
+                }
+            }
+
+            List<object> o = new List<object>();
+
+            foreach (string key in args)
+            {
+                o.Add(key);
+                if (dic.ContainsKey(key))
+                    o.Add(dic[key]);
+                else o.Add(args[key]);
             }
             return o.ToArray();
         }

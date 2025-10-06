@@ -24,8 +24,9 @@ using System.Linq;
 using System.Text;
 using System.Security;
 using Nistec.Runtime;
+using Nistec.Serialization;
 
-#pragma warning disable  CS1591
+#pragma warning disable CS1591
 
 namespace Nistec.IO
 {
@@ -36,7 +37,6 @@ namespace Nistec.IO
         {
             return Convert.ToBase64String(stream.ToArray());
         }
-
 
         #region peek and replace
         /// <summary>

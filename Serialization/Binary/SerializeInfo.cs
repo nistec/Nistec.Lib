@@ -194,6 +194,63 @@ namespace Nistec.Serialization
         }
 
         #endregion
+
+        //public static SerialType ReadSerialType(byte t)
+        //{
+        //    switch ((SerialType)t)
+        //    {
+        //        case SerialType.boolType: return SerialType.boolType;
+        //        case SerialType.byteType: return SerialType.byteType;
+        //        case SerialType.uint16Type: return SerialType.uint16Type;
+        //        case SerialType.uint32Type: return SerialType.uint32Type;
+        //        case SerialType.uint64Type: return SerialType.uint64Type;
+        //        case SerialType.sbyteType: return SerialType.sbyteType;
+        //        case SerialType.int16Type: return SerialType.int16Type;
+        //        case SerialType.int32Type: return SerialType.int32Type;
+        //        case SerialType.int64Type: return SerialType.int64Type;
+        //        case SerialType.charType: return SerialType.charType;
+        //        case SerialType.stringType: return SerialType.stringType;
+        //        case SerialType.singleType: return SerialType.singleType;
+        //        case SerialType.doubleType: return SerialType.doubleType;
+        //        case SerialType.decimalType: return SerialType.decimalType;
+        //        case SerialType.dateTimeType: return SerialType.dateTimeType;
+        //        case SerialType.timeSpanType: return SerialType.timeSpanType;
+        //        case SerialType.byteArrayType: return SerialType.byteArrayType;
+        //        case SerialType.charArrayType: return SerialType.charArrayType;
+        //        case SerialType.guidType: return SerialType.guidType;
+        //        case SerialType.enumType: return SerialType.enumType;
+        //        case SerialType.typeType: return SerialType.typeType;
+        //        case SerialType.int16ArrayType: return SerialType.int16ArrayType;
+        //        case SerialType.int32ArrayType: return SerialType.int32ArrayType;
+        //        case SerialType.int64ArrayType: return SerialType.int64ArrayType;
+        //        case SerialType.stringArrayType: return SerialType.stringArrayType;
+        //        case SerialType.objectArrayType: return SerialType.objectArrayType;
+        //        case SerialType.dictionaryEntityType: return SerialType.dictionaryEntityType;
+        //        case SerialType.listGenericType: return SerialType.listGenericType;
+        //        case SerialType.arrayGenericType: return SerialType.arrayGenericType;
+        //        case SerialType.hashtableType: return SerialType.hashtableType;
+        //        case SerialType.dictionaryGenericType: return SerialType.dictionaryGenericType;
+        //        case SerialType.dataTableType: return SerialType.dataTableType;
+        //        case SerialType.dataSetType: return SerialType.dataSetType;
+        //        case SerialType.netStreamType: return SerialType.netStreamType;
+        //        case SerialType.streamType: return SerialType.streamType;
+        //        case SerialType.xmlDocumentType: return SerialType.xmlDocumentType;
+        //        case SerialType.xmlNodeType: return SerialType.xmlNodeType;
+        //        case SerialType.anyClassType: return SerialType.anyClassType;
+        //        case SerialType.serialEntityType: return SerialType.serialEntityType;
+        //        case SerialType.serialContextType: return SerialType.serialContextType;
+        //        case SerialType.genericKeyValueType: return SerialType.genericKeyValueType;
+        //        case SerialType.stringDictionary: return SerialType.stringDictionary;
+        //        case SerialType.nameValueCollection: return SerialType.nameValueCollection;
+        //        case SerialType.dictionaryAssignType: return SerialType.dictionaryAssignType;
+        //        case SerialType.iEntityDictionaryType: return SerialType.iEntityDictionaryType;
+        //        case SerialType.otherType: return SerialType.otherType;
+        //        case SerialType.genericEntityAsIEntityType:return SerialType.genericEntityAsIEntityType;
+        //        case SerialType.genericEntityAsIDictionaryType:return SerialType.genericEntityAsIDictionaryType;
+        //        default: return SerialType.nullType;
+        //    }
+        //}
+
     }
 
 } 

@@ -37,6 +37,8 @@ namespace Nistec.Serialization
         {
             SerializeNullValues = true;
 
+            SerializeZeroValues = true;
+
             JsonDateFormat = JsonDateFormat.iso;//.dynamic;//.iso;
 
             UseUTCDateTime = false;//true;
@@ -71,6 +73,10 @@ namespace Nistec.Serialization
         /// Serialize null values to the output (default = True)
         /// </summary>
         public bool SerializeNullValues {get;set;}
+        /// <summary>
+        /// Serialize null or zero values to the output (default = True)
+        /// </summary>
+        public bool SerializeZeroValues { get; set; }
         /// <summary>
         /// JsonDateFormat (default = iso)
         /// </summary>
@@ -160,7 +166,25 @@ namespace Nistec.Serialization
             }
             IgnoreAttributes.AddRange(types);
         }
-        
+
+        public static JsonSettings Options(JsonOptions option)
+        {
+            if (option == JsonOptions.IgnorNullOption)
+                return new JsonSettings() { SerializeNullValues = false };
+            else if (option == JsonOptions.IgnorNullZeroOption)
+                return new JsonSettings() { SerializeNullValues = false, SerializeZeroValues = false };
+            else
+                return new JsonSettings();
+        }
+      
+        /// <summary>
+        /// Default serializer with date format option.
+        /// </summary>
+        public static JsonSettings DefaultSettingsFormat(JsonDateFormat format)
+        {
+            return new JsonSettings() { JsonDateFormat = format };
+        }
+
     }
    
     public sealed class JsonSchema

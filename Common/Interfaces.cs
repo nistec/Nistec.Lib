@@ -64,7 +64,7 @@ namespace Nistec
     {
         void Start();
         void Stop();
-        bool Pause(OnOffState onOff);
+        bool Pause(OnOffState onOff, int delay);
         void Shutdown(bool waitForWorkers);
         //bool Initialized { get; }
         ListenerState State { get; }
@@ -75,10 +75,20 @@ namespace Nistec
         string Identifier { get;}
         string Message { get; }
         object Response { get; }
+        //string ResultState { get; }
         int Status { get; }
         bool IsOk { get; }
         string Display();
         string ToJson();
+    }
+
+    public interface IAgentMessage:IDisposable
+    {
+        string Identifier { get; }
+        int AckState { get; }
+        string Label { get; }
+        object Body { get; }
+        string Print();
     }
 
     //public interface IJson

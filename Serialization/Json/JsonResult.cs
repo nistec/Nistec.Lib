@@ -44,7 +44,7 @@ namespace Nistec.Serialization
         { }
     }
 
-    public class JsonResults
+    public class JsonResults: ISerialEntity,ISerialJson
     {
         public static JsonResults Get(object o, JsonSettings settings = null)
         {
@@ -71,12 +71,14 @@ namespace Nistec.Serialization
         public JsonResults()
         {
             EncodingName = Encoding.UTF8.EncodingName;
+            Option = JsonSerializer.DefaultOption;
         }
 
         public JsonSettings Option { get; set; }
         public string EncodingName { get; set; }
         public string TypeName { get; set; }
-        
+        public int Status { get; set; }
+
         [RawJson]
         public string Result { get; set; }
         
@@ -84,6 +86,15 @@ namespace Nistec.Serialization
         {
             return JsonSerializer.Serialize(this);
         }
+        public string ToJson(JsonOptions option)
+        {
+            return JsonSerializer.Serialize(this, option);
+        }
+        public static JsonResults Deserialize(string json)
+        {
+            return JsonSerializer.Deserialize<JsonResults>(json);
+        }
+
         public object Deserialize(Type returnType)
         {
            return JsonSerializer.Deserialize(Result, returnType, Option);
@@ -110,6 +121,7 @@ namespace Nistec.Serialization
             streamer.WriteString(EncodingName);
             streamer.WriteString(Result);
             streamer.WriteValue(Option);
+            streamer.WriteValue(Status);
             streamer.Flush();
         }
 
@@ -128,7 +140,44 @@ namespace Nistec.Serialization
             EncodingName = streamer.ReadString();
             Result = streamer.ReadString();
             Option = (JsonSettings)streamer.ReadValue();
+            Status = (int)streamer.ReadValue<int>();
         }
+        #endregion
+
+        #region ISerialJson
+
+        public virtual string EntityWrite(IJsonSerializer serializer, bool pretty = false)
+        {
+            if (serializer == null)
+                serializer = new JsonSerializer(JsonSerializerMode.Write, null);
+
+            serializer.WriteToken("TypeName", TypeName);
+            serializer.WriteToken("EncodingName", EncodingName);
+            serializer.WriteToken("Result", Result);
+            serializer.WriteToken("Option", Option);
+            serializer.WriteToken("Status", Status);
+            return serializer.WriteOutput(pretty);
+
+        }
+        public virtual object EntityRead(string json, IJsonSerializer serializer)
+        {
+            if (serializer == null)
+                serializer = new JsonSerializer(JsonSerializerMode.Read, new JsonSettings() { IgnoreCaseOnDeserialize = true });
+
+            var JsonReader = serializer.Read<Dictionary<string, object>>(json);
+
+            if (JsonReader != null)
+            {
+                TypeName = JsonReader.Get<string>("TypeName");
+                EncodingName = JsonReader.Get<string>("EncodingName");
+                Result = JsonReader.Get<string>("Result");
+                Option = (JsonSettings)JsonReader.Get<JsonSettings>("Option");
+                Status = JsonReader.Get<int>("Status");
+            }
+            //JsonReader = null;
+            return this;
+        }
+
         #endregion
     }
 
@@ -167,6 +216,7 @@ namespace Nistec.Serialization
             JsonResults result = new JsonResults()
             {
                 TypeName = typeof(DataTable).FullName,
+                Option = settings == null ? JsonSerializer.DefaultOption : settings,
                 Result = JsonSerializer.Serialize(dt, settings)
             };
             return result;
@@ -177,6 +227,7 @@ namespace Nistec.Serialization
             JsonResults result = new JsonResults()
             {
                 TypeName = typeof(DataRow).FullName,
+                Option = settings == null ? JsonSerializer.DefaultOption : settings,
                 Result = JsonSerializer.Serialize(dr, settings)
             };
             return result;
@@ -187,10 +238,32 @@ namespace Nistec.Serialization
             JsonResults result = new JsonResults()
             {
                 TypeName = typeof(IDictionary).FullName,
+                Option = settings == null ? JsonSerializer.DefaultOption: settings,
                 Result = JsonSerializer.Serialize(dic, settings)
             };
             return result;
         }
 
+        public static JsonResults ToJsonResult<T>(this T entity, JsonOptions options)
+        {
+            JsonResults result = new JsonResults()
+            {
+                TypeName = typeof(T).FullName,
+                Option = options== JsonOptions.IgnorNullOption ? JsonSerializer.IgnorNullOption :JsonSerializer.DefaultOption,
+                Result = JsonSerializer.Serialize(entity, options)
+            };
+            return result;
+        }
+        public static JsonResults ToJsonResult<T>(this T entity,int status, JsonOptions options)
+        {
+            JsonResults result = new JsonResults()
+            {
+                TypeName = typeof(T).FullName,
+                Option = options == JsonOptions.IgnorNullOption ? JsonSerializer.IgnorNullOption : JsonSerializer.DefaultOption,
+                Result = JsonSerializer.Serialize(entity, options),
+                Status = status
+            };
+            return result;
+        }
     }
 }
