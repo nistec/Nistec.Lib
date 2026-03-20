@@ -831,11 +831,12 @@ namespace Nistec.Threading
                 TaskItem item = null;
                 try
                 {
-                    if (0 == Interlocked.Exchange(ref synchronized, 1))
+                    if (0 == Interlocked.CompareExchange(ref synchronized, 0,0))
                     {
+                        Interlocked.Exchange(ref synchronized, 1);
                         //while (!Tasks.IsCompleted)
                         //{
-                            if (Tasks.TryTake(out item))
+                        if (Tasks.TryTake(out item))
                             {
                                 if (item != null && !item.IsEmpty)
                                 {

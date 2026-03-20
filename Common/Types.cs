@@ -68,12 +68,12 @@ namespace Nistec
 
         public static string ToProprtyString(this object obj, bool multiline=true)
         {
-            if (obj.IsNull()) return string.Empty;
+            if (obj==null) return string.Empty;
             StringBuilder sb = new StringBuilder();
             foreach (var p in obj.GetType().GetProperties())
             {
                 var o = p.GetValue(obj, null);
-                var ostr = !o.IsNull() ? o.ToString() : "";
+                var ostr = o!=null ? o.ToString() : "";
                 if (multiline)
                     sb.AppendLine(p.Name + ":" + ostr + ", ");
                 else
@@ -587,7 +587,40 @@ namespace Nistec
             else
                 return value.Length;
         }
-
+        public static string Substring(string value, int start , int length)
+        {
+            if (value == null)
+                return value;
+            value = value.Trim();
+            if (length == 0 || value.Length <= (start + length))
+                return value;
+            else
+                return value.Substring(start, length);
+        }
+        public static string Substring(object value, int start, int length)
+        {
+            if (value == null)
+                return null;
+            return Strings.Substring(value.ToString(), start, length);
+        }
+        /// <summary>
+        /// Get left part of string by length. if length parameter is zero then return value converted to string
+        /// </summary>
+        /// <param name="value"></param>
+        /// <param name="length"></param>
+        /// <returns></returns>
+        public static string Left(object value, int length)
+        {
+            if(length==0)
+            {
+                return Types.NZ(value, (string)null);
+            }
+            return Strings.Substring(value, 0, length);
+        }
+        public static string ToString(object value)
+        {
+            return Types.NZ(value, (string)null);
+        }
         public static string ToCamelCase(string s)
         {
             if (string.IsNullOrEmpty(s))
@@ -1424,7 +1457,17 @@ namespace Nistec
                 return GenericTypes.Default(type);
             }
         }
-
+        public static string NZtrim(object value)
+        {
+            try
+            {
+                return (value == null || value == DBNull.Value) ? null : value.ToString().Trim();
+            }
+            catch
+            {
+                return null;
+            }
+        }
         public static object NZ(object value)
         {
             try
@@ -1514,7 +1557,7 @@ namespace Nistec
         {
             try
             {
-                return (value == null || value == DBNull.Value) ? valueIfNull : value.ToString();
+                return (value == null || value == DBNull.Value) ? valueIfNull : value.ToString().Trim();
             }
             catch
             {

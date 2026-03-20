@@ -39,7 +39,8 @@ namespace Nistec.Serialization
     {
         DefaultOption,
         IgnorNullOption,
-        IgnorNullZeroOption
+        IgnorNullZeroOption,
+        UseEnumValues
     }
 
     public class JsonSerializer : IJsonSerializer
@@ -218,6 +219,8 @@ namespace Nistec.Serialization
                 return Serialize(obj, null, JsonSerializer.IgnorNullOption, pretty ? JsonFormat.Indented : JsonFormat.None);
             else if (option == JsonOptions.IgnorNullZeroOption)
                 return Serialize(obj, null, JsonSerializer.IgnorNullZeroOption, pretty ? JsonFormat.Indented : JsonFormat.None);
+            else if (option == JsonOptions.UseEnumValues)
+                return Serialize(obj, null, JsonSettings.Options(option), pretty ? JsonFormat.Indented : JsonFormat.None);
             else
                 return Serialize(obj, null, JsonSerializer.DefaultOption, pretty ? JsonFormat.Indented : JsonFormat.None);
         }
@@ -399,6 +402,10 @@ namespace Nistec.Serialization
         public static T Deserialize<T>(string json)
         {
             return JsonReader.Get(DefaultOption).ToObject<T>(json);
+        }
+        public static void Deserialize<T>(string json, Action<T> act)
+        {
+            JsonReader.Get(DefaultOption).ToObject<T>(json, act);
         }
         public static IEnumerable<T> DeserializeArray<T>(string json)
         {

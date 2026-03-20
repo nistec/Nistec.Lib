@@ -99,6 +99,12 @@ namespace Nistec
 
 namespace Nistec.Esb
 {
+
+    public interface IIdentifier
+    {
+        string Identifier { get; }
+    }
+
     public interface IEsbTopic 
     {
         string ConnectionString { get; set; }

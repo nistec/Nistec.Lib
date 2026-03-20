@@ -281,7 +281,7 @@ namespace Nistec.Threading
 
         public DynamicInterval DynamicWait { get; private set; }
 
-        public DynamicWorker(DynamicWaitType waitType = DynamicWaitType.DynamicWait, int maxThread = 1, int interval = 1000, int maxConnections=9999, bool isMultiTasks=true)
+        public DynamicWorker(DynamicWaitType waitType = DynamicWaitType.None, int maxThread = 1, int interval = 1000, int maxConnections=50, bool isMultiTasks=false)
         {
             MaxThreads = (maxThread < 1 || maxThread > MAXTHREAD) ? MAXTHREAD : maxThread;
             Interval = (interval < 1) ? 1000 : interval;
@@ -301,7 +301,7 @@ namespace Nistec.Threading
             }
         }
 
-        public DynamicWorker(DynamicInterval dynamicWait, int maxConnections = 9999, bool isMultiTasks = true)
+        public DynamicWorker(DynamicInterval dynamicWait, int maxConnections = 50, bool isMultiTasks = false)
         {
             DynamicWait = dynamicWait;
             MaxThreads = dynamicWait.MaxThread;
@@ -577,7 +577,7 @@ namespace Nistec.Threading
                             ResetEvent.WaitOne();
 
 
-                        //if (0 == Interlocked.Exchange(ref synchronized, 1))
+                        //if (0 == Interlocked.CompareExchange(ref synchronized, 0,0))
                         //{
                         //    if (_Pause)
                         //        Thread.Sleep(_PauseInterval);
@@ -608,7 +608,7 @@ namespace Nistec.Threading
                 if (EnableDynamicWait)
                     Task.Delay(DynamicWait.DynamicWait);// DynamicWait.Sleep();
                 else
-                    Task.Delay(Interval);
+                    Thread.Sleep(Interval);// Task.Delay(Interval);
             }
             OnStateChanged(ListenerState.Stoped);
         }

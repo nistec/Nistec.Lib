@@ -158,6 +158,7 @@
     <Compile Include="Runtime\Advanced\SyncItemEvent.cs" />
     <Compile Include="Runtime\Advanced\SyncQueueBox.cs" />
     <Compile Include="Runtime\Advanced\SyncTimerDispatcher.cs" />
+    <Compile Include="Runtime\DailyTokenService.cs" />
     <Compile Include="Runtime\Diagnostics.cs" />
     <Compile Include="Runtime\Signer.cs" />
     <Compile Include="Serialization\Binary\Interfaces.cs" />
@@ -197,6 +198,9 @@
     <Compile Include="IO\StreamHelper.cs" />
     <Compile Include="Runtime\SysFileWatcher.cs" />
     <Compile Include="Threading\AsyncTasker.cs" />
+    <Compile Include="Threading\HighWorkerEngine.cs" />
+    <Compile Include="Threading\MultiWorkerEngine.cs" />
+    <Compile Include="Threading\WorkerEngine.cs" />
     <Compile Include="Threading\DynamicWorker.cs" />
     <Compile Include="Threading\ListenerDelay.cs" />
     <Compile Include="Threading\ThreadPoolEx.cs">

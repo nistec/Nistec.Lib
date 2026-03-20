@@ -21,6 +21,8 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Nistec.Collections;
 #pragma warning disable  CS1591
 
@@ -291,24 +293,26 @@ namespace Nistec.Threading
         private void OnTimedEvent(object source, System.Timers.ElapsedEventArgs e)
         {
             Console.WriteLine("Start Scheduler ...");
-            OnTrace(LogLevel.Info, "Start Scheduler ...");
+            //OnTrace(LogLevel.Info, "Start Scheduler ...");
 
             if (scheduleList.Count > 0)
             {
                 OnSchedule();
-
             }
+            Thread.Sleep(1000);
         }
 
         private void OnSchedule()
         {
-            OnTrace(LogLevel.Info, "OnSchedule");
+            //OnTrace(LogLevel.Info, "OnSchedule");
+            Console.WriteLine("OnSchedule ...");
 
             DateTime time = DateTime.Now;
             foreach (Schedule item in scheduleList.Values)
             {
                 if (item.Enabled && time >= item.NextTime)
                 {
+                    OnTrace(LogLevel.Info, $"OnSchedule {item.ScheduleName}");
                     curSchedule = item;
                     item.CalcNextTime();
                     if (!actionList.ContainsKey(item.ScheduleName))
@@ -317,8 +321,8 @@ namespace Nistec.Threading
                         OnScheduleElapsed(new SchedulerEventArgs(this,item.ScheduleName));
                     }
                 }
+                Thread.Sleep(100);
             }
-
         }
 
         public void Commit(string scheduleName)

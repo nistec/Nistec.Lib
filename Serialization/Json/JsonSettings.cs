@@ -61,7 +61,7 @@ namespace Nistec.Serialization
 
             UseBinaryGuid = false;//true;
 
-            UseEnumValues = false;
+            UseEnumValues = true;//false
 
             UseUninitializedObject = false;
 
@@ -173,6 +173,8 @@ namespace Nistec.Serialization
                 return new JsonSettings() { SerializeNullValues = false };
             else if (option == JsonOptions.IgnorNullZeroOption)
                 return new JsonSettings() { SerializeNullValues = false, SerializeZeroValues = false };
+            else if (option == JsonOptions.UseEnumValues)
+                return new JsonSettings() { UseEnumValues = true };
             else
                 return new JsonSettings();
         }

@@ -58,6 +58,7 @@ namespace Nistec.Serialization
                 return ToObject<T>(json);
             });
         }
+        
         public T ToObject<T>(string json)
         {
             Type t = typeof(T);
@@ -78,6 +79,26 @@ namespace Nistec.Serialization
                 return (T)o;
         }
 
+        public void ToObject<T>(string json, Action<T> act)
+        {
+            Type t = typeof(T);
+            var o = ToObject(json, t);
+
+            if (t.IsArray)
+            {
+                if ((o as ICollection).Count == 0) // edge case for "[]" -> T[]
+                {
+                    Type tt = t.GetElementType();
+                    object oo = Array.CreateInstance(tt, 0);
+                    act((T)oo);
+                }
+                else
+                    act((T)o);
+            }
+            else
+                act((T)o);
+        }
+   
         public IEnumerable<T> ToObjectArray<T>(string json)
         {
             Type t = typeof(T);
@@ -556,7 +577,8 @@ namespace Nistec.Serialization
                                 }
                                 break;
                         }
-
+                        if (oset == null)
+                            return o;
                         o = typeInfo.setterField(o, oset);
                     }
                 }
